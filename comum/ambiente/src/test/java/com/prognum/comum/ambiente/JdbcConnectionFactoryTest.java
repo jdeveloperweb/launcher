@@ -33,11 +33,12 @@ class JdbcConnectionFactoryTest {
     }
 
     @Test
-    void firebird_remoto_e_embedded() {
+    void firebird_remoto_e_local() {
         assertThat(f.montarUrl(cfg("INTERBASE", "dbhost", "/u/dados/base.gdb")))
                 .isEqualTo("jdbc:firebirdsql://dbhost:3050//u/dados/base.gdb");
-        assertThat(f.montarUrl(cfg("INTERBASE", "", "/u/dados/base.gdb")))   // host vazio = arquivo local
-                .isEqualTo("jdbc:firebirdsql:embedded:/u/dados/base.gdb");
+        // host vazio = fbserver LOCAL (localhost:3050), nao embedded (que exigiria lib nativa)
+        assertThat(f.montarUrl(cfg("INTERBASE", "", "/u/dados/base.gdb")))
+                .isEqualTo("jdbc:firebirdsql://localhost:3050//u/dados/base.gdb");
     }
 
     @Test

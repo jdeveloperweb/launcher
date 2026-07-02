@@ -39,10 +39,9 @@ public class JdbcConnectionFactory {
             case "ORACLE", "ORANET" -> "jdbc:oracle:thin:@" + hostOu(host, "localhost") + ":1521:" + db;
             case "MSSQL" -> "jdbc:sqlserver://" + hostOu(host, "localhost")
                     + ";databaseName=" + db + ";encrypt=false;trustServerCertificate=true";
-            // INTERBASE/Firebird: host vazio = arquivo local (.gdb)
-            default -> host.isEmpty()
-                    ? "jdbc:firebirdsql:embedded:" + db
-                    : "jdbc:firebirdsql://" + host + ":3050/" + db;
+            // INTERBASE/Firebird: host vazio = fbserver LOCAL (localhost:3050), NAO embedded
+            // (embedded exigiria a lib nativa fbclient; o SCCI roda o Firebird server, inclusive p/ .gdb local).
+            default -> "jdbc:firebirdsql://" + hostOu(host, "localhost") + ":3050/" + db;
         };
     }
 
