@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: launcher-gateway
+
+server:
+  # 8080 estava ocupada na maquina de dev; 8082 evita conflito. Ajustavel (ou via --server.port=).
+  port: 8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+launcher:
+  routing:
+    # Fase 1 (regras.md): fallback global para o legado (Rota C) ligado por padrao.
+    # Vira kill-switch global; quando desligado, o roteador tenta A (nativo) e cai em B (ProcessBuilder).
+    global-legacy-fallback: true
+
+  legacy:
+    wcop:
+      # Rota C (proxy HTTP). Aponta para o SIMULADOR embutido — NAO toca no /aejs real.
+      # So apontar para um W_COP real mediante decisao/autorizacao explicita.
+      base-url: http://localhost:${server.port}/__wcop-sim
+      path-template: /{programa}/{metodo}
+      simulator:
+        enabled: true
+
+  executor:
+    # Rota B (ProcessBuilder). true = resposta simulada; false = roda o .exe real (a implementar).
+    simulate: true
+
+  auth:
+    # Login Java nativo (Rota A) — politicas portadas do launcher legado.
+    login-err-delay-ms: 1000      # atraso anti forca-bruta a cada erro (RN-031)
+    max-erros: 5                  # bloqueia o usuario acima disso (RN-030)
+    max-erros-captcha: 3          # exige captcha acima disso (RN-032)
+    captcha-habilitado: true
+    dias-aviso-expiracao: 5       # aviso "senha vai expirar"
+    session:
+      ttl-segundos: 1800          # TTL da sessao (RF02)
+      max-por-usuario: 1          # 1 sessao ativa por usuario (configuravel)
+    policy:
+      # Politica de complexidade da nova senha (RN-010..012) + rodizio (RN-013).
+      min-caracteres: 8
+      requer-composicao: true
+      min-letras: 1
+      min-maiusculas: 1
+      min-digitos: 1
+      min-especiais: 1
+      max-repetidos: 3            # nao repetir o mesmo caractere 3+ vezes seguidas
+      max-sequenciais: 3          # nao usar 3+ caracteres em sequencia (abc, 123)
+      historico: 5               # nao reutilizar as ultimas 5 senhas

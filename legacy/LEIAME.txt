@@ -1,0 +1,21 @@
+PARA RODAR NO WINDOWS COPIE AS DLL´s PARA O DIR. SYSTEM/SYSTEM32 :
+
+gds32.dll     -interbase
+dbexpint.dll  - interbse
+
+odbc32.dll - mssql
+dbxodbc.dll - mssql
+
+midas.dll - todos 
+
+que se referem ao driver do interbase/odbc  do dbexpress.
+
+DEVE TAMBEM:
+1) SER CRIADO O ARQUIVO CRCFILE.TXT NO DIRETORIO APONTADO PELA VARIAVEL WINDIR.
+2) Acertar o db.ini para o path padrao windows no local correto
+3) Acertar o launcherenv.ini e launcher.conf para os caminhos do windows 
+4) para o caso do mssql odbc configurar o driver no painel de controle apontando para o banco do scci no mssql
+5) copiar o launcher.conf para o system32
+6) explodir os pgms unix para windows e colocar no path.
+
+

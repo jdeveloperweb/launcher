@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    Reator pai do Launcher SCCI em Java (arquitetura hexagonal / Ports & Adapters).
+    A regra de dependencia (dominio nao conhece ninguem; adapters dependem de application+domain;
+    bootstrap junta tudo) e imposta pelo <dependencies> de cada modulo abaixo.
+  -->
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.3.4</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>com.prognum</groupId>
+  <artifactId>launcher-parent</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>launcher-parent</name>
+  <description>Launcher SCCI em Java - reator hexagonal (Ports and Adapters) multi-modulo</description>
+
+  <modules>
+    <module>launcher-domain</module>
+    <module>launcher-application</module>
+    <module>launcher-adapters-in</module>
+    <module>launcher-adapters-out</module>
+    <module>launcher-bootstrap</module>
+  </modules>
+
+  <properties>
+    <java.version>21</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <jaybird.version>5.0.5.java11</jaybird.version>
+    <ojdbc.version>21.9.0.0</ojdbc.version>
+    <logstash.version>8.0</logstash.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Modulos internos do reactor: versao unica gerenciada aqui. -->
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>launcher-domain</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>launcher-application</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>launcher-adapters-in</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>launcher-adapters-out</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <!-- Bibliotecas cujas versoes nao vem do spring-boot-parent. -->
+      <dependency>
+        <groupId>net.logstash.logback</groupId>
+        <artifactId>logstash-logback-encoder</artifactId>
+        <version>${logstash.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.firebirdsql.jdbc</groupId>
+        <artifactId>jaybird</artifactId>
+        <version>${jaybird.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.oracle.database.jdbc</groupId>
+        <artifactId>ojdbc11</artifactId>
+        <version>${ojdbc.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+</project>

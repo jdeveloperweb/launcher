@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custo da Infraestrutura — Prognum Cloud</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --azul:#0b3d5c; --azul2:#12678f; --teal:#13a3a3; --verde:#2b9d6e;
+    --laranja:#e08a1e; --vermelho:#c0392b; --roxo:#6c5ce7;
+    --tinta:#1b2733; --cinza:#5c6b7a; --linha:#e3e9ef; --fundo:#f5f8fb; --card:#ffffff;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{margin:0;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--tinta);
+       background:var(--fundo);line-height:1.55;font-size:14px}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 32px}
+  header.cover{display:flex;align-items:center;justify-content:space-between;gap:24px;
+       border-bottom:4px solid var(--teal);padding-bottom:18px;margin-bottom:8px}
+  header.cover img{height:50px;width:auto}
+  header.cover .ttl h1{margin:0;font-size:23px;color:var(--azul)}
+  header.cover .ttl p{margin:4px 0 0;color:var(--cinza);font-size:13px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 6px}
+  .meta .chip{background:#eaf3f7;color:var(--azul2);border:1px solid #d3e6ef;
+       border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600}
+  h2{color:var(--azul);font-size:18px;margin:34px 0 8px;padding-bottom:6px;border-bottom:2px solid var(--linha)}
+  h2 .n{display:inline-block;background:var(--azul);color:#fff;border-radius:6px;
+       width:24px;height:24px;text-align:center;line-height:24px;font-size:13px;margin-right:8px}
+  h3{color:var(--azul2);font-size:15px;margin:18px 0 6px}
+  p.lead{color:var(--cinza);margin:6px 0 14px}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:14px 0}
+  .cards.c3{grid-template-columns:repeat(3,1fr)}
+  .kpi{background:var(--card);border:1px solid var(--linha);border-radius:12px;padding:14px 16px;
+       box-shadow:0 1px 3px rgba(16,40,60,.05)}
+  .kpi .lbl{font-size:11.5px;color:var(--cinza);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+  .kpi .val{font-size:23px;font-weight:700;color:var(--azul);margin-top:4px}
+  .kpi .sub{font-size:11.5px;color:var(--cinza);margin-top:2px}
+  .kpi.alt .val{color:var(--teal)} .kpi.warn .val{color:var(--laranja)} .kpi.good .val{color:var(--verde)}
+  .callout{border-left:5px solid var(--azul2);background:#eef4fb;border-radius:8px;
+       padding:12px 16px;margin:16px 0;font-size:13.5px}
+  .callout b{color:var(--azul)}
+  table{width:100%;border-collapse:collapse;margin:10px 0 4px;font-size:12.8px;background:var(--card)}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--linha);text-align:left;vertical-align:top}
+  thead th{background:var(--azul);color:#fff;font-weight:600;font-size:12px;border-bottom:none}
+  tbody tr:nth-child(even){background:#fafcfe}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tfoot td{font-weight:700;background:#eef4f8;border-top:2px solid var(--azul2)}
+  .muted{color:var(--cinza);font-size:11.5px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+  .chartbox{background:var(--card);border:1px solid var(--linha);border-radius:12px;padding:14px}
+  .chartbox h3{margin:0 0 8px}
+  .chart-h{position:relative;height:300px}
+  ul.val{margin:8px 0;padding-left:0;list-style:none}
+  ul.val li{background:var(--card);border:1px solid var(--linha);border-left:4px solid var(--teal);
+       border-radius:8px;padding:10px 14px;margin:8px 0;font-size:13.3px}
+  ul.val li b{color:var(--azul)}
+  .pill{display:inline-block;font-size:10.5px;font-weight:700;border-radius:5px;padding:1px 8px;margin-left:6px}
+  .pill.b{background:#eaf3f7;color:var(--azul2)}
+  .disc{font-size:11.5px;color:#8a5a12;background:#fff7ec;border:1px dashed #e0b46a;border-radius:8px;padding:10px 14px;margin:10px 0}
+  footer{margin-top:34px;padding-top:14px;border-top:1px solid var(--linha);color:var(--cinza);font-size:11px}
+  @media print{
+    body{background:#fff;font-size:11.5px}
+    .wrap{max-width:none;padding:0 6mm}
+    h2{break-after:avoid} .chartbox,.kpi,table{break-inside:avoid}
+  }
+  @media(max-width:760px){.cards,.cards.c3,.grid2{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="cover">
+    <div class="ttl">
+      <h1>Custo da Infraestrutura — Prognum Cloud</h1>
+      <p>Cenário atual · Recursos provisionados no CDK (AWS sa-east-1, serverless)</p>
+    </div>
+    <img src="../logo-prognum.png" alt="Prognum" onerror="this.style.display='none'">
+  </header>
+
+  <div class="meta">
+    <span class="chip" id="chip-data">Custo de infraestrutura</span>
+    <span class="chip">Ambientes: HML + PROD no ar</span>
+    <span class="chip">Câmbio: R$ 5,40 / US$</span>
+    <span class="chip">Região AWS: sa-east-1 (São Paulo)</span>
+  </div>
+
+  <!-- ===================== 1. CUSTO POR RECURSO ===================== -->
+  <h2><span class="n">1</span>Custo mensal por recurso (o que está no CDK)</h2>
+  <p class="lead">Custo de <b>um ambiente</b> em operação normal (worker consultando a fila continuamente), em volume baixo de eventos. Os valores abaixo são exatamente os recursos que o CDK provisiona.</p>
+
+  <div class="cards">
+    <div class="kpi"><div class="lbl">Custo mensal (1 ambiente)</div><div class="val">R$ 154</div><div class="sub">US$ 28,60 · worker ativo, volume baixo</div></div>
+    <div class="kpi"><div class="lbl">HML + PROD</div><div class="val">~R$ 308</div><div class="sub">dois ambientes no ar (worker ativo nos dois)</div></div>
+    <div class="kpi alt"><div class="lbl">Custo por evento</div><div class="val">~R$ 0,00015</div><div class="sub">cada evento adicional (ingest + ack)</div></div>
+    <div class="kpi"><div class="lbl">Itens fixos</div><div class="val">R$ 10</div><div class="sub">segredos + alarmes (independem de tráfego)</div></div>
+  </div>
+
+  <table>
+    <thead><tr><th>Recurso provisionado no CDK</th><th>Qtd</th><th class="num">Custo/mês (US$)</th><th class="num">Custo/mês (R$)</th><th class="num">% do total</th></tr></thead>
+    <tbody>
+      <tr><td>Lambda — execução (Java 21 arm64; inclui o long-poll contínuo do worker)</td><td>7 funções</td><td class="num">$26,01</td><td class="num">R$ 140,45</td><td class="num">91,0%</td></tr>
+      <tr><td>Secrets Manager</td><td>3 segredos</td><td class="num">$1,20</td><td class="num">R$ 6,48</td><td class="num">4,2%</td></tr>
+      <tr><td>API Gateway REST (requisições)</td><td>1 API / 7 métodos</td><td class="num">$0,61</td><td class="num">R$ 3,30</td><td class="num">2,1%</td></tr>
+      <tr><td>CloudWatch — alarmes</td><td>4 alarmes</td><td class="num">$0,40</td><td class="num">R$ 2,16</td><td class="num">1,4%</td></tr>
+      <tr><td>CloudWatch — logs</td><td>7 grupos</td><td class="num">$0,19</td><td class="num">R$ 1,04</td><td class="num">0,7%</td></tr>
+      <tr><td>DynamoDB (armazenamento, on-demand)</td><td>4 tabelas</td><td class="num">$0,09</td><td class="num">R$ 0,51</td><td class="num">0,3%</td></tr>
+      <tr><td>SQS (fila de eventos + DLQ)</td><td>2 filas</td><td class="num">$0,06</td><td class="num">R$ 0,31</td><td class="num">0,2%</td></tr>
+      <tr><td>Lambda — requisições</td><td>—</td><td class="num">$0,03</td><td class="num">R$ 0,16</td><td class="num">0,1%</td></tr>
+      <tr><td>Metric filters / SNS (tópico de alarme)</td><td>12 / 1</td><td class="num">$0,00</td><td class="num">R$ 0,00</td><td class="num">—</td></tr>
+    </tbody>
+    <tfoot>
+      <tr><td>Total por ambiente</td><td></td><td class="num">$28,60</td><td class="num">R$ 154,41</td><td class="num">100%</td></tr>
+    </tfoot>
+  </table>
+  <p class="muted">A execução das Lambdas concentra o custo porque o worker mantém uma chamada de "escuta" (long-poll) aberta de forma contínua. Tudo o mais (banco, fila, API, segredos, monitoramento) soma ~R$ 14/mês.</p>
+
+  <div class="grid2">
+    <div class="chartbox">
+      <h3>Composição do custo mensal (R$)</h3>
+      <div class="chart-h"><canvas id="chartDonut"></canvas></div>
+    </div>
+    <div class="chartbox">
+      <h3>Custo total por volume de eventos (R$/mês)</h3>
+      <div class="chart-h"><canvas id="chartTotal"></canvas></div>
+      <p class="muted">A base (recursos no ar) muda pouco; eventos custam frações de centavo na margem.</p>
+    </div>
+  </div>
+
+  <!-- ===================== 2. VARIAÇÃO POR VOLUME ===================== -->
+  <h2><span class="n">2</span>Como o custo acompanha o volume</h2>
+  <p class="lead">A conta cresce devagar com o volume processado — o custo por evento é desprezível na margem.</p>
+  <table>
+    <thead><tr>
+      <th>Volume (eventos/mês)</th>
+      <th class="num">Custo total/mês (US$)</th>
+      <th class="num">Custo total/mês (R$)</th>
+      <th class="num">Custo por evento (R$)</th>
+      <th class="num">Custo por 1.000 (R$)</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>10.000</td><td class="num">$28,87</td><td class="num">R$ 156</td><td class="num">R$ 0,0156</td><td class="num">R$ 15,60</td></tr>
+      <tr><td>50.000</td><td class="num">$29,96</td><td class="num">R$ 162</td><td class="num">R$ 0,0032</td><td class="num">R$ 3,24</td></tr>
+      <tr><td>100.000</td><td class="num">$31,32</td><td class="num">R$ 169</td><td class="num">R$ 0,0017</td><td class="num">R$ 1,69</td></tr>
+      <tr><td>500.000</td><td class="num">$42,23</td><td class="num">R$ 228</td><td class="num">R$ 0,00046</td><td class="num">R$ 0,46</td></tr>
+      <tr><td>1.000.000</td><td class="num">$55,87</td><td class="num">R$ 302</td><td class="num">R$ 0,00030</td><td class="num">R$ 0,30</td></tr>
+    </tbody>
+  </table>
+  <p class="muted">Valores por ambiente. "Custo por evento/por 1.000" é o custo total dividido pelo volume — por isso cai com a escala.</p>
+
+  <!-- ===================== 3. O QUE ESTÁ INCLUSO ===================== -->
+  <h2><span class="n">3</span>O que está incluso nesse custo</h2>
+  <p class="lead">O valor cobre uma plataforma de integração completa, com segurança, durabilidade e operação gerenciada.</p>
+  <ul class="val">
+    <li><b>Segurança de ponta a ponta</b><span class="pill b">HMAC</span> — requisições assinadas (HMAC-SHA256), proteção contra replay e rotação de chave sem parar o serviço; credenciais separadas por canal (provedor e worker).</li>
+    <li><b>Não perde evento</b><span class="pill b">Fila + DLQ</span> — fila durável, fila morta (DLQ) para falhas com reprocesso, e proteção contra duplicidade.</li>
+    <li><b>Escala automática</b><span class="pill b">Serverless</span> — sem provisionar servidor; acompanha o volume.</li>
+    <li><b>Monitoramento e auditoria</b><span class="pill b">Observabilidade</span> — métricas, alarmes, logs estruturados e rastreamento.</li>
+    <li><b>Alta disponibilidade e zero manutenção</b><span class="pill b">Gerenciado</span> — multi-AZ pela AWS, sem patch de servidor nem capacidade ociosa para administrar.</li>
+  </ul>
+
+  <!-- ===================== 4. REPASSE ===================== -->
+  <h2><span class="n">4</span>Repasse ao cliente — 3 modelos</h2>
+  <p class="lead">A forma de cobrança ainda não está definida. As três opções típicas, com a relação custo×receita. Em todas, a infra é uma fração mínima do valor.</p>
+  <div class="disc"><b>Atenção:</b> os preços ao cliente abaixo são <b>hipotéticos</b>, apenas para dimensionar a relação custo×receita — não são tabela de preços da Prognum.</div>
+
+  <h3>Modelo A — Por evento / certidão (variável)</h3>
+  <p class="muted">Exemplo a 100 mil eventos/mês (infra ≈ R$ 169/mês):</p>
+  <table>
+    <thead><tr><th>Preço hipotético / certidão</th><th class="num">Receita/mês (100k)</th><th class="num">Infra/mês</th><th class="num">Infra % receita</th><th class="num">Sobra</th></tr></thead>
+    <tbody>
+      <tr><td>R$ 0,10</td><td class="num">R$ 10.000</td><td class="num">R$ 169</td><td class="num">1,7%</td><td class="num">R$ 9.831</td></tr>
+      <tr><td>R$ 0,50</td><td class="num">R$ 50.000</td><td class="num">R$ 169</td><td class="num">0,3%</td><td class="num">R$ 49.831</td></tr>
+      <tr><td>R$ 1,00</td><td class="num">R$ 100.000</td><td class="num">R$ 169</td><td class="num">0,2%</td><td class="num">R$ 99.831</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Modelo B — Mensalidade fixa (SaaS)</h3>
+  <table>
+    <thead><tr><th>Mensalidade hipotética</th><th class="num">Infra a 100k (R$ 169)</th><th class="num">Infra a 1M (R$ 302)</th></tr></thead>
+    <tbody>
+      <tr><td>R$ 1.000</td><td class="num">17%</td><td class="num">30%</td></tr>
+      <tr><td>R$ 2.000</td><td class="num">8,5%</td><td class="num">15%</td></tr>
+      <tr><td>R$ 5.000</td><td class="num">3,4%</td><td class="num">6%</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Modelo C — Incluído em contrato maior</h3>
+  <p class="muted">A integração entra dentro de um contrato/produto maior, sem item separado. A infra é um custo interno previsível (≈ R$ 154/mês por ambiente, até ~R$ 302/mês em volume muito alto) — diluída num contrato relevante, é desprezível.</p>
+
+  <!-- ===================== 5. PREMISSAS ===================== -->
+  <h2><span class="n">5</span>Premissas e metodologia</h2>
+  <table>
+    <thead><tr><th>Premissa</th><th>Valor adotado</th></tr></thead>
+    <tbody>
+      <tr><td>Preços AWS</td><td>Região sa-east-1 (São Paulo), tabela pública on-demand</td></tr>
+      <tr><td>Câmbio</td><td>R$ 5,40 / US$ (editável)</td></tr>
+      <tr><td>Arquitetura de custo</td><td>Estimativa a preço x86 (conservadora); ambiente real é arm64/Graviton, tende a custar menos</td></tr>
+      <tr><td>Operação do worker</td><td>Consultando a fila continuamente (24h/dia × 30 dias)</td></tr>
+      <tr><td>Custo por evento</td><td>Inclui ingestão + confirmação (ack), com gravações em banco, fila e logs</td></tr>
+      <tr><td>Itens fixos</td><td>3 segredos, 4 alarmes e armazenamento de banco (tabelas pequenas com expiração)</td></tr>
+      <tr><td>Escopo</td><td>Custo por ambiente; HML e PROD estão no ar (some os dois para o total da conta)</td></tr>
+      <tr><td>Preços ao cliente (seção 4)</td><td><b>Hipotéticos</b>, apenas ilustrativos — não são tabela de preços</td></tr>
+    </tbody>
+  </table>
+
+  <footer>
+    Prognum Cloud — Custo de infraestrutura · Valores estimados, sujeitos a variação de uso e câmbio.
+  </footer>
+</div>
+
+<script>
+  const FX = 5.40;
+  const BRL = v => 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('chip-data').textContent = 'Gerado em: '+ new Date().toLocaleDateString('pt-BR');
+
+  const compLabels = ['Lambda — execução','Secrets Manager','API Gateway','Alarmes','Logs','DynamoDB','SQS','Lambda — req.'];
+  const compBRL    = [140.45, 6.48, 3.30, 2.16, 1.04, 0.51, 0.31, 0.16];
+  const PAL = ['#0b3d5c','#12678f','#13a3a3','#2b9d6e','#e08a1e','#6c5ce7','#8da4b3','#c0392b'];
+
+  new Chart(document.getElementById('chartDonut'),{
+    type:'doughnut',
+    data:{labels:compLabels, datasets:[{data:compBRL, backgroundColor:PAL, borderWidth:1, borderColor:'#fff'}]},
+    options:{animation:false,plugins:{legend:{position:'bottom',labels:{boxWidth:11,font:{size:10.5}}},
+      tooltip:{callbacks:{label:c=>c.label+': '+BRL(c.parsed)}}},cutout:'56%'}
+  });
+
+  const labels = ['10k','50k','100k','500k','1M'];
+  const totalBRL = [156, 162, 169, 228, 302];
+  new Chart(document.getElementById('chartTotal'),{
+    type:'bar',
+    data:{labels, datasets:[{label:'Custo total/mês (R$)', data:totalBRL,
+      backgroundColor:['#13a3a3','#13a3a3','#12678f','#e08a1e','#c0392b'], borderRadius:5}]},
+    options:{animation:false,responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>BRL(c.parsed.y)+' /mês'}}},
+      scales:{y:{title:{display:true,text:'R$ / mês'},ticks:{callback:v=>'R$ '+v}},
+              x:{title:{display:true,text:'eventos / mês'}}}}
+  });
+</script>
+</body>
+</html>

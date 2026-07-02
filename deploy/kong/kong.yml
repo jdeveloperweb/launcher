@@ -1,0 +1,89 @@
+# =====================================================================
+#  Kong DB-less (declarativo) — ESCUTA NA 8082 (a porta que o Apache ja
+#  proxya) e roteia por DOMINIO para o reator hexagonal (8083). Assim o
+#  Apache NAO muda: Browser -> Apache -> Kong(8082) -> reator(8083).
+#
+#  IMPORTANTE: o Apache faz "ProxyPass /aejs-l/rest http://127.0.0.1:8082/"
+#  COM barra final -> ele REMOVE o /aejs-l/rest e o Kong recebe /w/login,
+#  /w/password, /w (sem prefixo). Por isso as rotas abaixo sao /w/* e
+#  strip_path=false (o Kong repassa o path como veio para o reator 8083).
+# =====================================================================
+_format_version: "3.0"
+_transform: true
+
+services:
+  # -------- dominio AUTENTICACAO --------
+  - name: autenticacao
+    url: http://127.0.0.1:8083
+    routes:
+      - name: r-login
+        paths: [/w/login]
+        strip_path: false
+        methods: [POST]
+        plugins:
+          # Anti-brute-force na borda (alem do bloqueio/captcha do reator): teto por IP no login.
+          - name: rate-limiting
+            config: { minute: 20, policy: local, limit_by: ip, hide_client_headers: true }
+      - name: r-password
+        paths: [/w/password]
+        strip_path: false
+        methods: [POST]
+      - name: r-logout
+        paths: [/w/logout]
+        strip_path: false
+        methods: [POST]
+      - name: r-emailpwd
+        paths: [/w/email-pwd]
+        strip_path: false
+        methods: [POST]
+      - name: r-valida-acesso
+        paths: [/w/valida-acesso]
+        strip_path: false
+        methods: [POST]
+
+  # -------- dominio DOCUMENTOS (canal de arquivos sccidoc) --------
+  - name: documentos
+    url: http://127.0.0.1:8083
+    routes:
+      - name: r-sccidoc
+        paths: [/sccidoc]
+        strip_path: false
+        methods: [POST, GET]   # POST: RDoc/RProc + upload multipart; GET: AbrirUrl view/download path-based
+
+  # -------- dominio EXECUCAO (despacho /w) --------
+  # Prefixo mais curto: o Kong prioriza o path mais longo, entao /w/login e
+  # /w/password acima ganham; o resto de /w cai aqui.
+  - name: execucao
+    url: http://127.0.0.1:8083
+    routes:
+      - name: r-dispatch
+        paths: [/w]
+        strip_path: false
+        methods: [POST]
+
+  # -------- SCAFFOLD (novos bounded contexts) — 501 hoje --------
+  # - name: licencas
+  #   url: http://127.0.0.1:8083
+  #   routes: [{ name: r-licencas, paths: [/licencas], strip_path: false }]
+  # - name: documentos
+  #   url: http://127.0.0.1:8083
+  #   routes: [{ name: r-documentos, paths: [/documentos], strip_path: false }]
+
+plugins:
+  # Rate limiting GLOBAL na borda (teto de vazao por IP). Politica 'local' (1 no de Kong); trocar
+  # para 'redis' quando houver mais de um no. Nao afeta o teto mais estrito do /w/login.
+  - name: rate-limiting
+    config: { minute: 300, policy: local, limit_by: ip, hide_client_headers: true }
+  # Correlation-id: casa com o X-Request-Id do RequestIdFilter (observabilidade ponta a ponta).
+  - name: correlation-id
+    config:
+      header_name: X-Request-Id
+      generator: uuid
+      echo_downstream: true
+  # OpenTelemetry: exporta os spans da borda (Kong) para o Collector -> X-Ray Service Map.
+  # Requer no container kong:  -e KONG_TRACING_INSTRUMENTATIONS=all -e KONG_TRACING_SAMPLING_RATE=1.0
+  - name: opentelemetry
+    config:
+      endpoint: http://127.0.0.1:4318/v1/traces
+      resource_attributes:
+        service.name: kong

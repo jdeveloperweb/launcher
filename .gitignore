@@ -1,0 +1,45 @@
+# ===== Build Java / Maven =====
+target/
+*.jar
+*.class
+
+# ===== Artefatos de empacotamento (regeneraveis) =====
+*.tar.gz
+*.zip
+dist/
+launcher-test/
+legacy/launcher-test/
+deploy/jdk-cache/
+deploy/jdk-tmp/
+deploy/dist/
+deploy-hex/jdk-cache/
+deploy-hex/jdk-tmp/
+deploy-hex/dist/
+
+# ===== Binarios do legado (as FONTES .pas/.dpr/.dfm/.inc ficam; compilados nao) =====
+*.dll
+*.gdb
+*.exe
+*.ppu
+*.dcu
+*.o
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# ===== Logs / temporarios =====
+*.log
+app.log
+*.dump
+*.dumpstream
+
+# ===== SO =====
+Thumbs.db
+.DS_Store
+
+# NAO ignorar: fontes do gateway/ (congelado, fonte de verdade) e dos modulos do reator.

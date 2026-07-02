@@ -1,0 +1,29 @@
+# =====================================================================
+#  Kong DB-less via Docker (opcional). Sobe o Kong lendo o kong.yml deste
+#  diretorio. Proxy em :8000 (http) / :8443 (https), Admin em :8001.
+#  O upstream (bootstrap 8083) roda no HOST -> host.docker.internal.
+#
+#  Uso:  docker compose up -d      (recarregar config: docker compose restart kong)
+#  Se o Kong rodar NATIVO (nao-docker), ignore este arquivo e use `kong reload`.
+# =====================================================================
+services:
+  kong:
+    image: kong:3.7
+    container_name: kong
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    volumes:
+      - ./kong.yml:/kong/kong.yml:ro
+    ports:
+      - "8000:8000"   # proxy http
+      - "8443:8443"   # proxy https
+      - "8001:8001"   # admin api
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

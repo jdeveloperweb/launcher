@@ -1,0 +1,84 @@
+# =====================================================================
+#  Launcher SCCI HEXAGONAL — reator na porta 8083 (atras do Kong, na 8082,
+#  que o Apache proxya). Backend REAL: a conexao de cada ambiente vem do
+#  launcherenv.ini (multi-banco), lida por request.
+# =====================================================================
+server:
+  port: 8083
+
+spring:
+  application:
+    name: launcher
+  servlet:
+    multipart:                        # upload de documentos (canal sccidoc / putDoc)
+      # Estes limites sao so o TETO DE TRANSPORTE do reator; a REGRA de tamanho (se houver) e do
+      # programa wdoc REAL, que le a config do launcherenv.ini (o reator NAO reimplementa isso -
+      # so executa o wdoc e monta o ambiente via LauncherEnvReader). Na frente de tudo, o Apache
+      # ja barra em 30MB (LimitRequestBody), igual no /aejs. Por isso deixamos o reator ACIMA de
+      # 30MB: ele nunca rejeita antes do Apache nem antes do wdoc (que e quem deve decidir a regra).
+      max-file-size: ${UPLOAD_MAX_FILE:50MB}
+      max-request-size: ${UPLOAD_MAX_REQUEST:60MB}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}   # redis (docker, host network)
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+
+launcher:
+  sessao:
+    ttl-segundos: 1800              # TTL da sessao no Redis (cache do VALIDA)
+  legacy:
+    wcop:
+      contexto: CORP_WEB          # w.ini [Servidor] Contexto (default CORP_WEB)
+  executor:
+    timeout-segundos: 30
+    max-concorrentes: 8           # espelha o MAXCONN do launcher
+    max-tentativas: 3             # retry so em GET (idempotente)
+    retry-delay-ms: 120
+  auth:
+    login-err-delay-ms: 1000
+    max-erros: 5
+    max-erros-captcha: 3
+    captcha-habilitado: true
+    dias-aviso-expiracao: 5
+    max-logins-simultaneos: 0    # QtMaxLogin do launcher (0 = ilimitado; ex.: 3 limita a 3 sessoes/usuario)
+    # Metodo de login por cliente (trecho-do-ambiente -> METODO). Sem match => BANCO (loginbd, md5crypt).
+    # Familia "payload-mapeado" (IdP externo ja autenticou): MAPEADO_ITAU/MAPEADO_C6/MAPEADO_BRB/
+    # MAPEADO_CASHMEWEB/MAPEADO_DIRETO/MAPEADO_UNICRED/MAPEADO_AILOS. Descomente e ajuste os trechos reais:
+    # metodos:
+    #   itau: MAPEADO_ITAU
+    #   c6bank: MAPEADO_C6
+    #   brb: MAPEADO_BRB
+    #   cashme: MAPEADO_CASHMEWEB
+    #   unicred: MAPEADO_UNICRED
+    #   ailos: MAPEADO_AILOS
+    policy:
+      min-caracteres: 8
+      requer-composicao: true
+      min-letras: 1
+      min-maiusculas: 1
+      min-digitos: 1
+      min-especiais: 1
+      max-repetidos: 3
+      max-sequenciais: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  otlp:
+    metrics:
+      export:
+        url: ${OTLP_METRICS_URL:http://127.0.0.1:4318/v1/metrics}   # ADOT/OTel Collector
+        step: 10s
+        resource-attributes:
+          service.name: launcher
+    tracing:
+      endpoint: ${OTLP_TRACES_URL:http://127.0.0.1:4318/v1/traces}  # spans -> Collector -> X-Ray
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLING:1.0}   # 100% em teste; reduzir em producao
+  metrics:
+    tags:
+      application: launcher
