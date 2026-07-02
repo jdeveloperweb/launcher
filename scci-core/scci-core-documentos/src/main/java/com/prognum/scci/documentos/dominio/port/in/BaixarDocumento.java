@@ -3,11 +3,14 @@ package com.prognum.scci.documentos.dominio.port.in;
 import com.prognum.scci.documentos.dominio.Documento;
 
 /**
- * Caso de uso: baixar/visualizar um documento pelo id (a última versão). {@code download=true} marca como
- * anexo (attachment); false = inline. Corresponde ao GetDocumento/GetDocumentoPorId do wdoc, mas devolvendo
- * um {@link Documento} idiomático (bytes + mime), sem o framing Pascal.
+ * Casos de uso de LEITURA de documento (a família Get exposta pelo wdoc que resolve um id e transmite o
+ * binário): {@code baixar} = última versão (GetDocumento / GetDocumentoContratoAssinatura, este com
+ * download); {@code baixarVersao} = versão específica (GetDocumentoVersao). Devolvem um {@link Documento}
+ * idiomático (bytes + mime), sem o framing Pascal.
  */
 public interface BaixarDocumento {
 
     Documento baixar(int id, boolean download, String ambiente);
+
+    Documento baixarVersao(int id, int versao, boolean download, String ambiente);
 }

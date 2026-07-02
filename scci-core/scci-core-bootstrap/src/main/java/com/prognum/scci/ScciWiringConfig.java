@@ -6,7 +6,9 @@ import org.springframework.context.annotation.Configuration;
 import com.prognum.comum.ambiente.JdbcConnectionFactory;
 import com.prognum.comum.ambiente.LauncherEnvReader;
 import com.prognum.scci.documentos.aplicacao.BaixarDocumentoService;
+import com.prognum.scci.documentos.aplicacao.ExcluirDocumentoService;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumento;
+import com.prognum.scci.documentos.dominio.port.in.ExcluirDocumento;
 import com.prognum.scci.documentos.dominio.port.out.RepositorioDocumento;
 
 /**
@@ -32,5 +34,10 @@ public class ScciWiringConfig {
     @Bean
     BaixarDocumento baixarDocumento(RepositorioDocumento repo) {
         return new BaixarDocumentoService(repo);
+    }
+
+    @Bean
+    ExcluirDocumento excluirDocumento(RepositorioDocumento repo) {
+        return new ExcluirDocumentoService(repo);
     }
 }

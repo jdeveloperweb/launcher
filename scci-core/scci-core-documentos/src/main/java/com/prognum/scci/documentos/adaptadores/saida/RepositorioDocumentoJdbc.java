@@ -17,29 +17,34 @@ import com.prognum.scci.documentos.dominio.ArquivoBruto;
 import com.prognum.scci.documentos.dominio.port.out.RepositorioDocumento;
 
 /**
- * Adapter de saída do storage de documentos — porte idiomático do {@code GetDocumentoPorId} do apilib.pas:
+ * Adapter de saída do storage — porte idiomático de GetDocumentoPorId / GetDocumentoPorIdVersao / ExcluiItem
+ * (apilib.pas):
  *
  * <pre>
  *   select c.nome, s.nome as NomeSistarq, versao, dado, compactado, tp_gravacao
  *   from controleversao c, sistarq s
- *   where s.id = ? and c.id = s.id
- *   order by versao desc          -- pega a ÚLTIMA versão
+ *   where s.id = ? and c.id = s.id [and c.versao = ?]
+ *   order by versao desc
  * </pre>
  *
- * Lê o BLOB {@code dado} e descomprime (zlib) quando {@code compactado='T'}. Multi-banco (query ANSI,
- * conexão pelo DRIVERNAME do launcherenv). Cobre o storage em BANCO (o caso comum); FileSystem/S3
- * (tp_gravacao) ficam como ponto de extensão — o apilib resolve via RetornaFileSystemName/S3, que dependem
- * de config/units externas ainda não portadas.
+ * Lê o BLOB {@code dado} e descomprime (zlib) quando {@code compactado='T'}. Cobre o storage em BANCO (o
+ * caso comum); FileSystem/S3 ({@code tp_gravacao}) são ponto de extensão (RetornaFileSystemName/S3, em units
+ * externas ainda não portadas). Query ANSI/parametrizada → multi-banco.
  *
- * NOTA de config: o documento vive na base de "atividade" (PegaDirAtv/SCIS) do apilib; aqui uso a conexão
- * do ambiente (launcherenv). Se o cliente separar a base de documentos, o ponto de ajuste é este adapter.
+ * NOTA: o documento vive na base de "atividade" (PegaDirAtv/SCIS) do apilib; aqui uso a conexão do ambiente
+ * (launcherenv). Se o cliente separar a base de documentos, o ajuste é neste adapter.
  */
 @Component
 public class RepositorioDocumentoJdbc implements RepositorioDocumento {
 
-    private static final String SQL =
-            "select c.nome as NOME, s.nome as NOMESISTARQ, versao, dado, compactado, tp_gravacao "
-            + "from controleversao c, sistarq s where s.id = ? and c.id = s.id order by versao desc";
+    private static final String COLS =
+            "c.nome as NOME, s.nome as NOMESISTARQ, versao, dado, compactado, tp_gravacao";
+    private static final String SQL_ULTIMA =
+            "select " + COLS + " from controleversao c, sistarq s "
+            + "where s.id = ? and c.id = s.id order by versao desc";
+    private static final String SQL_VERSAO =
+            "select " + COLS + " from controleversao c, sistarq s "
+            + "where s.id = ? and c.id = s.id and c.versao = ? order by versao desc";
 
     private final LauncherEnvReader env;
     private final JdbcConnectionFactory connections;
@@ -51,12 +56,24 @@ public class RepositorioDocumentoJdbc implements RepositorioDocumento {
 
     @Override
     public Optional<ArquivoBruto> buscarUltimaVersao(int id, String ambiente) {
+        return buscar(ambiente, SQL_ULTIMA, id, null);
+    }
+
+    @Override
+    public Optional<ArquivoBruto> buscarVersao(int id, int versao, String ambiente) {
+        return buscar(ambiente, SQL_VERSAO, id, versao);
+    }
+
+    private Optional<ArquivoBruto> buscar(String ambiente, String sql, int id, Integer versao) {
         SccDbConfig c = env.ler(ambiente);
         try (Connection conn = connections.abrir(c);
-             PreparedStatement ps = conn.prepareStatement(SQL)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
+            if (versao != null) {
+                ps.setInt(2, versao);
+            }
             try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {          // order by versao desc -> a 1a linha é a última versão
+                if (!rs.next()) {          // order by versao desc -> 1a linha = versão pedida/última
                     return Optional.empty();
                 }
                 String nome = rs.getString("NOME");
@@ -65,9 +82,8 @@ public class RepositorioDocumentoJdbc implements RepositorioDocumento {
                 }
                 byte[] dado = rs.getBytes("dado");
                 if (dado == null) {
-                    // tp_gravacao = FileSystem/S3: binário fora do banco (RetornaFileSystemName/S3) — não portado
                     throw new UnsupportedOperationException(
-                            "documento " + id + " armazenado fora do banco (tp_gravacao=" + rs.getInt("tp_gravacao")
+                            "documento " + id + " fora do banco (tp_gravacao=" + rs.getInt("tp_gravacao")
                             + "); storage FileSystem/S3 ainda nao portado");
                 }
                 byte[] conteudo = compactado(rs.getString("compactado")) ? descomprimir(dado) : dado;
@@ -77,6 +93,30 @@ public class RepositorioDocumentoJdbc implements RepositorioDocumento {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException("falha ao ler documento " + id + " no ambiente " + c.database(), e);
+        }
+    }
+
+    @Override
+    public void excluir(int id, String ambiente) {
+        SccDbConfig c = env.ler(ambiente);
+        try (Connection conn = connections.abrir(c, false)) {   // escrita
+            boolean auto = conn.getAutoCommit();
+            conn.setAutoCommit(false);
+            try (PreparedStatement pcv = conn.prepareStatement("delete from CONTROLEVERSAO where id = ?");
+                 PreparedStatement psa = conn.prepareStatement("delete from SISTARQ where id = ?")) {
+                pcv.setInt(1, id);
+                pcv.executeUpdate();
+                psa.setInt(1, id);
+                psa.executeUpdate();
+                conn.commit();
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(auto);
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("falha ao excluir documento " + id + " no ambiente " + c.database(), e);
         }
     }
 
