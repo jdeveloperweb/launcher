@@ -32,24 +32,34 @@ class RoteadorBaixarDocumentoTest {
                 ? Optional.of(new FeatureFlag("documentos", true, 100)) : Optional.empty();
     }
 
+    /** DocumentosJavaPort com um resultado de download fixo (enviar não usado no download). */
+    private static DocumentosJavaPort java(Optional<RespostaDocumento> baixar) {
+        return new DocumentosJavaPort() {
+            public Optional<RespostaDocumento> baixar(ComandoExecucao c) {
+                return baixar;
+            }
+
+            public Optional<String> enviar(ComandoExecucao c) {
+                return Optional.empty();
+            }
+        };
+    }
+
     @Test
     void flag_java_e_metodo_migrado_usa_scci_core() {
-        DocumentosJavaPort java = c -> Optional.of(DO_JAVA);
-        var r = new RoteadorBaixarDocumento(pascal, java, flag(true)).baixar(cmd());
+        var r = new RoteadorBaixarDocumento(pascal, java(Optional.of(DO_JAVA)), flag(true)).baixar(cmd());
         assertThat(r).isEqualTo(DO_JAVA);
     }
 
     @Test
     void flag_java_mas_metodo_nao_migrado_cai_no_pascal() {
-        DocumentosJavaPort java = c -> Optional.empty();   // scci-core não suporta o método
-        var r = new RoteadorBaixarDocumento(pascal, java, flag(true)).baixar(cmd());
+        var r = new RoteadorBaixarDocumento(pascal, java(Optional.empty()), flag(true)).baixar(cmd());
         assertThat(r).isEqualTo(DO_PASCAL);
     }
 
     @Test
     void flag_pascal_executa_wdoc() {
-        DocumentosJavaPort java = c -> Optional.of(DO_JAVA);   // nem seria chamado
-        var r = new RoteadorBaixarDocumento(pascal, java, flag(false)).baixar(cmd());
+        var r = new RoteadorBaixarDocumento(pascal, java(Optional.of(DO_JAVA)), flag(false)).baixar(cmd());
         assertThat(r).isEqualTo(DO_PASCAL);
     }
 }

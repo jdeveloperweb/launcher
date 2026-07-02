@@ -194,8 +194,12 @@ public class WiringConfig {
         return new com.prognum.launcher.documentos.RoteadorBaixarDocumento(pascal, documentosJava, flags);
     }
 
+    /** Roteador do UPLOAD (Strangler): flag decide entre wdoc Pascal e o scci-core (PostDocumento). */
     @Bean
-    EnviarDocumentoUseCase envioDocumentoService(ExecutorPrograma executor) {
-        return new com.prognum.launcher.documentos.EnvioDocumentoService(executor);
+    EnviarDocumentoUseCase envioDocumentoService(ExecutorPrograma executor,
+            com.prognum.launcher.documentos.port.out.DocumentosJavaPort documentosJava,
+            com.prognum.launcher.roteamento.port.out.FeatureRegistry flags) {
+        var pascal = new com.prognum.launcher.documentos.EnvioDocumentoService(executor);
+        return new com.prognum.launcher.documentos.RoteadorEnviarDocumento(pascal, documentosJava, flags);
     }
 }

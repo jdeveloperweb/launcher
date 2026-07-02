@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -112,10 +113,42 @@ public class ClienteScciCoreDocumentos implements DocumentosJavaPort {
 
     // ---- helpers ----
 
-    /** Método canônico: MAIÚSCULO sem o prefixo GET (ex.: "GetDocumento"/"Documento" -> "DOCUMENTO"). */
+    @Override
+    public Optional<String> enviar(ComandoExecucao c) {
+        if (!"DOCUMENTO".equals(canonico(c.methodName()))) {
+            return Optional.empty();               // só PostDocumento (genérico) migrado; resto -> Pascal
+        }
+        JsonNode p = parse(c.rawJson());
+        byte[] conteudo = c.corpoBinario() == null ? new byte[0] : c.corpoBinario();
+        try {
+            String resp = rest.post()
+                    .uri(u -> u.path("/interno/documentos")
+                            .queryParam("idPai", inteiro(p, "IDPAI"))
+                            .queryParam("nome", texto(p, "FileName"))
+                            .queryParam("ambiente", c.ambiente())
+                            .queryParam("usuario", c.usuario() == null ? "" : c.usuario())
+                            .build())
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(conteudo)
+                    .retrieve().body(String.class);
+            return Optional.of(resp == null ? "{\"success\":true}" : resp);
+        } catch (RestClientResponseException e) {
+            return Optional.of(e.getResponseBodyAsString());   // erro do scci-core = resposta (não faz fallback)
+        } catch (RuntimeException e) {
+            log.warn("scci_core_documentos_indisponivel upload erro={} -> fallback Pascal", String.valueOf(e.getMessage()));
+            return Optional.empty();               // scci-core fora -> fallback Pascal
+        }
+    }
+
+    /** Método canônico: MAIÚSCULO sem o prefixo de verbo (Get/Post/Put/Delete) — "PostDocumento"->"DOCUMENTO". */
     private static String canonico(String metodo) {
         String m = metodo == null ? "" : metodo.trim().toUpperCase();
-        return m.startsWith("GET") ? m.substring(3) : m;
+        for (String v : new String[]{"GET", "POST", "PUT", "DELETE"}) {
+            if (m.startsWith(v)) {
+                return m.substring(v.length());
+            }
+        }
+        return m;
     }
 
     private static String extensao(String nome) {
