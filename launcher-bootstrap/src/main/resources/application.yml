@@ -25,6 +25,16 @@ spring:
       timeout: 2s
 
 launcher:
+  # scci-core: o monolito modular (dominios em Java). O roteador chama o REST interno dele quando a
+  # feature-flag do modulo aponta JAVA; senao executa o programa Pascal (wdoc/wtela/...).
+  scci-core:
+    url: ${SCCI_CORE_URL:http://localhost:8090}
+  # Feature-flags do Strangler (ConfigFeatureRegistry). Sem entrada = PASCAL (executa o binario).
+  # Ligue 'documentos' p/ o DOWNLOAD de documento rodar no scci-core (Java, escalavel). Upload/relatorio
+  # seguem Pascal de qualquer forma (nao migrados). Override por metodo com 'documentos.<Metodo>'.
+  roteamento:
+    # documentos: { habilitado: true }              # todo o download de documento -> scci-core
+    # documentos.GetDocumento: { habilitado: true }  # so este metodo -> scci-core
   sessao:
     ttl-segundos: 1800              # TTL da sessao no Redis (cache do VALIDA)
   legacy:

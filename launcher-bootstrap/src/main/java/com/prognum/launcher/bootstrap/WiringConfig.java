@@ -181,9 +181,17 @@ public class WiringConfig {
     }
 
     // ---- casos de uso (documentos) ----
+    /**
+     * Roteador do canal de documentos (Strangler): decide por feature-flag entre executar o wdoc Pascal
+     * (DocumentoService) ou chamar o contexto documentos do scci-core (DocumentosJavaPort). Fallback ao
+     * Pascal quando a flag é PASCAL ou o método não foi migrado.
+     */
     @Bean
-    BaixarDocumentoUseCase documentoService(ExecutorPrograma executor) {
-        return new com.prognum.launcher.documentos.DocumentoService(executor);
+    BaixarDocumentoUseCase documentoService(ExecutorPrograma executor,
+            com.prognum.launcher.documentos.port.out.DocumentosJavaPort documentosJava,
+            com.prognum.launcher.roteamento.port.out.FeatureRegistry flags) {
+        var pascal = new com.prognum.launcher.documentos.DocumentoService(executor);
+        return new com.prognum.launcher.documentos.RoteadorBaixarDocumento(pascal, documentosJava, flags);
     }
 
     @Bean
