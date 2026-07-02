@@ -5,11 +5,14 @@ import org.springframework.context.annotation.Configuration;
 
 import com.prognum.comum.ambiente.JdbcConnectionFactory;
 import com.prognum.comum.ambiente.LauncherEnvReader;
+import com.prognum.scci.documentos.aplicacao.BaixarDocumentoEntidadeService;
 import com.prognum.scci.documentos.aplicacao.BaixarDocumentoService;
 import com.prognum.scci.documentos.aplicacao.ExcluirDocumentoService;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumento;
+import com.prognum.scci.documentos.dominio.port.in.BaixarDocumentoEntidade;
 import com.prognum.scci.documentos.dominio.port.in.ExcluirDocumento;
 import com.prognum.scci.documentos.dominio.port.out.RepositorioDocumento;
+import com.prognum.scci.documentos.dominio.port.out.ResolvedorDocumento;
 
 /**
  * Composition root do scci-core: expõe como @Bean os POJOs de infra compartilhada (comum) e os casos de
@@ -39,5 +42,10 @@ public class ScciWiringConfig {
     @Bean
     ExcluirDocumento excluirDocumento(RepositorioDocumento repo) {
         return new ExcluirDocumentoService(repo);
+    }
+
+    @Bean
+    BaixarDocumentoEntidade baixarDocumentoEntidade(ResolvedorDocumento resolvedor, BaixarDocumento baixar) {
+        return new BaixarDocumentoEntidadeService(resolvedor, baixar);
     }
 }

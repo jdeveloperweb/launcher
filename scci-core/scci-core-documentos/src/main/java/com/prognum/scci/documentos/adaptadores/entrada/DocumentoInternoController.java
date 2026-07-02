@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.prognum.scci.documentos.aplicacao.BaixarDocumentoService.DocumentoNaoEncontrado;
 import com.prognum.scci.documentos.dominio.Documento;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumento;
+import com.prognum.scci.documentos.dominio.port.in.BaixarDocumentoEntidade;
 import com.prognum.scci.documentos.dominio.port.in.ExcluirDocumento;
 
 /**
@@ -32,10 +33,13 @@ import com.prognum.scci.documentos.dominio.port.in.ExcluirDocumento;
 public class DocumentoInternoController {
 
     private final BaixarDocumento baixar;
+    private final BaixarDocumentoEntidade porEntidade;
     private final ExcluirDocumento excluir;
 
-    public DocumentoInternoController(BaixarDocumento baixar, ExcluirDocumento excluir) {
+    public DocumentoInternoController(BaixarDocumento baixar, BaixarDocumentoEntidade porEntidade,
+                                      ExcluirDocumento excluir) {
         this.baixar = baixar;
+        this.porEntidade = porEntidade;
         this.excluir = excluir;
     }
 
@@ -52,6 +56,25 @@ public class DocumentoInternoController {
                                                @RequestParam String ambiente,
                                                @RequestParam(defaultValue = "false") boolean download) {
         return resposta(baixar.baixarVersao(id, versao, download, ambiente));
+    }
+
+    /** GetDocumentoOperacao / GetDocumentoOperacaoAssinatura (resolve NU_PRETENDENTE+NU_DOCUMENTO → id). */
+    @GetMapping("/interno/documentos/operacao")
+    public ResponseEntity<byte[]> porOperacao(@RequestParam String nuPretendente,
+                                              @RequestParam String nuDocumento,
+                                              @RequestParam String ambiente,
+                                              @RequestParam(defaultValue = "false") boolean caseSensitive,
+                                              @RequestParam(defaultValue = "false") boolean download) {
+        return resposta(porEntidade.porOperacao(nuPretendente, nuDocumento, caseSensitive, download, ambiente));
+    }
+
+    /** GetDocumentoSisat (resolve NU_OCORRENCIA+NU_DOCUMENTO → id). */
+    @GetMapping("/interno/documentos/sisat")
+    public ResponseEntity<byte[]> porSisat(@RequestParam int nuOcorrencia,
+                                           @RequestParam String nuDocumento,
+                                           @RequestParam String ambiente,
+                                           @RequestParam(defaultValue = "false") boolean download) {
+        return resposta(porEntidade.porSisat(nuOcorrencia, nuDocumento, download, ambiente));
     }
 
     @DeleteMapping("/interno/documentos/{id}")

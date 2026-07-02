@@ -19,10 +19,10 @@ merge RTF/HTML, conversão (LibreOffice/ImageMagick), anti-malware e a resoluç�
 |---|---|---|---|
 | 1 | `GetDocumento` | ✅ Java | `BaixarDocumento.baixar(id)` → `GET /interno/documentos/{id}` (SISTARQ/controleversao + zlib) |
 | 2 | `GetDocumentoVersao` | ✅ Java | `baixarVersao(id,versao)` → `GET /interno/documentos/{id}/versoes/{v}` |
-| 3 | `GetDocumentoOperacao` | 🟡 | resolver `ObtemIDS` (`GeraIDPaiDocumentosPretendente`+`LeIDdoPath`, árvore de pastas do apilib) → depois reusa o read |
-| 4 | `GetDocumentoOperacaoAssinatura` | 🟡 | idem (resolver `ObtemIDS`) + download |
+| 3 | `GetDocumentoOperacao` | ✅ Java | resolver `ObtemIDS` portado (`GeraIDPaiDocumentosPretendente` + árvore SISTARQ `LeIDDoPath`) → `GET /interno/documentos/operacao` |
+| 4 | `GetDocumentoOperacaoAssinatura` | ✅ Java | mesmo resolver + `download=true` |
 | 5 | `GetDocumentoContratoAssinatura` | ✅ Java | id direto + download → `baixar(id, download=true)` |
-| 6 | `GetDocumentoSisat` | 🟡 | resolver `ObtemIDSTarefa` (árvore por ocorrência) → read |
+| 6 | `GetDocumentoSisat` | ✅ Java | resolver `ObtemIDSTarefa` (`GeraIDPaiDocumentosTarefa` + árvore) → `GET /interno/documentos/sisat` |
 | 7 | `PostDocumentoOperacao` | ⛔ Pascal | upload: `GravaBinarioVersao` + anti-malware + versionamento (apiscci) |
 | 8 | `PostDocumentoOperacaoAssinatura` | ⛔ Pascal | upload + assinatura (anti-malware, img→pdf ImageMagick) |
 | 9 | `PostDocumentoContratoAssinatura` | ⛔ Pascal | upload + assinatura |
@@ -54,9 +54,14 @@ merge RTF/HTML, conversão (LibreOffice/ImageMagick), anti-malware e a resoluç�
 
 ## Resumo
 
-- ✅ **Reimplementado em Java (testado):** `GetDocumento`, `GetDocumentoVersao`, `GetDocumentoContratoAssinatura` (id+download), `DeleteDocumento` — o **caminho de download/visualização/exclusão por id**, que é o de maior volume e o que mais ganha com escala.
-- 🟡 **Pronto pra fechar com mais um resolver:** `GetDocumentoOperacao/Sisat/…` — falta portar a resolução hierárquica de pasta do apilib (`ObtemIDS`/`LeIDdoPath`); o read já está pronto.
-- ⛔ **Fica em Pascal (por flag):** relatórios, Jasper, merges, uploads (anti-malware + ImageMagick), e as ops de metadados do apiscci — **por decisão de arquitetura** (a regra vive no binário/lib), o launcher executa.
+- ✅ **Reimplementado em Java (testado):** toda a família de **LEITURA + EXCLUSÃO** —
+  `GetDocumento`, `GetDocumentoVersao`, `GetDocumentoContratoAssinatura`, **`GetDocumentoOperacao`,
+  `GetDocumentoOperacaoAssinatura`, `GetDocumentoSisat`** (com o resolver de árvore do SISTARQ portado do
+  `wsistarqlib`: `GeraIDPaiDocumentos*` + `LeIDDoPath`/`LeIDdoDiretorio`/`LeIDdoItem`) e `DeleteDocumento`.
+  É o caminho de download/visualização/exclusão — o de maior volume e o que mais ganha com escala.
+- ⛔ **Fica em Pascal (por flag):** relatórios, Jasper, merges (RTF/HTML), uploads (anti-malware + ImageMagick),
+  conversões (LibreOffice/HTML→PDF) e as ops de metadados do apiscci — **por decisão de arquitetura**
+  (a regra vive no binário/lib), o launcher executa.
 
 ## Storage
 - Coberto: **BLOB em banco** (`dado`) + descompressão **zlib**.
