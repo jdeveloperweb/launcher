@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -15,6 +17,7 @@ import com.prognum.scci.documentos.aplicacao.BaixarDocumentoService.DocumentoNao
 import com.prognum.scci.documentos.dominio.Documento;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumento;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumentoEntidade;
+import com.prognum.scci.documentos.dominio.port.in.EnviarDocumento;
 import com.prognum.scci.documentos.dominio.port.in.ExcluirDocumento;
 
 /**
@@ -34,12 +37,14 @@ public class DocumentoInternoController {
 
     private final BaixarDocumento baixar;
     private final BaixarDocumentoEntidade porEntidade;
+    private final EnviarDocumento enviar;
     private final ExcluirDocumento excluir;
 
     public DocumentoInternoController(BaixarDocumento baixar, BaixarDocumentoEntidade porEntidade,
-                                      ExcluirDocumento excluir) {
+                                      EnviarDocumento enviar, ExcluirDocumento excluir) {
         this.baixar = baixar;
         this.porEntidade = porEntidade;
+        this.enviar = enviar;
         this.excluir = excluir;
     }
 
@@ -75,6 +80,17 @@ public class DocumentoInternoController {
                                            @RequestParam String ambiente,
                                            @RequestParam(defaultValue = "false") boolean download) {
         return resposta(porEntidade.porSisat(nuOcorrencia, nuDocumento, download, ambiente));
+    }
+
+    /** Upload: nova versão de um documento existente (Post* do wdoc) — corpo = bytes crus. Devolve a versão. */
+    @PostMapping("/interno/documentos/{id}/versoes")
+    public ResponseEntity<String> enviar(@PathVariable int id,
+                                         @RequestParam String ambiente,
+                                         @RequestParam String nome,
+                                         @RequestParam(defaultValue = "") String usuario,
+                                         @RequestBody byte[] conteudo) {
+        int versao = enviar.enviar(id, nome, conteudo, usuario, ambiente);
+        return ResponseEntity.ok("{\"success\":true,\"versao\":" + versao + "}");
     }
 
     @DeleteMapping("/interno/documentos/{id}")

@@ -7,10 +7,15 @@ import com.prognum.comum.ambiente.JdbcConnectionFactory;
 import com.prognum.comum.ambiente.LauncherEnvReader;
 import com.prognum.scci.documentos.aplicacao.BaixarDocumentoEntidadeService;
 import com.prognum.scci.documentos.aplicacao.BaixarDocumentoService;
+import com.prognum.scci.documentos.aplicacao.EnviarDocumentoService;
 import com.prognum.scci.documentos.aplicacao.ExcluirDocumentoService;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumento;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumentoEntidade;
+import com.prognum.scci.documentos.dominio.port.in.EnviarDocumento;
 import com.prognum.scci.documentos.dominio.port.in.ExcluirDocumento;
+import com.prognum.scci.documentos.dominio.port.out.AntiMalware;
+import com.prognum.scci.documentos.dominio.port.out.ArmazenadorDocumento;
+import com.prognum.scci.documentos.dominio.port.out.ConversorImagemPdf;
 import com.prognum.scci.documentos.dominio.port.out.RepositorioDocumento;
 import com.prognum.scci.documentos.dominio.port.out.ResolvedorDocumento;
 
@@ -47,5 +52,11 @@ public class ScciWiringConfig {
     @Bean
     BaixarDocumentoEntidade baixarDocumentoEntidade(ResolvedorDocumento resolvedor, BaixarDocumento baixar) {
         return new BaixarDocumentoEntidadeService(resolvedor, baixar);
+    }
+
+    @Bean
+    EnviarDocumento enviarDocumento(AntiMalware antiMalware, ConversorImagemPdf conversor,
+                                    ArmazenadorDocumento armazenador) {
+        return new EnviarDocumentoService(antiMalware, conversor, armazenador);
     }
 }
