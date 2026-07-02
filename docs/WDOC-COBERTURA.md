@@ -76,9 +76,12 @@ merge RTF/HTML, conversão (LibreOffice/ImageMagick), anti-malware e a resoluç�
   já era Jasper, agora roda dentro do Java.
 - ✅ **Conversão imagem→PDF — lib Java pura (openpdf):** `ConversorImagemPdfOpenPdf` (@Primary) substitui o
   hook no-op, sem ImageMagick (mantém o scci-core thin). Plugado no upload.
+- ✅ **Metadados de estrutura — em Java:** `PutNome` (UPDATE SISTARQ.NOME + guardas de TIPO) e `PutPasta`
+  (INSERT SISTARQ TIPO=1, generator `id_SistArq`) via `EstruturaDocumentoJdbc` + `GerenciarEstruturaService`
+  + REST (`PUT /interno/documentos/{id}/nome`, `POST /interno/documentos/pastas`). Teste `GerenciarEstruturaServiceTest`.
 - ⛔ **Ainda em Pascal (por flag):** merges de template RTF/HTML, geração de relatório NÃO-Jasper (o engine
-  que produz o arquivo), e ops de metadados do apiscci ainda não portadas (`PutPasta`/`PutNome`/
-  `GetEstruturaAtualizada` — tratáveis, próximo passo). Anti-malware segue hook (scanner externo).
+  que produz o arquivo), `GetEstruturaAtualizada` (árvore por template) e o fetch de relatório
+  (`GetRelatorioPdf/Csv`, tratável — próximo). Anti-malware segue hook (scanner externo).
 
 ## Storage
 - Coberto: **BLOB em banco** (`dado`) + descompressão **zlib**.

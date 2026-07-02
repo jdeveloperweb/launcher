@@ -12,7 +12,10 @@ import com.prognum.scci.documentos.aplicacao.ExcluirDocumentoService;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumento;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumentoEntidade;
 import com.prognum.scci.documentos.aplicacao.GerarRelatorioService;
+import com.prognum.scci.documentos.aplicacao.GerenciarEstruturaService;
 import com.prognum.scci.documentos.dominio.port.in.EnviarDocumento;
+import com.prognum.scci.documentos.dominio.port.in.GerenciarEstrutura;
+import com.prognum.scci.documentos.dominio.port.out.EstruturaDocumento;
 import com.prognum.scci.documentos.dominio.port.in.ExcluirDocumento;
 import com.prognum.scci.documentos.dominio.port.in.GerarRelatorioPdf;
 import com.prognum.scci.documentos.dominio.port.out.AntiMalware;
@@ -66,5 +69,10 @@ public class ScciWiringConfig {
     @Bean
     GerarRelatorioPdf gerarRelatorioPdf(GeradorRelatorio gerador) {
         return new GerarRelatorioService(gerador);
+    }
+
+    @Bean
+    GerenciarEstrutura gerenciarEstrutura(EstruturaDocumento estrutura) {
+        return new GerenciarEstruturaService(estrutura);
     }
 }
