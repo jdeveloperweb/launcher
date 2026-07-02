@@ -69,9 +69,16 @@ merge RTF/HTML, conversão (LibreOffice/ImageMagick), anti-malware e a resoluç�
   — hoje **no-op** (placeholder honesto) até plugar o scanner/ImageMagick real (units não estão no repo).
   Pendências p/ live: (a) impls reais dos hooks; (b) rotear o upload do `/sccidoc` → scci-core (o roteador
   hoje cobre só o download). Testes: `EnviarDocumentoServiceTest` (por id + por pasta + anti-malware).
-- ⛔ **Fica em Pascal (por flag):** relatórios, Jasper, merges (RTF/HTML), conversões
-  (LibreOffice/HTML→PDF) e as ops de metadados do apiscci — **por decisão de arquitetura**
-  (a regra vive no binário/lib), o launcher executa.
+- ✅ **Relatórios Jasper — reimplementados em Java (JasperReports):** `GeraJasper` roda **nativo em Java**
+  (`GeradorRelatorioJasper`: compila `.jrxml` + `JsonDataSource` → PDF), com use case `GerarRelatorioPdf`
+  + REST `POST /interno/relatorios/{nome}/pdf`. Subreports precisam estar compilados no `SUBREPORT_DIR`.
+  Teste: `GeradorRelatorioJasperTest` (gera PDF real). **Muda a ADR-002 para relatórios Jasper** — Jasper
+  já era Jasper, agora roda dentro do Java.
+- ✅ **Conversão imagem→PDF — lib Java pura (openpdf):** `ConversorImagemPdfOpenPdf` (@Primary) substitui o
+  hook no-op, sem ImageMagick (mantém o scci-core thin). Plugado no upload.
+- ⛔ **Ainda em Pascal (por flag):** merges de template RTF/HTML, geração de relatório NÃO-Jasper (o engine
+  que produz o arquivo), e ops de metadados do apiscci ainda não portadas (`PutPasta`/`PutNome`/
+  `GetEstruturaAtualizada` — tratáveis, próximo passo). Anti-malware segue hook (scanner externo).
 
 ## Storage
 - Coberto: **BLOB em banco** (`dado`) + descompressão **zlib**.

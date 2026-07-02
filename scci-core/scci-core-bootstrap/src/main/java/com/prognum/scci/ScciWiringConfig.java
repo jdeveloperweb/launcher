@@ -11,11 +11,14 @@ import com.prognum.scci.documentos.aplicacao.EnviarDocumentoService;
 import com.prognum.scci.documentos.aplicacao.ExcluirDocumentoService;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumento;
 import com.prognum.scci.documentos.dominio.port.in.BaixarDocumentoEntidade;
+import com.prognum.scci.documentos.aplicacao.GerarRelatorioService;
 import com.prognum.scci.documentos.dominio.port.in.EnviarDocumento;
 import com.prognum.scci.documentos.dominio.port.in.ExcluirDocumento;
+import com.prognum.scci.documentos.dominio.port.in.GerarRelatorioPdf;
 import com.prognum.scci.documentos.dominio.port.out.AntiMalware;
 import com.prognum.scci.documentos.dominio.port.out.ArmazenadorDocumento;
 import com.prognum.scci.documentos.dominio.port.out.ConversorImagemPdf;
+import com.prognum.scci.documentos.dominio.port.out.GeradorRelatorio;
 import com.prognum.scci.documentos.dominio.port.out.RepositorioDocumento;
 import com.prognum.scci.documentos.dominio.port.out.ResolvedorDocumento;
 
@@ -58,5 +61,10 @@ public class ScciWiringConfig {
     EnviarDocumento enviarDocumento(AntiMalware antiMalware, ConversorImagemPdf conversor,
                                     ArmazenadorDocumento armazenador) {
         return new EnviarDocumentoService(antiMalware, conversor, armazenador);
+    }
+
+    @Bean
+    GerarRelatorioPdf gerarRelatorioPdf(GeradorRelatorio gerador) {
+        return new GerarRelatorioService(gerador);
     }
 }
