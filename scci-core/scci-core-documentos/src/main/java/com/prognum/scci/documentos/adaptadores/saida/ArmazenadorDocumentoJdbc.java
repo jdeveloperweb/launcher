@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 
@@ -17,18 +18,18 @@ import com.prognum.comum.ambiente.SccDbConfig;
 import com.prognum.scci.documentos.dominio.port.out.ArmazenadorDocumento;
 
 /**
- * Grava versão binária no SISTARQ — porte fiel de GravaBinarioVersao/InsereVersaoBinario/VerificaCriterios
- * (wsistarqlib), caminho DB-blob:
+ * Grava documento no SISTARQ — porte fiel de GravaBinarioVersao/InsereVersaoBinario/VerificaCriterios +
+ * InsereArquivoVersao/InsereItemNaBase (wsistarqlib), caminho DB-blob:
  *
- * <ol>
- *   <li><b>VerificaCriterios</b>: lê {@code IN_CRIA_VERSAO_ATUALIZADA}/{@code IN_CONTROLE_VERSAO} do SISTARQ;</li>
- *   <li>decide inserir NOVA versão (MAX(VERSAO)+1) ou atualizar a última;</li>
- *   <li>comprime (zlib) e grava em CONTROLEVERSAO ({@code DADO} BLOB, {@code COMPACTADO='T'}).</li>
- * </ol>
+ * <ul>
+ *   <li><b>gravarVersao(id)</b>: VerificaCriterios (flags do SISTARQ) → INSERT nova versão (MAX+1) ou
+ *       UPDATE última em CONTROLEVERSAO ({@code DADO} BLOB + zlib);</li>
+ *   <li><b>inserirArquivoVersao(idPai, nome)</b>: acha o nó (NOME+IDPAI) ou CRIA (generator {@code id_SistArq}
+ *       + flags herdadas da pasta-pai + INSERT SISTARQ TIPO=2), depois grava a versão.</li>
+ * </ul>
  *
- * Escopo: documento existente + DB-blob. FileSystem/S3, miniatura e criação de documento novo = extensão.
- * NOTA multi-banco: {@code COMPACTADO} é gravado como {@code 'T'/'F'} (char(1), convenção SCCI); em coluna
- * boolean nativa (ex.: Postgres bool) pode precisar de ajuste.
+ * Escopo: DB-blob. FileSystem/S3, miniatura e idRaizDoDoc = extensão. {@code COMPACTADO} gravado como
+ * {@code 'T'} (char(1), convenção SCCI); coluna boolean nativa pode precisar de ajuste (multi-banco).
  */
 @Component
 public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
@@ -45,52 +46,125 @@ public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
     public int gravarVersao(int id, String nome, byte[] conteudo, String usuario, String ambiente) {
         SccDbConfig c = env.ler(ambiente);
         byte[] comprimido = deflate(conteudo);
-        try (Connection conn = connections.abrir(c, false)) {
-            boolean auto = conn.getAutoCommit();
-            conn.setAutoCommit(false);
+        try (Connection conn = abrirTx(c)) {
             try {
-                boolean novaVersao = decideNovaVersao(conn, id);
-                String nomeSistarq = nomeDoSistarq(conn, id, nome);
-                int versao;
-                if (novaVersao) {
-                    versao = maxVersao(conn, id) + 1;
-                    inserir(conn, id, versao, comprimido, conteudo.length, comprimido.length, nomeSistarq, usuario);
-                } else {
-                    versao = maxVersao(conn, id);
-                    atualizar(conn, id, versao, comprimido, conteudo.length, comprimido.length, usuario);
-                }
+                int versao = escreverVersao(conn, id, nomeDoSistarq(conn, id, nome), comprimido,
+                        conteudo.length, comprimido.length, usuario);
                 conn.commit();
                 return versao;
             } catch (Exception e) {
                 conn.rollback();
                 throw e;
-            } finally {
-                conn.setAutoCommit(auto);
             }
         } catch (Exception e) {
             throw new IllegalStateException("falha ao gravar versao do documento " + id + " no ambiente " + c.database(), e);
         }
     }
 
-    /** VerificaCriterios: cria versão a cada save, ou grava nova versão se ainda não há versão/última aprovada. */
-    private boolean decideNovaVersao(Connection conn, int id) throws Exception {
-        boolean criaVersao = false;
-        boolean controleVersao = false;
-        try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT IN_CRIA_VERSAO_ATUALIZADA, IN_CONTROLE_VERSAO FROM SISTARQ WHERE ID = ?")) {
-            ps.setInt(1, id);
+    @Override
+    public int inserirArquivoVersao(int idPai, String nome, byte[] conteudo, String usuario, String ambiente) {
+        SccDbConfig c = env.ler(ambiente);
+        byte[] comprimido = deflate(conteudo);
+        try (Connection conn = abrirTx(c)) {
+            try {
+                int id = acharOuCriarNo(conn, c, idPai, nome);
+                escreverVersao(conn, id, nome, comprimido, conteudo.length, comprimido.length, usuario);
+                conn.commit();
+                return id;                          // ID_INSERIDO do wdoc (novo ou existente)
+            } catch (Exception e) {
+                conn.rollback();
+                throw e;
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("falha ao inserir documento em " + idPai + " no ambiente " + c.database(), e);
+        }
+    }
+
+    // ---- criação/localização do nó (InsereArquivoVersao + InsereItemNaBase) ----
+
+    /** Acha o documento {@code nome} sob {@code idPai} (valida propriedade de versão) ou cria um nó novo. */
+    private int acharOuCriarNo(Connection conn, SccDbConfig c, int idPai, String nome) throws Exception {
+        Optional<Integer> existente = idPorNomeEPai(conn, nome, idPai);
+        if (existente.isPresent()) {
+            exigeVersionavel(conn, existente.get());   // validaPropriedadesDoc: exists sem VERSAO/so-leitura => erro
+            return existente.get();
+        }
+        int novoId = proximoIdSistarq(conn, c);
+        Flags pai = flagsDoNo(conn, idPai);            // InsereItemNaBase copia as flags da pasta-pai
+        String sql = "INSERT INTO SISTARQ (ID, IDPAI, NOME, TIPO, CO_TIPO_ARQUIVO, CO_IDENTIFICACAO, "
+                + "IN_CRIA_VERSAO_ATUALIZADA, IN_DOCUMENTO_OCULTO, IN_CONTROLE_VERSAO, IN_DOCUMENTO_SO_LEITURA) "
+                + "VALUES (?, ?, ?, 2, 0, 0, ?, ?, ?, ?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, novoId);
+            ps.setInt(2, idPai);
+            ps.setString(3, nome);
+            ps.setString(4, pai.criaVersao);
+            ps.setString(5, pai.oculto);
+            ps.setString(6, pai.controleVersao);
+            ps.setString(7, pai.soLeitura);
+            ps.executeUpdate();
+        }
+        return novoId;
+    }
+
+    private Optional<Integer> idPorNomeEPai(Connection conn, String nome, int idPai) throws Exception {
+        try (PreparedStatement ps = conn.prepareStatement("SELECT ID FROM SISTARQ WHERE NOME = ? AND IDPAI = ?")) {
+            ps.setString(1, nome);
+            ps.setInt(2, idPai);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    criaVersao = "S".equalsIgnoreCase(trim(rs.getString(1)));
-                    controleVersao = "S".equalsIgnoreCase(trim(rs.getString(2)));
-                }
+                return rs.next() ? Optional.of(rs.getInt(1)) : Optional.empty();
             }
         }
-        if (criaVersao) {
+    }
+
+    /** validaPropriedadesDoc: só gera versão se IN_CRIA_VERSAO_ATUALIZADA='S' e não for somente-leitura. */
+    private void exigeVersionavel(Connection conn, int id) throws Exception {
+        Flags f = flagsDoNo(conn, id);
+        if (!"S".equalsIgnoreCase(f.criaVersao) || "S".equalsIgnoreCase(f.soLeitura)) {
+            throw new IllegalStateException(
+                    "A propriedade de gerar versao nao esta marcada ou a de somente leitura esta marcada");
+        }
+    }
+
+    private Flags flagsDoNo(Connection conn, int id) throws Exception {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT IN_CRIA_VERSAO_ATUALIZADA, IN_DOCUMENTO_OCULTO, IN_CONTROLE_VERSAO, IN_DOCUMENTO_SO_LEITURA "
+                + "FROM SISTARQ WHERE ID = ?")) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return new Flags("", "", "", "");
+                }
+                return new Flags(nz(rs.getString(1)), nz(rs.getString(2)), nz(rs.getString(3)), nz(rs.getString(4)));
+            }
+        }
+    }
+
+    private record Flags(String criaVersao, String oculto, String controleVersao, String soLeitura) {
+    }
+
+    // ---- escrita da versão (GravaBinarioVersao/InsereVersaoBinario) ----
+
+    private int escreverVersao(Connection conn, int id, String nome, byte[] dado, int tam, int tamC,
+                               String usuario) throws Exception {
+        int versao;
+        if (decideNovaVersao(conn, id)) {
+            versao = maxVersao(conn, id) + 1;
+            inserir(conn, id, versao, dado, tam, tamC, nome, usuario);
+        } else {
+            versao = maxVersao(conn, id);
+            atualizar(conn, id, versao, dado, tam, tamC, usuario);
+        }
+        return versao;
+    }
+
+    /** VerificaCriterios: cria versão a cada save, ou grava nova versão se ainda não há/última aprovada. */
+    private boolean decideNovaVersao(Connection conn, int id) throws Exception {
+        Flags f = flagsDoNo(conn, id);
+        if ("S".equalsIgnoreCase(f.criaVersao)) {
             return true;
         }
-        if (controleVersao) {
-            // sem versões OU última já implantada (DT_IMPLANTACAO_VERSAO not null) => nova versão
+        if ("S".equalsIgnoreCase(f.controleVersao)) {
             try (PreparedStatement ps = conn.prepareStatement(
                     "SELECT DT_IMPLANTACAO_VERSAO FROM CONTROLEVERSAO WHERE ID = ? ORDER BY VERSAO DESC")) {
                 ps.setInt(1, id);
@@ -103,7 +177,7 @@ public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
                 }
             }
         }
-        return maxVersao(conn, id) == 0;   // sem versão ainda => grava a primeira
+        return maxVersao(conn, id) == 0;
     }
 
     private int maxVersao(Connection conn, int id) throws Exception {
@@ -167,6 +241,30 @@ public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
         }
     }
 
+    // ---- helpers ----
+
+    private Connection abrirTx(SccDbConfig c) throws Exception {
+        Connection conn = connections.abrir(c, false);
+        conn.setAutoCommit(false);
+        return conn;
+    }
+
+    /** Generator id_SistArq (LeGenerator) — dependente de driver (igual ao UIDUSUARIO). */
+    private int proximoIdSistarq(Connection conn, SccDbConfig c) throws Exception {
+        String driver = c.driver() == null ? "" : c.driver().toUpperCase();
+        String sql = switch (driver) {
+            case "POSTGRES" -> "SELECT nextval('id_SistArq')";
+            case "ORACLE", "ORANET" -> "SELECT id_SistArq.NEXTVAL FROM DUAL";
+            case "MSSQL" -> "SELECT NEXT VALUE FOR id_SistArq";
+            case "INTERBASE" -> "SELECT GEN_ID(id_SistArq, 1) FROM RDB$DATABASE";
+            default -> "SELECT GEN_ID(id_SistArq, 1) FROM RDB$DATABASE";
+        };
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
     /** CompactaStream do apilib = zlib (deflate). Casa com o InflaterInputStream do read. */
     private static byte[] deflate(byte[] bruto) {
         Deflater def = new Deflater(Deflater.DEFAULT_COMPRESSION);
@@ -181,7 +279,7 @@ public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
         return out.toByteArray();
     }
 
-    private static String trim(String s) {
+    private static String nz(String s) {
         return s == null ? "" : s.trim();
     }
 }

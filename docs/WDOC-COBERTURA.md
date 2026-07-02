@@ -59,13 +59,16 @@ merge RTF/HTML, conversão (LibreOffice/ImageMagick), anti-malware e a resoluç�
   `GetDocumentoOperacaoAssinatura`, `GetDocumentoSisat`** (com o resolver de árvore do SISTARQ portado do
   `wsistarqlib`: `GeraIDPaiDocumentos*` + `LeIDDoPath`/`LeIDdoDiretorio`/`LeIDdoItem`) e `DeleteDocumento`.
   É o caminho de download/visualização/exclusão — o de maior volume e o que mais ganha com escala.
-- 🟡 **Uploads (Post\*) — write-storage em Java:** o núcleo de gravação está portado
-  (`VerificaCriterios` + `InsereVersaoBinario`/update em `CONTROLEVERSAO`, DB-blob + zlib) via
-  `ArmazenadorDocumentoJdbc` + `EnviarDocumentoService`. O **anti-malware** e a **conversão imagem→PDF**
-  entram como **ports/hooks** (`AntiMalware`, `ConversorImagemPdf`) — hoje impl **no-op** (placeholder
-  honesto: logam aviso / pass-through) até plugar o scanner/ImageMagick real. Pendências p/ ficar live:
-  (a) impls reais dos hooks; (b) criação de documento NOVO (nó novo na árvore SISTARQ); (c) rotear o
-  upload do `/sccidoc` → scci-core (o roteador hoje cobre só o download). Teste: `EnviarDocumentoServiceTest`.
+- 🟡 **Uploads (Post\*) — write-storage em Java:** portado o núcleo de gravação **e a criação de documento
+  novo**: `PostDocumento`→`InsereArquivoVersao`→(acha o nó `NOME`+`IDPAI` ou cria via `InsereItemNaBase`,
+  TIPO=2, herdando flags da pasta-pai + generator `id_SistArq`)→`GravaBinarioVersao`/`InsereVersaoBinario`
+  (`VerificaCriterios` + INSERT nova versão/UPDATE última em `CONTROLEVERSAO`, DB-blob + zlib). Peças:
+  `ArmazenadorDocumentoJdbc` (`gravarVersao` por id, `inserirArquivoVersao` por pasta) + `EnviarDocumentoService`.
+  REST: `POST /interno/documentos` (por pasta) e `POST /interno/documentos/{id}/versoes` (por id).
+  O **anti-malware** e a **conversão imagem→PDF** são **ports/hooks** (`AntiMalware`, `ConversorImagemPdf`)
+  — hoje **no-op** (placeholder honesto) até plugar o scanner/ImageMagick real (units não estão no repo).
+  Pendências p/ live: (a) impls reais dos hooks; (b) rotear o upload do `/sccidoc` → scci-core (o roteador
+  hoje cobre só o download). Testes: `EnviarDocumentoServiceTest` (por id + por pasta + anti-malware).
 - ⛔ **Fica em Pascal (por flag):** relatórios, Jasper, merges (RTF/HTML), conversões
   (LibreOffice/HTML→PDF) e as ops de metadados do apiscci — **por decisão de arquitetura**
   (a regra vive no binário/lib), o launcher executa.

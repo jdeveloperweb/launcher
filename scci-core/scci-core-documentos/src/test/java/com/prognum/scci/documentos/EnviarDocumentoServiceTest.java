@@ -13,31 +13,61 @@ import com.prognum.scci.documentos.dominio.port.out.ConversorImagemPdf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Upload: anti-malware → conversão → gravação. Testado com fakes dos três ports. */
+/** Upload: anti-malware → conversão → gravação (por id e por pasta). Testado com fakes dos três ports. */
 class EnviarDocumentoServiceTest {
 
     private static final String AMB = "/u10/cliente/scat";
 
+    /** Fake do armazenador (grava versão por id e insere arquivo por pasta). */
+    static class FakeArmazenador implements ArmazenadorDocumento {
+        byte[] conteudoGravado;
+        String nomeGravado;
+        int idPaiRecebido = -1;
+
+        public int gravarVersao(int id, String nome, byte[] conteudo, String usuario, String amb) {
+            conteudoGravado = conteudo;
+            nomeGravado = nome;
+            return 3;                          // versão
+        }
+
+        public int inserirArquivoVersao(int idPai, String nome, byte[] conteudo, String usuario, String amb) {
+            idPaiRecebido = idPai;
+            conteudoGravado = conteudo;
+            nomeGravado = nome;
+            return 777;                        // id do documento (ID_INSERIDO)
+        }
+    }
+
     @Test
-    void verifica_converte_e_grava_nova_versao() {
+    void por_id_verifica_converte_e_grava_versao() {
         byte[] original = "imagem".getBytes(StandardCharsets.ISO_8859_1);
         byte[] convertido = "pdf".getBytes(StandardCharsets.ISO_8859_1);
         AtomicReference<String> escaneado = new AtomicReference<>();
-        AtomicReference<byte[]> gravado = new AtomicReference<>();
 
         AntiMalware am = (c, nome) -> escaneado.set(nome);
         ConversorImagemPdf conv = (c, nome) -> new ConversorImagemPdf.Resultado(convertido, "foto.pdf");
-        ArmazenadorDocumento arm = (id, nome, conteudo, usuario, amb) -> {
-            gravado.set(conteudo);
-            assertThat(nome).isEqualTo("foto.pdf");     // usa o nome pós-conversão
-            return 3;
-        };
+        FakeArmazenador arm = new FakeArmazenador();
 
         int versao = new EnviarDocumentoService(am, conv, arm).enviar(9, "foto.jpg", original, "joao", AMB);
 
         assertThat(versao).isEqualTo(3);
-        assertThat(escaneado.get()).isEqualTo("foto.jpg");   // anti-malware no arquivo original
-        assertThat(gravado.get()).isEqualTo(convertido);     // grava o conteúdo convertido
+        assertThat(escaneado.get()).isEqualTo("foto.jpg");     // anti-malware no arquivo original
+        assertThat(arm.conteudoGravado).isEqualTo(convertido); // grava o conteúdo convertido
+        assertThat(arm.nomeGravado).isEqualTo("foto.pdf");
+    }
+
+    @Test
+    void por_pasta_cria_ou_acha_o_no_e_devolve_id() {
+        AntiMalware am = (c, nome) -> { };
+        ConversorImagemPdf conv = (c, nome) -> new ConversorImagemPdf.Resultado(c, nome);
+        FakeArmazenador arm = new FakeArmazenador();
+
+        int id = new EnviarDocumentoService(am, conv, arm)
+                .enviarParaPasta(50, "contrato.pdf", new byte[]{1, 2}, "maria", AMB);
+
+        assertThat(id).isEqualTo(777);
+        assertThat(arm.idPaiRecebido).isEqualTo(50);
+        assertThat(arm.nomeGravado).isEqualTo("contrato.pdf");
     }
 
     @Test
@@ -46,10 +76,9 @@ class EnviarDocumentoServiceTest {
             throw new AntiMalware.ArquivoInfectado("EICAR");
         };
         ConversorImagemPdf conv = (c, nome) -> new ConversorImagemPdf.Resultado(c, nome);
-        ArmazenadorDocumento arm = (id, nome, conteudo, usuario, amb) -> {
-            throw new AssertionError("nao deveria gravar arquivo reprovado");
-        };
+        FakeArmazenador arm = new FakeArmazenador();
         assertThatThrownBy(() -> new EnviarDocumentoService(am, conv, arm).enviar(1, "x.exe", new byte[]{1}, "u", AMB))
                 .isInstanceOf(AntiMalware.ArquivoInfectado.class);
+        assertThat(arm.conteudoGravado).isNull();
     }
 }

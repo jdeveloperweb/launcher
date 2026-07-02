@@ -11,5 +11,13 @@ package com.prognum.scci.documentos.dominio.port.out;
  */
 public interface ArmazenadorDocumento {
 
+    /** Grava uma nova versão de um documento EXISTENTE (id conhecido). Devolve a versão gravada. */
     int gravarVersao(int id, String nome, byte[] conteudo, String usuario, String ambiente);
+
+    /**
+     * Upload por PASTA (PostDocumento/InsereArquivoVersao): acha o documento {@code nome} sob {@code idPai}
+     * ou CRIA um nó novo no SISTARQ (TIPO=2, herdando as flags da pasta-pai), e grava a versão binária.
+     * Devolve o ID do documento (novo ou existente) — o {@code ID_INSERIDO} do wdoc.
+     */
+    int inserirArquivoVersao(int idPai, String nome, byte[] conteudo, String usuario, String ambiente);
 }

@@ -24,8 +24,18 @@ public class EnviarDocumentoService implements EnviarDocumento {
 
     @Override
     public int enviar(int id, String nome, byte[] conteudo, String usuario, String ambiente) {
-        antiMalware.verificar(conteudo, nome);                              // reprova => exceção
-        ConversorImagemPdf.Resultado r = conversor.converter(conteudo, nome);
+        ConversorImagemPdf.Resultado r = verificarEConverter(conteudo, nome);
         return armazenador.gravarVersao(id, r.nome(), r.conteudo(), usuario, ambiente);
+    }
+
+    @Override
+    public int enviarParaPasta(int idPai, String nome, byte[] conteudo, String usuario, String ambiente) {
+        ConversorImagemPdf.Resultado r = verificarEConverter(conteudo, nome);
+        return armazenador.inserirArquivoVersao(idPai, r.nome(), r.conteudo(), usuario, ambiente);
+    }
+
+    private ConversorImagemPdf.Resultado verificarEConverter(byte[] conteudo, String nome) {
+        antiMalware.verificar(conteudo, nome);                              // reprova => exceção
+        return conversor.converter(conteudo, nome);
     }
 }

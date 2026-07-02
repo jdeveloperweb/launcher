@@ -82,7 +82,7 @@ public class DocumentoInternoController {
         return resposta(porEntidade.porSisat(nuOcorrencia, nuDocumento, download, ambiente));
     }
 
-    /** Upload: nova versão de um documento existente (Post* do wdoc) — corpo = bytes crus. Devolve a versão. */
+    /** Upload: nova versão de um documento existente (id conhecido) — corpo = bytes crus. Devolve a versão. */
     @PostMapping("/interno/documentos/{id}/versoes")
     public ResponseEntity<String> enviar(@PathVariable int id,
                                          @RequestParam String ambiente,
@@ -91,6 +91,17 @@ public class DocumentoInternoController {
                                          @RequestBody byte[] conteudo) {
         int versao = enviar.enviar(id, nome, conteudo, usuario, ambiente);
         return ResponseEntity.ok("{\"success\":true,\"versao\":" + versao + "}");
+    }
+
+    /** PostDocumento: upload p/ a pasta {@code idPai} (cria o doc se novo). Corpo = bytes. Devolve o id. */
+    @PostMapping("/interno/documentos")
+    public ResponseEntity<String> enviarParaPasta(@RequestParam int idPai,
+                                                  @RequestParam String nome,
+                                                  @RequestParam String ambiente,
+                                                  @RequestParam(defaultValue = "") String usuario,
+                                                  @RequestBody byte[] conteudo) {
+        int id = enviar.enviarParaPasta(idPai, nome, conteudo, usuario, ambiente);
+        return ResponseEntity.ok("{\"success\":true,\"dados\":{\"ID_INSERIDO\":" + id + "}}");
     }
 
     @DeleteMapping("/interno/documentos/{id}")

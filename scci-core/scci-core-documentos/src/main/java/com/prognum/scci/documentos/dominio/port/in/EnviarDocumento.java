@@ -1,11 +1,15 @@
 package com.prognum.scci.documentos.dominio.port.in;
 
 /**
- * Caso de uso de UPLOAD (Post* do wdoc): recebe o arquivo de uma nova versão de um documento existente,
- * passa por anti-malware e (se imagem) conversão para PDF, e grava a versão no SISTARQ. Devolve a versão
- * gravada. Escopo: documento já existente (id conhecido/resolvido); criação de documento novo é follow-up.
+ * Casos de uso de UPLOAD (Post* do wdoc): anti-malware → conversão imagem→PDF (se aplicável) → gravação.
+ * {@code enviar} = nova versão de um documento existente (id conhecido); {@code enviarParaPasta} =
+ * PostDocumento (acha o doc {@code nome} na pasta {@code idPai} ou cria um novo nó no SISTARQ).
  */
 public interface EnviarDocumento {
 
+    /** Nova versão de documento existente (id). Devolve a versão gravada. */
     int enviar(int id, String nome, byte[] conteudo, String usuario, String ambiente);
+
+    /** PostDocumento: upload para a pasta {@code idPai}. Devolve o ID do documento (novo ou existente). */
+    int enviarParaPasta(int idPai, String nome, byte[] conteudo, String usuario, String ambiente);
 }
