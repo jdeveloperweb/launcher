@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.prognum.launcher.autenticacao.port.out.ProvisionamentoUsuario;
-import com.prognum.launcher.compartilhado.crypto.WcopCrypto;
+import com.prognum.comum.cripto.WcopCrypto;
 
 /**
  * Porte fiel do loginbrb.pas (ExecutaLoginBrb). Autenticação OpenID já feita; o payload cifrado traz o

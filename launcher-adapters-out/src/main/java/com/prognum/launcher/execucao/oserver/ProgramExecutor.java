@@ -1,7 +1,7 @@
 package com.prognum.launcher.execucao.oserver;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.prognum.launcher.compartilhado.db.LauncherEnvReader;
+import com.prognum.comum.ambiente.LauncherEnvReader;
 import com.prognum.launcher.execucao.model.ComandoExecucao;
 import com.prognum.launcher.execucao.model.ResultadoExecucao;
 import com.prognum.launcher.execucao.port.out.ExecutorPrograma;

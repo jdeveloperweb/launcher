@@ -1,7 +1,6 @@
-package com.prognum.launcher.compartilhado.db;
+package com.prognum.comum.ambiente;
 
-import com.prognum.launcher.compartilhado.crypto.WcopCrypto;
-import org.springframework.stereotype.Component;
+import com.prognum.comum.cripto.WcopCrypto;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -18,7 +17,6 @@ import java.util.regex.Pattern;
  * Fiel ao launcher.pas (TLauncherEnv.create / LoadDBUsers): mesmas chaves e defaults.
  * Copia fiel do launcher SCCI (legado). Infra COMPARTILHADA (autenticacao, identidade, execucao).
  */
-@Component
 public class LauncherEnvReader {
 
     public SccDbConfig ler(String ambientePath) {

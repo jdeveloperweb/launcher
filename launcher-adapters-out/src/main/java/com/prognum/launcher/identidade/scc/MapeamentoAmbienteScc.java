@@ -1,7 +1,7 @@
 package com.prognum.launcher.identidade.scc;
 
-import com.prognum.launcher.compartilhado.db.LauncherEnvReader;
-import com.prognum.launcher.compartilhado.db.SccDbConfig;
+import com.prognum.comum.ambiente.LauncherEnvReader;
+import com.prognum.comum.ambiente.SccDbConfig;
 import com.prognum.launcher.identidade.model.AmbienteOperacional;
 import com.prognum.launcher.identidade.port.out.MapeamentoAmbiente;
 import org.springframework.stereotype.Component;

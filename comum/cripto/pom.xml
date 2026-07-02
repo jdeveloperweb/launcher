@@ -15,4 +15,12 @@
   <artifactId>comum-cripto</artifactId>
   <name>comum-cripto</name>
   <description>Criptografia W_COP (AES/XOR) e WebDeCrypt — compartilhada in-process</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>

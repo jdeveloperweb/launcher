@@ -3,8 +3,8 @@ package com.prognum.launcher.autenticacao.scc;
 import com.prognum.launcher.autenticacao.model.CredenciaisUsuario;
 import com.prognum.launcher.autenticacao.port.out.CredenciaisRepository;
 import com.prognum.launcher.compartilhado.db.JdbcConnectionFactory;
-import com.prognum.launcher.compartilhado.db.LauncherEnvReader;
-import com.prognum.launcher.compartilhado.db.SccDbConfig;
+import com.prognum.comum.ambiente.LauncherEnvReader;
+import com.prognum.comum.ambiente.SccDbConfig;
 import org.springframework.stereotype.Component;
 
 import java.sql.Connection;

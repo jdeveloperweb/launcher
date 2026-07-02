@@ -2,7 +2,7 @@ package com.prognum.launcher.autenticacao.mapeado;
 
 import com.prognum.launcher.autenticacao.mapeado.NovoUsuario;
 import com.prognum.launcher.autenticacao.port.out.ProvisionamentoUsuario;
-import com.prognum.launcher.compartilhado.crypto.WcopCrypto;
+import com.prognum.comum.cripto.WcopCrypto;
 
 /**
  * Porte fiel do loginitau.pas (ExecutaLoginItau). O payload decifrado é {@code !#___}+nome-do-perfil

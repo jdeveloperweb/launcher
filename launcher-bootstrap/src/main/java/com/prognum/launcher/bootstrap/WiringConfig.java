@@ -32,7 +32,8 @@ import com.prognum.launcher.autenticacao.port.out.SessaoPersistente;
 import com.prognum.launcher.autenticacao.port.out.SenhaRepository;
 import com.prognum.launcher.autenticacao.port.out.ValidacaoAcessoRepository;
 import com.prognum.launcher.autenticacao.port.out.VerificadorSenha;
-import com.prognum.launcher.compartilhado.crypto.WcopCrypto;
+import com.prognum.comum.cripto.WcopCrypto;
+import com.prognum.comum.ambiente.LauncherEnvReader;
 import com.prognum.launcher.documentos.port.in.BaixarDocumentoUseCase;
 import com.prognum.launcher.documentos.port.in.EnviarDocumentoUseCase;
 import com.prognum.launcher.execucao.DespachoService;
@@ -50,10 +51,16 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class WiringConfig {
 
-    // ---- kernel tecnico / dominio puro ----
+    // ---- kernel tecnico / modulos compartilhados (comum/*) ----
     @Bean
     WcopCrypto wcopCrypto() {
         return new WcopCrypto();
+    }
+
+    /** Leitor do launcherenv.ini (comum-ambiente): env do Pascal + config de banco. POJO -> @Bean. */
+    @Bean
+    LauncherEnvReader launcherEnvReader() {
+        return new LauncherEnvReader();
     }
 
     @Bean

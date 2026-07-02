@@ -17,8 +17,8 @@ import com.prognum.launcher.autenticacao.mapeado.NovoUsuario;
 import com.prognum.launcher.autenticacao.mapeado.UsuarioScci;
 import com.prognum.launcher.autenticacao.port.out.ProvisionamentoUsuario;
 import com.prognum.launcher.compartilhado.db.JdbcConnectionFactory;
-import com.prognum.launcher.compartilhado.db.LauncherEnvReader;
-import com.prognum.launcher.compartilhado.db.SccDbConfig;
+import com.prognum.comum.ambiente.LauncherEnvReader;
+import com.prognum.comum.ambiente.SccDbConfig;
 
 /**
  * Adapter de saída do PROVISIONAMENTO dos logins payload-mapeado (família B). Porte fiel dos acessos a

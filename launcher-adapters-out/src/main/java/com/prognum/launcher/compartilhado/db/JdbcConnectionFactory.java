@@ -1,5 +1,7 @@
 package com.prognum.launcher.compartilhado.db;
 
+import com.prognum.comum.ambiente.SccDbConfig;
+
 import org.springframework.stereotype.Component;
 
 import java.sql.Connection;

@@ -3,7 +3,7 @@ package com.prognum.launcher.autenticacao.mapeado;
 import java.util.Optional;
 
 import com.prognum.launcher.autenticacao.port.out.ProvisionamentoUsuario;
-import com.prognum.launcher.compartilhado.crypto.WcopCrypto;
+import com.prognum.comum.cripto.WcopCrypto;
 
 /**
  * Porte fiel do logincashmeweb.pas (ExecutaLoginCashmeWeb). Dois ramos, decididos pelo formato do

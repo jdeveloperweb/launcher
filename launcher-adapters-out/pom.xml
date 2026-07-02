@@ -17,6 +17,10 @@
   <dependencies>
     <dependency>
       <groupId>com.prognum</groupId>
+      <artifactId>comum-ambiente</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.prognum</groupId>
       <artifactId>launcher-application</artifactId>
     </dependency>
     <dependency>

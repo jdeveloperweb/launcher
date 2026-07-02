@@ -1,4 +1,4 @@
-package com.prognum.launcher.compartilhado.crypto;
+package com.prognum.comum.cripto;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;

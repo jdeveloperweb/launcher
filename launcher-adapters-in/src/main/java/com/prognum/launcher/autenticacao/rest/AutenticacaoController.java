@@ -10,7 +10,7 @@ import com.prognum.launcher.autenticacao.port.in.RecuperarSenhaUseCase;
 import com.prognum.launcher.autenticacao.port.in.SessaoUseCase;
 import com.prognum.launcher.autenticacao.port.in.TrocarSenhaUseCase;
 import com.prognum.launcher.autenticacao.port.in.ValidarAcessoUseCase;
-import com.prognum.launcher.compartilhado.crypto.WcopCrypto;
+import com.prognum.comum.cripto.WcopCrypto;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import com.prognum.launcher.autenticacao.mapeado.NovoUsuario;
 import com.prognum.launcher.autenticacao.port.out.ProvisionamentoUsuario;
-import com.prognum.launcher.compartilhado.crypto.WcopCrypto;
+import com.prognum.comum.cripto.WcopCrypto;
 
 /**
  * Porte fiel do loginc6.pas (ExecutaLoginC6). Autenticação OpenID já feita; payload traz o PERFIL.

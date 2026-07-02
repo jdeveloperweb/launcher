@@ -1,4 +1,4 @@
-package com.prognum.launcher.compartilhado.db;
+package com.prognum.comum.ambiente;
 
 /**
  * Configuracao de conexao + colunas de um ambiente (secao [USERS] do launcherenv.ini).

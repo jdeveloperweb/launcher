@@ -1,4 +1,4 @@
-package com.prognum.launcher.compartilhado.crypto;
+package com.prognum.comum.cripto;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

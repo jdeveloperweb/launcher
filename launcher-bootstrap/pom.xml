@@ -17,6 +17,14 @@
   <dependencies>
     <dependency>
       <groupId>com.prognum</groupId>
+      <artifactId>comum-cripto</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>comum-ambiente</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.prognum</groupId>
       <artifactId>launcher-adapters-in</artifactId>
     </dependency>
     <dependency>
