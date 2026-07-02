@@ -2,7 +2,7 @@ package com.prognum.launcher.autenticacao.scc;
 
 import com.prognum.launcher.autenticacao.model.HistoricoSenhas;
 import com.prognum.launcher.autenticacao.port.out.SenhaRepository;
-import com.prognum.launcher.compartilhado.db.JdbcConnectionFactory;
+import com.prognum.comum.ambiente.JdbcConnectionFactory;
 import com.prognum.comum.ambiente.LauncherEnvReader;
 import com.prognum.comum.ambiente.SccDbConfig;
 import org.springframework.stereotype.Component;

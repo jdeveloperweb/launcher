@@ -21,5 +21,10 @@
       <groupId>com.prognum</groupId>
       <artifactId>comum-cripto</artifactId>
     </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

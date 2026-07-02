@@ -1,8 +1,6 @@
-package com.prognum.launcher.compartilhado.db;
+package com.prognum.comum.ambiente;
 
-import com.prognum.comum.ambiente.SccDbConfig;
 
-import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -13,7 +11,6 @@ import java.util.Properties;
  * Abre conexao JDBC conforme o DRIVERNAME do launcherenv.ini (igual ao DBINIT do launcher.pas:
  * INTERBASE=Firebird, POSTGRES, ORACLE, MSSQL). Copia fiel do launcher SCCI (legado).
  */
-@Component
 public class JdbcConnectionFactory {
 
     public Connection abrir(SccDbConfig c) throws SQLException {

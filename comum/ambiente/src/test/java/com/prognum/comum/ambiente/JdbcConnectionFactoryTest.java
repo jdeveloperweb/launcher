@@ -1,6 +1,5 @@
-package com.prognum.launcher.compartilhado.db;
+package com.prognum.comum.ambiente;
 
-import com.prognum.comum.ambiente.SccDbConfig;
 
 import org.junit.jupiter.api.Test;
 

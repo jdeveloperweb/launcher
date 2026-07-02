@@ -34,6 +34,7 @@ import com.prognum.launcher.autenticacao.port.out.ValidacaoAcessoRepository;
 import com.prognum.launcher.autenticacao.port.out.VerificadorSenha;
 import com.prognum.comum.cripto.WcopCrypto;
 import com.prognum.comum.ambiente.LauncherEnvReader;
+import com.prognum.comum.ambiente.JdbcConnectionFactory;
 import com.prognum.launcher.documentos.port.in.BaixarDocumentoUseCase;
 import com.prognum.launcher.documentos.port.in.EnviarDocumentoUseCase;
 import com.prognum.launcher.execucao.DespachoService;
@@ -61,6 +62,12 @@ public class WiringConfig {
     @Bean
     LauncherEnvReader launcherEnvReader() {
         return new LauncherEnvReader();
+    }
+
+    /** Fabrica de conexao JDBC multi-banco (comum-ambiente). POJO -> @Bean. */
+    @Bean
+    JdbcConnectionFactory jdbcConnectionFactory() {
+        return new JdbcConnectionFactory();
     }
 
     @Bean
