@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- Contexto ACESSO (Identidade & Acesso): login BANCO + família B, senha, recuperação.
+       Layering interno por pacote: dominio / aplicacao / adaptadores. -->
+  <parent>
+    <groupId>com.prognum</groupId>
+    <artifactId>launcher-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>scci-core-acesso</artifactId>
+  <name>scci-core-acesso</name>
+  <description>Contexto delimitado: autenticação (login/senha/família B)</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>scci-core-kernel</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>scci-core-sessao</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>comum-cripto</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>comum-contrato</artifactId>
+    </dependency>
+  </dependencies>
+</project>

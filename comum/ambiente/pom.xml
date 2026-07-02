@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- Lê o launcherenv.ini de um ambiente: env do Pascal ([ENVIRONMENT]) + SccDbConfig ([USERS]). JDK puro. -->
+  <parent>
+    <groupId>com.prognum</groupId>
+    <artifactId>launcher-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>comum-ambiente</artifactId>
+  <name>comum-ambiente</name>
+  <description>Leitura do launcherenv.ini (env do Pascal + config de banco) — compartilhada in-process</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>comum-cripto</artifactId>
+    </dependency>
+  </dependencies>
+</project>

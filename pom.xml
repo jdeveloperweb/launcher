@@ -23,12 +23,22 @@
   <name>launcher-parent</name>
   <description>Launcher SCCI em Java - reator hexagonal (Ports and Adapters) multi-modulo</description>
 
+  <!--
+    Monorepo da plataforma SCCI. Três blocos:
+      • launcher-*  : a app de BORDA (transporte W_COP + roteador Java×Pascal + ponte oserver). Em migração p/ fina.
+      • comum/*     : módulos TÉCNICOS compartilhados (cripto, ambiente, contrato) usados in-process pelos dois apps.
+      • scci-core/* : o MONÓLITO MODULAR (DDD): kernel + bootstrap + contextos (acesso, sessao, documentos, …).
+    A separação é INCREMENTAL: durante a migração o launcher atual segue verde; os domínios vão sendo movidos
+    p/ o scci-core atrás de feature-flag (roteador). Ver docs/ e DECISOES-ADR.md.
+  -->
   <modules>
     <module>launcher-domain</module>
     <module>launcher-application</module>
     <module>launcher-adapters-in</module>
     <module>launcher-adapters-out</module>
     <module>launcher-bootstrap</module>
+    <module>comum</module>
+    <module>scci-core</module>
   </modules>
 
   <properties>
@@ -60,6 +70,45 @@
       <dependency>
         <groupId>com.prognum</groupId>
         <artifactId>launcher-adapters-out</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <!-- comum/* : modulos tecnicos compartilhados (in-process) -->
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>comum-cripto</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>comum-ambiente</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>comum-contrato</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <!-- scci-core/* : monolito modular (DDD) -->
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>scci-core-kernel</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>scci-core-acesso</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>scci-core-sessao</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>scci-core-documentos</artifactId>
         <version>${project.version}</version>
       </dependency>
 

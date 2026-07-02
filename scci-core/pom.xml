@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    scci-core/ : o MONÓLITO MODULAR (DDD). Deployable ÚNICO, escalável em N réplicas (stateless).
+      • scci-core-kernel    : infra técnica (JdbcConnectionFactory multi-banco, Redis, drivers)
+      • scci-core-bootstrap : Spring Boot main + wiring + REST interno (:8090)
+      • contextos delimitados (cada um um módulo, layering interno dominio/aplicacao/adaptadores):
+          - acesso     (login BANCO + família B, senha, recuperação)
+          - sessao     (emitir / validar / encerrar)
+          - documentos (ver / baixar / enviar)
+    Regra DDD: um contexto NÃO referencia entidade de outro — só porta/contrato. Fronteiras verificáveis por build.
+  -->
+  <parent>
+    <groupId>com.prognum</groupId>
+    <artifactId>launcher-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>scci-core</artifactId>
+  <packaging>pom</packaging>
+  <name>scci-core</name>
+  <description>Monólito modular (DDD) da plataforma SCCI — domínios em Java, escalável</description>
+
+  <modules>
+    <module>scci-core-kernel</module>
+    <module>scci-core-acesso</module>
+    <module>scci-core-sessao</module>
+    <module>scci-core-documentos</module>
+    <module>scci-core-bootstrap</module>
+  </modules>
+</project>
