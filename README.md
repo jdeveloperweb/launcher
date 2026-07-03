@@ -20,20 +20,50 @@ de cada vez sem interromper o serviço, preservando o contrato do front (`/aejs-
 
 ```mermaid
 flowchart LR
-  Front["Front / SPA"] -->|W_COP| Kong
+  Front["Front / SPA"] -->|W_COP HTTPS| Kong["Kong<br/>TLS · WAF · rate-limit · rota"]
   Kong --> L["launcher :8083<br/>edge — Java puro"]
-  L -->|"REST /interno"| C["scci-core :8090<br/>domínios Java (DDD)"]
-  L -->|"REST /interno"| P["pascal-executor :8091<br/>ponte oserver/JNA"]
-  C --> DB[("bancos por cliente<br/>PG · Oracle · Firebird · MSSQL")]
+  L -->|REST interno| C["scci-core :8090<br/>domínios Java · DDD"]
+  L -->|REST interno| P["pascal-executor :8091<br/>ponte oserver/JNA"]
   P --> PAS[["programas Pascal<br/>wdoc · wtela · ..."]]
-  L -. "Redis compartilhado" .-> R[("Redis<br/>sessão")]
-  C -. Redis .-> R
+  C --> DB[("bancos por cliente<br/>PG · Oracle · Firebird · MSSQL")]
+  P --> DB
+  L -.->|sessão| R[("Redis<br/>compartilhado")]
+  C -.->|sessão| R
 ```
 
-O front fala **só** com o `launcher`. Ele não contém regra de negócio: transporta o protocolo **W_COP**,
-decide por _feature-flag_ quem atende cada chamada e delega — para o `scci-core` (domínios já em Java)
-ou para o `pascal-executor` (o que ainda é Pascal). Os dois backends são **internos** (não expostos ao
-front). `launcher` e `scci-core` são _stateless_ (estado no Redis + bancos) → escalam em N réplicas.
+O front fala **só** com o `launcher` (atrás do **Kong**: TLS, WAF, rate-limit, roteamento). Ele não
+contém regra de negócio: transporta o **W_COP**, decide por _feature-flag_ quem atende cada chamada e
+delega — para o `scci-core` (domínios já em Java) ou para o `pascal-executor` (o que ainda é Pascal). O
+estado de sessão vive no **Redis compartilhado** entre `launcher` e `scci-core`.
+
+### Como escala
+
+`launcher` e `scci-core` são **stateless** (todo o estado está no Redis e nos bancos) → escalam em **N
+réplicas** atrás de um balanceador. O `pascal-executor` é **pinado** à caixa legada (precisa dos binários
+Pascal + oserver em disco) e **encolhe** conforme os domínios migram, até ser desligado.
+
+```mermaid
+flowchart TB
+  NLB(["NLB / balanceador"])
+  NLB --> EDGE
+  subgraph EDGE["launcher · EDGE — escala N (stateless)"]
+    L1["réplica 1"]
+    L2["réplica 2"]
+    Ln["réplica N"]
+  end
+  EDGE -->|REST interno| CORE
+  subgraph CORE["scci-core · DOMÍNIOS — escala N (stateless)"]
+    C1["réplica 1"]
+    C2["réplica 2"]
+    Cn["réplica N"]
+  end
+  EDGE -->|REST interno| PE["pascal-executor<br/>PINADO · 1 caixa (legado)"]
+  R[("Redis<br/>sessão · estado compartilhado")]
+  EDGE -.-> R
+  CORE -.-> R
+  CORE --> DB[("bancos por cliente")]
+  PE --> DB
+```
 
 ---
 
