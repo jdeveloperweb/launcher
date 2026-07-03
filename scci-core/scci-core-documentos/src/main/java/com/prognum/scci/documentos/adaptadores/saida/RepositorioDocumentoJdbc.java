@@ -7,11 +7,9 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.Base64;
 import java.util.Optional;
 import java.util.zip.InflaterInputStream;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.prognum.comum.ambiente.JdbcConnectionFactory;
@@ -59,18 +57,13 @@ public class RepositorioDocumentoJdbc implements RepositorioDocumento {
 
     private final LauncherEnvReader env;
     private final JdbcConnectionFactory connections;
-    /** {@code scciconf.LocalArmazenaDocImgs}. Vazio → default {@code <ambiente>/doc} (confirmado ao vivo). */
-    private final String armazenaDir;
-    /** {@code incaseinsensitive} do scciconf: {@code true} sufixa {@code .<id>.<versao3>}; default {@code false}. */
-    private final boolean caseInsensitive;
+    private final LocalizadorArmazenamento localizador;
 
     public RepositorioDocumentoJdbc(LauncherEnvReader env, JdbcConnectionFactory connections,
-            @Value("${scci.documentos.armazena-dir:}") String armazenaDir,
-            @Value("${scci.documentos.case-insensitive:false}") boolean caseInsensitive) {
+            LocalizadorArmazenamento localizador) {
         this.env = env;
         this.connections = connections;
-        this.armazenaDir = armazenaDir == null ? "" : armazenaDir.trim();
-        this.caseInsensitive = caseInsensitive;
+        this.localizador = localizador;
     }
 
     @Override
@@ -148,34 +141,12 @@ public class RepositorioDocumentoJdbc implements RepositorioDocumento {
             throw new UnsupportedOperationException(
                     "documento " + id + " em storage S3 (tp_gravacao=" + tpGravacao + ") ainda nao portado");
         }
-        Path arquivo = caminhoFileSystem(ambiente, id, versao);
+        Path arquivo = localizador.caminho(ambiente, id, versao);
         if (!Files.isReadable(arquivo)) {
             throw new IllegalStateException("documento " + id + " v" + versao
                     + ": arquivo FileSystem nao encontrado em " + arquivo);
         }
         return Files.readAllBytes(arquivo);
-    }
-
-    /**
-     * {@code <base>/<e0>/<e1>/<e2>/<enc>[.<id>].<versao3>} — porte de {@code RetornaFileSystemName}. {@code base}
-     * = {@code scci.documentos.armazena-dir} (scciconf.LocalArmazenaDocImgs) ou, se vazio, {@code <ambiente>/doc}.
-     */
-    Path caminhoFileSystem(String ambiente, int id, int versao) {
-        String base = armazenaDir.isEmpty() ? ambiente.replaceAll("[\\\\/]+$", "") + "/doc" : armazenaDir;
-        String enc = encodeInvBase64ForFilenames(id);
-        String versao3 = String.format("%03d", versao);   // intstr2(Versao,3)
-        String arquivo = caseInsensitive ? enc + "." + id + "." + versao3 : enc + "." + versao3;
-        return Path.of(base, enc.substring(0, 1), enc.substring(1, 2), enc.substring(2, 3), arquivo);
-    }
-
-    /**
-     * Porte de {@code EncodeInvBase64ForFilenames}: 6 primeiros chars do base64 dos 4 bytes little-endian do ID,
-     * com {@code '/'→'_'}. Ex.: {@code 290 -> "IgEAAA"}.
-     */
-    static String encodeInvBase64ForFilenames(int id) {
-        byte[] le = { (byte) id, (byte) (id >> 8), (byte) (id >> 16), (byte) (id >> 24) };
-        String b64 = Base64.getEncoder().encodeToString(le);   // 8 chars ("...=="); copy(1,6) -> 6 primeiros
-        return b64.substring(0, 6).replace('/', '_');
     }
 
     /** {@code Compactado='T'} (BooleanToSqlboolean(true) do SCCI); tolera S/1/true. */

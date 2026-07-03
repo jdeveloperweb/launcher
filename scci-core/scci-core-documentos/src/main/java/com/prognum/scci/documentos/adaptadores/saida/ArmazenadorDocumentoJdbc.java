@@ -1,6 +1,8 @@
 package com.prognum.scci.documentos.adaptadores.saida;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -28,18 +30,24 @@ import com.prognum.scci.documentos.dominio.port.out.ArmazenadorDocumento;
  *       + flags herdadas da pasta-pai + INSERT SISTARQ TIPO=2), depois grava a versão.</li>
  * </ul>
  *
- * Escopo: DB-blob. FileSystem/S3, miniatura e idRaizDoDoc = extensão. {@code COMPACTADO} gravado como
- * {@code 'T'} (char(1), convenção SCCI); coluna boolean nativa pode precisar de ajuste (multi-banco).
+ * Storage: escolhe FileSystem × banco pelo {@link LocalizadorArmazenamento} (fiel a
+ * {@code RetornaLocalArmazenaDocImgs > '' e DirectoryExists}). No FileSystem grava o arquivo
+ * ({@code RetornaFileSystemName}) e o registro com {@code TP_GRAVACAO=1} sem {@code DADO}; no banco grava o
+ * BLOB {@code DADO} com {@code TP_GRAVACAO=NULL}. Miniatura e idRaizDoDoc = extensão. {@code COMPACTADO='T'}
+ * (char(1), convenção SCCI); coluna boolean nativa pode precisar de ajuste (multi-banco).
  */
 @Component
 public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
 
     private final LauncherEnvReader env;
     private final JdbcConnectionFactory connections;
+    private final LocalizadorArmazenamento localizador;
 
-    public ArmazenadorDocumentoJdbc(LauncherEnvReader env, JdbcConnectionFactory connections) {
+    public ArmazenadorDocumentoJdbc(LauncherEnvReader env, JdbcConnectionFactory connections,
+            LocalizadorArmazenamento localizador) {
         this.env = env;
         this.connections = connections;
+        this.localizador = localizador;
     }
 
     @Override
@@ -48,7 +56,7 @@ public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
         byte[] comprimido = deflate(conteudo);
         try (Connection conn = abrirTx(c)) {
             try {
-                int versao = escreverVersao(conn, id, nomeDoSistarq(conn, id, nome), comprimido,
+                int versao = escreverVersao(conn, ambiente, id, nomeDoSistarq(conn, id, nome), comprimido,
                         conteudo.length, comprimido.length, usuario);
                 conn.commit();
                 return versao;
@@ -68,7 +76,7 @@ public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
         try (Connection conn = abrirTx(c)) {
             try {
                 int id = acharOuCriarNo(conn, c, idPai, nome);
-                escreverVersao(conn, id, nome, comprimido, conteudo.length, comprimido.length, usuario);
+                escreverVersao(conn, ambiente, id, nome, comprimido, conteudo.length, comprimido.length, usuario);
                 conn.commit();
                 return id;                          // ID_INSERIDO do wdoc (novo ou existente)
             } catch (Exception e) {
@@ -145,15 +153,24 @@ public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
 
     // ---- escrita da versão (GravaBinarioVersao/InsereVersaoBinario) ----
 
-    private int escreverVersao(Connection conn, int id, String nome, byte[] dado, int tam, int tamC,
-                               String usuario) throws Exception {
+    private int escreverVersao(Connection conn, String ambiente, int id, String nome, byte[] dado, int tam,
+                               int tamC, String usuario) throws Exception {
+        boolean fs = localizador.usaFileSystem(ambiente);   // RetornaLocalArmazenaDocImgs > '' e DirectoryExists
         int versao;
         if (decideNovaVersao(conn, id)) {
             versao = maxVersao(conn, id) + 1;
-            inserir(conn, id, versao, dado, tam, tamC, nome, usuario);
+            if (fs) {
+                inserirFileSystem(conn, ambiente, id, versao, dado, tam, tamC, nome, usuario);
+            } else {
+                inserir(conn, id, versao, dado, tam, tamC, nome, usuario);
+            }
         } else {
             versao = maxVersao(conn, id);
-            atualizar(conn, id, versao, dado, tam, tamC, usuario);
+            if (fs) {
+                atualizarFileSystem(conn, ambiente, id, versao, dado, tam, tamC, usuario);
+            } else {
+                atualizar(conn, id, versao, dado, tam, tamC, usuario);
+            }
         }
         return versao;
     }
@@ -241,6 +258,56 @@ public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
         }
     }
 
+    // ---- escrita da versão em FileSystem (InsereVersao/GravaBinarioVersao, ramo LocalArmazenaDocImgs > '') ----
+
+    /** INSERT com {@code TP_GRAVACAO=1} (sem {@code DADO}) + arquivo em disco (RetornaFileSystemName). */
+    private void inserirFileSystem(Connection conn, String ambiente, int id, int versao, byte[] dado, int tam,
+                                   int tamC, String nome, String usuario) throws Exception {
+        String sql = "INSERT INTO CONTROLEVERSAO "
+                + "(ID, VERSAO, TP_GRAVACAO, ALT_USUARIO, ALT_DATA, COMPACTADO, NOME, NU_TAMANHO_ARQUIVO, "
+                + "NU_TAMANHO_COMPACTADO, TE_IMAGEM_REDUZIDA) VALUES (?, ?, 1, ?, ?, 'T', ?, ?, ?, '')";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            ps.setInt(2, versao);
+            ps.setString(3, usuario);
+            ps.setTimestamp(4, Timestamp.valueOf(LocalDateTime.now()));
+            ps.setString(5, nome);
+            ps.setInt(6, tam);
+            ps.setInt(7, tamC);
+            ps.executeUpdate();
+        }
+        gravarArquivo(ambiente, id, versao, dado);
+    }
+
+    /** UPDATE zerando {@code DADO}, {@code TP_GRAVACAO=1} + arquivo em disco (sobrescreve a versão). */
+    private void atualizarFileSystem(Connection conn, String ambiente, int id, int versao, byte[] dado, int tam,
+                                     int tamC, String usuario) throws Exception {
+        String sql = "UPDATE CONTROLEVERSAO SET DADO = NULL, ALT_USUARIO = ?, ALT_DATA = ?, COMPACTADO = 'T', "
+                + "TP_GRAVACAO = 1, NU_TAMANHO_ARQUIVO = ?, NU_TAMANHO_COMPACTADO = ? "
+                + "WHERE ID = ? AND VERSAO = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, usuario);
+            ps.setTimestamp(2, Timestamp.valueOf(LocalDateTime.now()));
+            ps.setInt(3, tam);
+            ps.setInt(4, tamC);
+            ps.setInt(5, id);
+            ps.setInt(6, versao);
+            ps.executeUpdate();
+        }
+        gravarArquivo(ambiente, id, versao, dado);
+    }
+
+    /**
+     * Grava o binário (já deflacionado) no caminho do FileSystem, criando a árvore de diretórios
+     * (GaranteCaminhoFileSystemName). Feito DEPOIS do SQL, dentro da mesma transação: se falhar, o caller
+     * dá rollback (sem linha órfã); se o SQL falhar antes, nenhum arquivo é escrito.
+     */
+    private void gravarArquivo(String ambiente, int id, int versao, byte[] dado) throws Exception {
+        Path arquivo = localizador.caminho(ambiente, id, versao);
+        Files.createDirectories(arquivo.getParent());
+        Files.write(arquivo, dado);
+    }
+
     // ---- helpers ----
 
     private Connection abrirTx(SccDbConfig c) throws Exception {
@@ -249,13 +316,18 @@ public class ArmazenadorDocumentoJdbc implements ArmazenadorDocumento {
         return conn;
     }
 
-    /** Generator id_SistArq (LeGenerator) — dependente de driver (igual ao UIDUSUARIO). */
+    /**
+     * Generator {@code id_SistArq} (LeGenerator) — dependente de driver (igual ao UIDUSUARIO). No Postgres o
+     * LeGenerator mapeia o generator p/ a SEQUENCE {@code sq_<nome-lower>}: {@code id_SistArq -> sq_id_sistarq}
+     * (confirmado ao vivo; padrão do schema: {@code sq_gen_nu_perfil_sistarq} etc). Firebird usa o generator
+     * pelo nome; Oracle/MSSQL best-effort (sem ambiente p/ validar).
+     */
     private int proximoIdSistarq(Connection conn, SccDbConfig c) throws Exception {
         String driver = c.driver() == null ? "" : c.driver().toUpperCase();
         String sql = switch (driver) {
-            case "POSTGRES" -> "SELECT nextval('id_SistArq')";
-            case "ORACLE", "ORANET" -> "SELECT id_SistArq.NEXTVAL FROM DUAL";
-            case "MSSQL" -> "SELECT NEXT VALUE FOR id_SistArq";
+            case "POSTGRES" -> "SELECT nextval('sq_id_sistarq')";
+            case "ORACLE", "ORANET" -> "SELECT sq_id_sistarq.NEXTVAL FROM DUAL";
+            case "MSSQL" -> "SELECT NEXT VALUE FOR sq_id_sistarq";
             case "INTERBASE" -> "SELECT GEN_ID(id_SistArq, 1) FROM RDB$DATABASE";
             default -> "SELECT GEN_ID(id_SistArq, 1) FROM RDB$DATABASE";
         };
