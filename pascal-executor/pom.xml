@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    pascal-executor/ : a ANCORA LEGADA da plataforma. Deployable proprio, CO-LOCALIZADO com os
+    binarios Pascal (wmenu/wtela/wdoc/...) + os ambiente/ + o oserver. Faz a ponte JNA (socketpair +
+    posix_spawn no fd 6) e fala o protocolo de blocos do oserver. O launcher (edge, Java puro) o chama
+    por REST interno quando a flag executor.remoto aponta REMOTO. E o unico modulo que carrega nativo/JNA;
+    conforme os dominios migram p/ o scci-core, o tráfego dele encolhe ate o decommission.
+  -->
+  <parent>
+    <groupId>com.prognum</groupId>
+    <artifactId>launcher-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>pascal-executor</artifactId>
+  <name>pascal-executor</name>
+  <description>Ancora legada: executa os programas Pascal (ponte oserver/JNA), servico interno</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <!-- Leitor do launcherenv.ini (ambiente por request) -->
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>common-environment</artifactId>
+    </dependency>
+    <!-- JNA: socketpair + posix_spawn nativos (ponte do oserver) -->
+    <dependency>
+      <groupId>net.java.dev.jna</groupId>
+      <artifactId>jna</artifactId>
+      <version>5.14.0</version>
+    </dependency>
+    <!-- Log estruturado (kv) -->
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>pascal-executor</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>

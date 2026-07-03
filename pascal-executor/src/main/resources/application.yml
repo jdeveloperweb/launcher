@@ -1,0 +1,29 @@
+server:
+  port: 8091          # REST interno do pascal-executor (o launcher chama; NAO exposto ao front)
+
+spring:
+  application:
+    name: pascal-executor
+  servlet:
+    multipart:
+      max-file-size: 60MB       # uploads (corpoBinario em base64 no JSON) — teto de transporte
+      max-request-size: 80MB
+  codec:
+    max-in-memory-size: 64MB    # respostas grandes (download de documento via Pascal, base64)
+
+# Execucao dos programas "w" (espelha o launcher.executor.* do launcher legado)
+executor:
+  timeout-segundos: 30
+  max-concorrentes: 8
+  max-tentativas: 3
+  retry-delay-ms: 120
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
