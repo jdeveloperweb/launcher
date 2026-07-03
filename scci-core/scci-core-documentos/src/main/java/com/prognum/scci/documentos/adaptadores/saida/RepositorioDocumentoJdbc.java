@@ -2,12 +2,16 @@ package com.prognum.scci.documentos.adaptadores.saida;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.zip.InflaterInputStream;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.prognum.comum.ambiente.JdbcConnectionFactory;
@@ -27,9 +31,16 @@ import com.prognum.scci.documentos.dominio.port.out.RepositorioDocumento;
  *   order by versao desc
  * </pre>
  *
- * Lê o BLOB {@code dado} e descomprime (zlib) quando {@code compactado='T'}. Cobre o storage em BANCO (o
- * caso comum); FileSystem/S3 ({@code tp_gravacao}) são ponto de extensão (RetornaFileSystemName/S3, em units
- * externas ainda não portadas). Query ANSI/parametrizada → multi-banco.
+ * Lê o BLOB {@code dado} e descomprime (zlib) quando {@code compactado='T'}. Cobre os dois storages do SCCI:
+ * <ul>
+ *   <li><b>BANCO</b> ({@code dado} preenchido) — lê o próprio BLOB;</li>
+ *   <li><b>FileSystem</b> ({@code tp_gravacao=1}, {@code dado} nulo) — porte de {@code RetornaFileSystemName}
+ *       / {@code EncodeInvBase64ForFilenames} (wsistarqlib): o arquivo vive em
+ *       {@code <base>/<e0>/<e1>/<e2>/<enc>.<versao3>}, onde {@code enc} = 6 primeiros chars do base64 dos 4
+ *       bytes (little-endian) do ID, com {@code '/'→'_'}. Descomprime igual ao BLOB.</li>
+ * </ul>
+ * O <b>base</b> ({@code scciconf.LocalArmazenaDocImgs}) é configurável por {@code scci.documentos.armazena-dir}
+ * (default {@code <ambiente>/doc}). S3 fica como ponto de extensão. Query ANSI/parametrizada → multi-banco.
  *
  * NOTA: o documento vive na base de "atividade" (PegaDirAtv/SCIS) do apilib; aqui uso a conexão do ambiente
  * (launcherenv). Se o cliente separar a base de documentos, o ajuste é neste adapter.
@@ -48,10 +59,18 @@ public class RepositorioDocumentoJdbc implements RepositorioDocumento {
 
     private final LauncherEnvReader env;
     private final JdbcConnectionFactory connections;
+    /** {@code scciconf.LocalArmazenaDocImgs}. Vazio → default {@code <ambiente>/doc} (confirmado ao vivo). */
+    private final String armazenaDir;
+    /** {@code incaseinsensitive} do scciconf: {@code true} sufixa {@code .<id>.<versao3>}; default {@code false}. */
+    private final boolean caseInsensitive;
 
-    public RepositorioDocumentoJdbc(LauncherEnvReader env, JdbcConnectionFactory connections) {
+    public RepositorioDocumentoJdbc(LauncherEnvReader env, JdbcConnectionFactory connections,
+            @Value("${scci.documentos.armazena-dir:}") String armazenaDir,
+            @Value("${scci.documentos.case-insensitive:false}") boolean caseInsensitive) {
         this.env = env;
         this.connections = connections;
+        this.armazenaDir = armazenaDir == null ? "" : armazenaDir.trim();
+        this.caseInsensitive = caseInsensitive;
     }
 
     @Override
@@ -80,11 +99,11 @@ public class RepositorioDocumentoJdbc implements RepositorioDocumento {
                 if (nome == null || nome.isBlank()) {
                     nome = rs.getString("NOMESISTARQ");
                 }
+                int versaoLida = rs.getInt("versao");
+                int tpGravacao = rs.getInt("tp_gravacao");
                 byte[] dado = rs.getBytes("dado");
-                if (dado == null) {
-                    throw new UnsupportedOperationException(
-                            "documento " + id + " fora do banco (tp_gravacao=" + rs.getInt("tp_gravacao")
-                            + "); storage FileSystem/S3 ainda nao portado");
+                if (dado == null) {                       // storage FileSystem (tp_gravacao=1): arquivo em disco
+                    dado = lerDoFileSystem(ambiente, id, versaoLida, tpGravacao);
                 }
                 byte[] conteudo = compactado(rs.getString("compactado")) ? descomprimir(dado) : dado;
                 return Optional.of(new ArquivoBruto(nome, conteudo));
@@ -118,6 +137,45 @@ public class RepositorioDocumentoJdbc implements RepositorioDocumento {
         } catch (Exception e) {
             throw new IllegalStateException("falha ao excluir documento " + id + " no ambiente " + c.database(), e);
         }
+    }
+
+    /**
+     * Lê o binário do FileSystem (porte de {@code RetornaFileSystemName}, wsistarqlib). Só {@code tp_gravacao=1}
+     * (FileSystem); S3 ({@code tp_gravacao=2}) ainda não portado.
+     */
+    private byte[] lerDoFileSystem(String ambiente, int id, int versao, int tpGravacao) throws Exception {
+        if (tpGravacao != 1) {                            // 2 = S3 (RetornaLocalArmazenaDocImgs -> LocalArmazenamentoS3)
+            throw new UnsupportedOperationException(
+                    "documento " + id + " em storage S3 (tp_gravacao=" + tpGravacao + ") ainda nao portado");
+        }
+        Path arquivo = caminhoFileSystem(ambiente, id, versao);
+        if (!Files.isReadable(arquivo)) {
+            throw new IllegalStateException("documento " + id + " v" + versao
+                    + ": arquivo FileSystem nao encontrado em " + arquivo);
+        }
+        return Files.readAllBytes(arquivo);
+    }
+
+    /**
+     * {@code <base>/<e0>/<e1>/<e2>/<enc>[.<id>].<versao3>} — porte de {@code RetornaFileSystemName}. {@code base}
+     * = {@code scci.documentos.armazena-dir} (scciconf.LocalArmazenaDocImgs) ou, se vazio, {@code <ambiente>/doc}.
+     */
+    Path caminhoFileSystem(String ambiente, int id, int versao) {
+        String base = armazenaDir.isEmpty() ? ambiente.replaceAll("[\\\\/]+$", "") + "/doc" : armazenaDir;
+        String enc = encodeInvBase64ForFilenames(id);
+        String versao3 = String.format("%03d", versao);   // intstr2(Versao,3)
+        String arquivo = caseInsensitive ? enc + "." + id + "." + versao3 : enc + "." + versao3;
+        return Path.of(base, enc.substring(0, 1), enc.substring(1, 2), enc.substring(2, 3), arquivo);
+    }
+
+    /**
+     * Porte de {@code EncodeInvBase64ForFilenames}: 6 primeiros chars do base64 dos 4 bytes little-endian do ID,
+     * com {@code '/'→'_'}. Ex.: {@code 290 -> "IgEAAA"}.
+     */
+    static String encodeInvBase64ForFilenames(int id) {
+        byte[] le = { (byte) id, (byte) (id >> 8), (byte) (id >> 16), (byte) (id >> 24) };
+        String b64 = Base64.getEncoder().encodeToString(le);   // 8 chars ("...=="); copy(1,6) -> 6 primeiros
+        return b64.substring(0, 6).replace('/', '_');
     }
 
     /** {@code Compactado='T'} (BooleanToSqlboolean(true) do SCCI); tolera S/1/true. */

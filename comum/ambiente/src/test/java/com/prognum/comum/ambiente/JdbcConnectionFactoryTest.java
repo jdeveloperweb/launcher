@@ -17,7 +17,7 @@ class JdbcConnectionFactoryTest {
     @Test
     void postgres() {
         assertThat(f.montarUrl(cfg("POSTGRES", "10.3.98.200", "scat112934")))
-                .isEqualTo("jdbc:postgresql://10.3.98.200:5432/scat112934");
+                .isEqualTo("jdbc:postgresql://10.3.98.200:5432/scat112934?stringtype=unspecified");
     }
 
     @Test
@@ -44,6 +44,6 @@ class JdbcConnectionFactoryTest {
     @Test
     void host_vazio_vira_localhost_no_postgres() {
         assertThat(f.montarUrl(cfg("POSTGRES", "", "db")))
-                .isEqualTo("jdbc:postgresql://localhost:5432/db");
+                .isEqualTo("jdbc:postgresql://localhost:5432/db?stringtype=unspecified");
     }
 }

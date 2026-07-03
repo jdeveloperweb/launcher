@@ -35,7 +35,11 @@ public class JdbcConnectionFactory {
         String host = (c.host() == null) ? "" : c.host().trim();
         String db = c.database() == null ? "" : c.database().trim();
         return switch (c.driver()) {
-            case "POSTGRES" -> "jdbc:postgresql://" + hostOu(host, "localhost") + ":5432/" + db;
+            // stringtype=unspecified: params String se comportam como LITERAL (o PG coage pro tipo da
+            // coluna), igual ao Pascal (QuotedStr). Sem isso, "integer = character varying" nas comparacoes
+            // numericas bindadas como texto (nu_pretendente/nu_documento). Firebird/Oracle ja coagem.
+            case "POSTGRES" -> "jdbc:postgresql://" + hostOu(host, "localhost") + ":5432/" + db
+                    + "?stringtype=unspecified";
             case "ORACLE", "ORANET" -> "jdbc:oracle:thin:@" + hostOu(host, "localhost") + ":1521:" + db;
             case "MSSQL" -> "jdbc:sqlserver://" + hostOu(host, "localhost")
                     + ";databaseName=" + db + ";encrypt=false;trustServerCertificate=true";
