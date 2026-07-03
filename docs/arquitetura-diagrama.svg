@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1560 1010" xmlns="http://www.w3.org/2000/svg" font-family="ui-sans-serif, Segoe UI, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5A6577"/>
+    </marker>
+    <marker id="arrE" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0F7E8A"/>
+    </marker>
+    <marker id="arrL" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#B4692A"/>
+    </marker>
+    <marker id="arrI" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4457B8"/>
+    </marker>
+    <style>
+      .t{font-size:14px;font-weight:700;fill:#161B22}
+      .s{font-size:11px;fill:#5A6577}
+      .m{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;fill:#5A6577}
+      .mb{font-family:ui-monospace,Consolas,monospace;font-size:12px;font-weight:700;fill:#161B22}
+      .eye{font-family:ui-monospace,Consolas,monospace;font-size:10px;letter-spacing:.12em;
+        text-transform:uppercase;fill:#8B95A5;font-weight:700}
+      .lnk{fill:none;stroke:#5A6577;stroke-width:1.6}
+      .dot{fill:none;stroke:#8B95A5;stroke-width:1.4;stroke-dasharray:2 4}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1560" height="1010" fill="#F3F5F8"/>
+
+  <!-- title -->
+  <text x="34" y="46" font-size="26" font-weight="800" fill="#161B22" letter-spacing="-.02em">Plataforma SCCI</text>
+  <text x="270" y="46" font-size="16" fill="#5A6577">— arquitetura (Strangler Fig)</text>
+  <text x="34" y="70" class="m">front · Kong · launcher (edge) · scci-core (domínios) · pascal-executor (legado) · common · observabilidade</text>
+
+  <!-- legend -->
+  <g transform="translate(1170,30)" font-size="11">
+    <rect x="0" y="0" width="360" height="86" rx="10" fill="#fff" stroke="#D6DCE5"/>
+    <rect x="14" y="16" width="12" height="12" rx="3" fill="#0F7E8A"/><text x="32" y="26" fill="#5A6577">launcher · edge</text>
+    <rect x="14" y="38" width="12" height="12" rx="3" fill="#2C7A4B"/><text x="32" y="48" fill="#5A6577">scci-core · domínios</text>
+    <rect x="14" y="60" width="12" height="12" rx="3" fill="#B4692A"/><text x="32" y="70" fill="#5A6577">pascal-executor · legado</text>
+    <rect x="200" y="16" width="12" height="12" rx="3" fill="#6C7A93"/><text x="218" y="26" fill="#5A6577">common · libs</text>
+    <rect x="200" y="38" width="12" height="12" rx="3" fill="#4457B8"/><text x="218" y="48" fill="#5A6577">observabilidade</text>
+    <rect x="200" y="60" width="12" height="12" rx="3" fill="#C6302B"/><text x="218" y="70" fill="#5A6577">Redis · estado</text>
+  </g>
+
+  <!-- ============ MAIN PIPELINE ============ -->
+  <!-- FRONT -->
+  <g>
+    <rect x="34" y="250" width="118" height="100" rx="12" fill="#fff" stroke="#8B95A5" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <rect x="63" y="272" width="60" height="38" rx="4" fill="#EAEDF2" stroke="#8B95A5"/>
+    <line x1="93" y1="310" x2="93" y2="318" stroke="#8B95A5"/><line x1="80" y1="318" x2="106" y2="318" stroke="#8B95A5" stroke-width="2"/>
+    <text x="93" y="338" text-anchor="middle" class="t" font-size="12">Front / SPA</text>
+  </g>
+  <path class="lnk" d="M152,300 L204,300" marker-end="url(#arr)"/>
+  <text x="178" y="291" text-anchor="middle" class="m">W_COP·HTTPS</text>
+
+  <!-- KONG -->
+  <g>
+    <rect x="206" y="244" width="150" height="112" rx="12" fill="#fff" stroke="#6C7A93" stroke-width="2"/>
+    <path d="M281,262 l22,9 v14 c0,16 -12,24 -22,29 c-10,-5 -22,-13 -22,-29 v-14 z" fill="#EAEDF2" stroke="#6C7A93" stroke-width="1.6"/>
+    <circle cx="281" cy="286" r="4" fill="#6C7A93"/>
+    <text x="281" y="330" text-anchor="middle" class="t">Kong</text>
+    <text x="281" y="346" text-anchor="middle" class="s">TLS · WAF · rate-limit</text>
+  </g>
+  <path class="lnk" d="M356,300 L404,300" marker-end="url(#arr)"/>
+
+  <!-- NLB -->
+  <g>
+    <rect x="404" y="278" width="86" height="44" rx="9" fill="#fff" stroke="#5A6577" stroke-width="1.5"/>
+    <circle cx="420" cy="300" r="3" fill="#5A6577"/>
+    <path class="lnk" d="M423,300 L440,290 M423,300 L440,300 M423,300 L440,310" stroke-width="1.2"/>
+    <text x="465" y="304" text-anchor="middle" class="mb" font-size="11">NLB</text>
+  </g>
+  <path class="lnk" d="M490,300 L516,300" marker-end="url(#arr)"/>
+
+  <!-- LAUNCHER (stack) -->
+  <g>
+    <rect x="532" y="256" width="184" height="112" rx="12" fill="#E1F0F1" stroke="#0F7E8A" stroke-width="1.5"/>
+    <rect x="526" y="250" width="184" height="112" rx="12" fill="#EAF6F7" stroke="#0F7E8A" stroke-width="1.5"/>
+    <rect x="520" y="244" width="184" height="112" rx="12" fill="#fff" stroke="#0F7E8A" stroke-width="2"/>
+    <path d="M545,278 l18,0 M545,278 l-6,-5 M545,278 l-6,5 M545,292 l18,0 M563,292 l-6,-5 M563,292 l-6,5" stroke="#0F7E8A" stroke-width="1.6" fill="none"/>
+    <text x="612" y="284" text-anchor="middle" class="t">launcher <tspan class="m" fill="#0F7E8A">:8083</tspan></text>
+    <text x="612" y="302" text-anchor="middle" class="s">edge · Java puro · W_COP · flags · gate</text>
+    <rect x="560" y="316" width="104" height="20" rx="10" fill="#E1F0F1"/>
+    <text x="612" y="330" text-anchor="middle" class="m" fill="#0F7E8A" font-weight="700">stateless · escala N</text>
+  </g>
+  <text x="612" y="228" text-anchor="middle" class="eye">borda</text>
+
+  <!-- launcher -> scci-core -->
+  <path class="lnk" style="stroke:#0F7E8A" d="M704,270 C750,250 760,220 792,205" marker-end="url(#arrE)"/>
+  <text x="770" y="238" text-anchor="middle" class="m" fill="#0F7E8A">REST interno</text>
+  <!-- launcher -> pascal-executor -->
+  <path class="lnk" style="stroke:#0F7E8A" d="M612,356 C612,470 690,500 796,560" marker-end="url(#arrE)"/>
+  <text x="648" y="470" class="m" fill="#0F7E8A">REST interno</text>
+
+  <!-- ============ SCCI-CORE ============ -->
+  <text x="960" y="150" text-anchor="middle" class="eye">domínios · Java (DDD)</text>
+  <rect x="792" y="176" width="356" height="308" rx="14" fill="#EEF6F1" stroke="#2C7A4B" stroke-width="1.5"/>
+  <rect x="786" y="170" width="356" height="308" rx="14" fill="#fff" stroke="#2C7A4B" stroke-width="2"/>
+  <text x="806" y="200" class="t">scci-core <tspan class="m" fill="#2C7A4B">:8090</tspan></text>
+  <text x="806" y="217" class="s">monólito modular · stateless · escala N</text>
+  <!-- module chips 2x3 -->
+  <!-- acesso (lock) -->
+  <g transform="translate(806,232)">
+    <rect width="152" height="52" rx="9" fill="#fff" stroke="#2C7A4B" stroke-width="1.3"/>
+    <rect x="14" y="20" width="16" height="13" rx="2" fill="#E2F0E9" stroke="#2C7A4B"/><path d="M17,20 v-3 a5,5 0 0 1 10,0 v3" fill="none" stroke="#2C7A4B" stroke-width="1.4"/>
+    <text x="40" y="24" class="mb" font-size="11.5">acesso</text><text x="40" y="39" class="s" font-size="10">login · senha · valida</text>
+  </g>
+  <!-- sessao (clock) -->
+  <g transform="translate(972,232)">
+    <rect width="152" height="52" rx="9" fill="#fff" stroke="#2C7A4B" stroke-width="1.3"/>
+    <circle cx="22" cy="26" r="10" fill="#E2F0E9" stroke="#2C7A4B"/><path d="M22,26 v-6 M22,26 l5,3" stroke="#2C7A4B" stroke-width="1.4" fill="none"/>
+    <text x="40" y="24" class="mb" font-size="11.5">sessao</text><text x="40" y="39" class="s" font-size="10">Redis + SCCI_SESSION</text>
+  </g>
+  <!-- documentos (doc) -->
+  <g transform="translate(806,294)">
+    <rect width="152" height="52" rx="9" fill="#fff" stroke="#2C7A4B" stroke-width="1.3"/>
+    <path d="M15,18 h13 l6,6 v16 h-19 z" fill="#E2F0E9" stroke="#2C7A4B" stroke-width="1.2"/><path d="M28,18 v6 h6" fill="none" stroke="#2C7A4B" stroke-width="1.1"/>
+    <text x="42" y="24" class="mb" font-size="11.5">documentos</text><text x="42" y="39" class="s" font-size="10">FileSystem + BLOB</text>
+  </g>
+  <!-- notificacao (envelope) -->
+  <g transform="translate(972,294)">
+    <rect width="152" height="52" rx="9" fill="#fff" stroke="#2C7A4B" stroke-width="1.3"/>
+    <rect x="13" y="19" width="20" height="14" rx="2" fill="#E2F0E9" stroke="#2C7A4B"/><path d="M13,20 l10,7 l10,-7" fill="none" stroke="#2C7A4B" stroke-width="1.2"/>
+    <text x="42" y="24" class="mb" font-size="11.5">notificacao</text><text x="42" y="39" class="s" font-size="10">e-mail / SMTP</text>
+  </g>
+  <!-- kernel (gear) -->
+  <g transform="translate(806,356)">
+    <rect width="152" height="52" rx="9" fill="#fff" stroke="#2C7A4B" stroke-width="1.3"/>
+    <g transform="translate(22,26)" stroke="#2C7A4B" stroke-width="1.3" fill="#E2F0E9">
+      <circle r="8"/><circle r="3" fill="#fff"/>
+      <path d="M0,-8 v-3 M0,8 v3 M-8,0 h-3 M8,0 h3 M-6,-6 l-2,-2 M6,6 l2,2 M6,-6 l2,-2 M-6,6 l-2,2" stroke-width="1.4"/>
+    </g>
+    <text x="40" y="24" class="mb" font-size="11.5">kernel</text><text x="40" y="39" class="s" font-size="10">JDBC multi-banco</text>
+  </g>
+  <!-- bootstrap (power) -->
+  <g transform="translate(972,356)">
+    <rect width="152" height="52" rx="9" fill="#fff" stroke="#2C7A4B" stroke-width="1.3"/>
+    <circle cx="22" cy="26" r="10" fill="#E2F0E9" stroke="#2C7A4B"/><path d="M22,20 v7 M22,20 a8,8 0 1 0 4,2" fill="none" stroke="#2C7A4B" stroke-width="1.4"/>
+    <text x="40" y="24" class="mb" font-size="11.5">bootstrap</text><text x="40" y="39" class="s" font-size="10">Spring Boot main</text>
+  </g>
+  <text x="806" y="432" class="m" fill="#2C7A4B">domain · application · adapters/in · adapters/out</text>
+
+  <!-- scci-core -> databases -->
+  <path class="lnk" d="M1142,300 L1210,300" marker-end="url(#arr)"/>
+
+  <!-- ============ DATABASES ============ -->
+  <text x="1330" y="222" text-anchor="middle" class="eye">bancos por cliente</text>
+  <g transform="translate(1214,244)">
+    <rect width="240" height="112" rx="12" fill="#fff" stroke="#4B739B" stroke-width="1.6"/>
+    <g transform="translate(22,26)" fill="#EAF0F6" stroke="#4B739B" stroke-width="1.4">
+      <path d="M0,6 v40 a14,7 0 0 0 28,0 v-40" fill="#EAF0F6"/><ellipse cx="14" cy="6" rx="14" ry="7" fill="#fff"/>
+      <path d="M0,20 a14,7 0 0 0 28,0 M0,33 a14,7 0 0 0 28,0" fill="none"/>
+    </g>
+    <text x="66" y="34" class="mb" font-size="12">JDBC multi-banco</text>
+    <text x="66" y="54" class="s">por ambiente (DRIVERNAME)</text>
+    <text x="66" y="78" class="m">Postgres · Oracle</text>
+    <text x="66" y="94" class="m">Firebird · MSSQL</text>
+  </g>
+
+  <!-- ============ PASCAL-EXECUTOR + LEGADO ============ -->
+  <text x="882" y="536" text-anchor="middle" class="eye">legado (única peça nativa)</text>
+  <g>
+    <rect x="786" y="556" width="196" height="112" rx="12" fill="#fff" stroke="#B4692A" stroke-width="2"/>
+    <g transform="translate(806,584)" stroke="#B4692A" stroke-width="1.6" fill="#F6ECE0">
+      <rect x="0" y="6" width="14" height="18" rx="2"/><rect x="26" y="6" width="14" height="18" rx="2"/>
+      <path d="M14,15 h12" fill="none"/><path d="M4,6 v-5 M10,6 v-5 M30,6 v-5 M36,6 v-5" fill="none"/>
+    </g>
+    <text x="856" y="586" class="t" font-size="13">pascal-executor <tspan class="m" fill="#B4692A">:8091</tspan></text>
+    <text x="856" y="603" class="s">ponte oserver / JNA</text>
+    <rect x="806" y="628" width="150" height="20" rx="10" fill="#F6ECE0"/>
+    <text x="881" y="642" text-anchor="middle" class="m" fill="#B4692A" font-weight="700">pinado · 1 caixa</text>
+  </g>
+  <!-- pascal-executor -> legado -->
+  <path class="lnk" style="stroke:#B4692A" d="M982,612 L1046,612" marker-end="url(#arrL)"/>
+  <text x="1014" y="602" text-anchor="middle" class="m" fill="#B4692A">fd 6</text>
+
+  <g>
+    <rect x="1050" y="556" width="210" height="112" rx="12" fill="#FBF6EF" stroke="#B4692A" stroke-width="1.5"/>
+    <g transform="translate(1070,582)" stroke="#B4692A" stroke-width="1.5" fill="#fff">
+      <rect x="0" y="0" width="34" height="26" rx="3"/><path d="M6,8 l6,5 l-6,5 M16,18 h10" fill="none" stroke-width="1.6"/>
+    </g>
+    <text x="1116" y="588" class="t" font-size="13">Pascal legado</text>
+    <text x="1116" y="606" class="s">wdoc · wtela · ...</text>
+    <text x="1116" y="640" class="m" fill="#B4692A">socketpair + posix_spawn</text>
+  </g>
+
+  <!-- MIGRATION arrow: legado -> scci-core -->
+  <path d="M1155,556 C1155,520 1150,500 1145,486" fill="none" stroke="#2C7A4B" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arr)" style="marker-end:url(#arrE)"/>
+  <path d="M1155,556 C1155,520 1150,500 1145,486" fill="none" stroke="#2C7A4B" stroke-width="2" stroke-dasharray="7 5"/>
+  <polygon points="1145,484 1150,496 1139,495" fill="#2C7A4B"/>
+  <text x="1250" y="524" text-anchor="middle" class="mb" font-size="11" fill="#2C7A4B">migrando ↑</text>
+  <text x="1250" y="539" text-anchor="middle" class="s" font-size="10">Strangler Fig</text>
+
+  <!-- ============ REDIS ============ -->
+  <text x="605" y="536" text-anchor="middle" class="eye">estado compartilhado</text>
+  <g>
+    <rect x="520" y="556" width="172" height="96" rx="12" fill="#fff" stroke="#C6302B" stroke-width="1.8"/>
+    <g transform="translate(540,578)" fill="#FBE7E6" stroke="#C6302B" stroke-width="1.4">
+      <path d="M0,8 l16,-8 l16,8 l-16,8 z"/><path d="M0,18 l16,8 l16,-8 M0,8 v10 M32,8 v10" fill="none"/>
+    </g>
+    <text x="588" y="586" class="t" font-size="13" fill="#C6302B">Redis</text>
+    <text x="588" y="603" class="s">sessão · compartilhado</text>
+    <text x="530" y="636" class="m">sess:&lt;key&gt; = usuário·SEP·ambiente</text>
+  </g>
+  <!-- redis dotted to launcher & scci-core -->
+  <path class="dot" style="stroke:#C6302B" d="M600,556 C600,470 605,420 606,360"/>
+  <path class="dot" style="stroke:#C6302B" d="M692,584 C760,560 800,520 812,486"/>
+
+  <!-- ============ OBSERVABILIDADE ============ -->
+  <text x="655" y="712" text-anchor="middle" class="eye" fill="#4457B8">observabilidade</text>
+  <!-- dotted from the 3 services to collector -->
+  <path class="dot" style="stroke:#4457B8" d="M560,360 C520,560 520,700 560,752"/>
+  <path class="dot" style="stroke:#4457B8" d="M900,484 C900,650 800,720 772,754"/>
+  <path class="dot" style="stroke:#4457B8" d="M860,668 C820,700 800,730 776,748"/>
+  <text x="516" y="700" class="m" fill="#4457B8">OTLP · métricas + traces</text>
+
+  <!-- OTel collector -->
+  <g>
+    <rect x="540" y="732" width="232" height="86" rx="12" fill="#fff" stroke="#4457B8" stroke-width="2"/>
+    <g transform="translate(560,756)" stroke="#4457B8" stroke-width="1.6" fill="#E7E9F6">
+      <circle cx="14" cy="14" r="13"/><circle cx="14" cy="14" r="5" fill="#4457B8"/>
+      <path d="M14,1 v6 M14,21 v6 M1,14 h6 M21,14 h6" fill="none"/>
+    </g>
+    <text x="600" y="762" class="t" font-size="13" fill="#4457B8">OTel / ADOT</text>
+    <text x="600" y="779" class="s">Collector <tspan class="m">:4318</tspan></text>
+    <text x="600" y="800" class="s">fan-out métricas / traces</text>
+  </g>
+  <!-- collector -> cloudwatch / xray -->
+  <path class="lnk" style="stroke:#4457B8" d="M772,758 L856,742" marker-end="url(#arrI)"/>
+  <path class="lnk" style="stroke:#4457B8" d="M772,792 L856,834" marker-end="url(#arrI)"/>
+
+  <!-- CloudWatch -->
+  <g>
+    <rect x="858" y="712" width="188" height="66" rx="11" fill="#fff" stroke="#4457B8" stroke-width="1.6"/>
+    <g transform="translate(876,730)" stroke="#E8871E" stroke-width="1.8" fill="none">
+      <rect x="0" y="0" width="28" height="28" rx="5" fill="#FDF1E3" stroke="#E8871E" stroke-width="1.4"/>
+      <path d="M5,20 l6,-8 l5,5 l7,-11" stroke="#E8871E"/>
+    </g>
+    <text x="914" y="738" class="mb" font-size="12">Amazon CloudWatch</text>
+    <text x="914" y="756" class="s">métricas · dashboards</text>
+  </g>
+  <!-- X-Ray -->
+  <g>
+    <rect x="858" y="790" width="188" height="66" rx="11" fill="#fff" stroke="#4457B8" stroke-width="1.6"/>
+    <g transform="translate(876,808)" stroke="#8C4FCF" stroke-width="1.5" fill="#fff">
+      <rect x="0" y="0" width="28" height="28" rx="5" fill="#F3ECFA" stroke="#8C4FCF" stroke-width="1.4"/>
+      <circle cx="7" cy="9" r="2.6" fill="#8C4FCF"/><circle cx="21" cy="7" r="2.6" fill="#8C4FCF"/><circle cx="15" cy="21" r="2.6" fill="#8C4FCF"/>
+      <path d="M9,10 l10,-2 M8,11 l6,9 M20,9 l-4,10" fill="none"/>
+    </g>
+    <text x="914" y="816" class="mb" font-size="12">AWS X-Ray</text>
+    <text x="914" y="834" class="s">traces · service map</text>
+  </g>
+  <text x="1066" y="784" class="m" fill="#8B95A5">logs JSON (logstash)</text>
+  <text x="1066" y="800" class="m" fill="#8B95A5">→ CloudWatch Logs</text>
+
+  <!-- ============ COMMON band ============ -->
+  <rect x="34" y="904" width="1180" height="72" rx="12" fill="#fff" stroke="#6C7A93" stroke-width="1.6"/>
+  <rect x="34" y="904" width="6" height="72" rx="3" fill="#6C7A93"/>
+  <text x="58" y="932" class="t" fill="#41495A">common — bibliotecas técnicas <tspan class="s" font-weight="400">(in-process, sem regra de negócio)</tspan></text>
+  <text x="58" y="956" class="m">crypto (W_COP) · environment (launcherenv + JDBC) · contract</text>
+  <text x="1090" y="946" class="eye" text-anchor="end">usada por launcher · scci-core · pascal-executor</text>
+</svg>
