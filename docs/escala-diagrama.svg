@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1560 660" xmlns="http://www.w3.org/2000/svg" font-family="ui-sans-serif, Segoe UI, sans-serif">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5A6577"/>
+    </marker>
+    <marker id="arrE" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0F7E8A"/>
+    </marker>
+    <marker id="arrL" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#B4692A"/>
+    </marker>
+    <marker id="arrI" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4457B8"/>
+    </marker>
+    <style>
+      .t{font-size:14px;font-weight:700;fill:#161B22}
+      .s{font-size:11px;fill:#5A6577}
+      .m{font-family:ui-monospace,Consolas,monospace;font-size:10.5px;fill:#5A6577}
+      .mb{font-family:ui-monospace,Consolas,monospace;font-size:12px;font-weight:700;fill:#161B22}
+      .eye{font-family:ui-monospace,Consolas,monospace;font-size:10px;letter-spacing:.12em;
+        text-transform:uppercase;fill:#8B95A5;font-weight:700}
+      .lnk{fill:none;stroke:#5A6577;stroke-width:1.6}
+      .dot{fill:none;stroke:#8B95A5;stroke-width:1.4;stroke-dasharray:2 4}
+    </style>
+  </defs>
+  <rect x="0" y="0" width="1560" height="660" fill="#F3F5F8"/>
+
+  <!-- callout -->
+  <rect x="34" y="30" width="1492" height="92" rx="12" fill="#fff" stroke="#0F7E8A" stroke-width="1.5"/>
+  <rect x="34" y="30" width="6" height="92" rx="3" fill="#0F7E8A"/>
+  <text x="58" y="58" class="t" font-size="15">Preciso escalar tudo junto? <tspan fill="#0F7E8A">Não.</tspan></text>
+  <text x="58" y="80" class="s" font-size="12.5"><tspan fill="#161B22" font-weight="700">launcher</tspan> e <tspan fill="#161B22" font-weight="700">scci-core</tspan> são stateless → escalam <tspan font-weight="700">independentes</tspan>, cada um pela própria carga. Qualquer launcher fala com qualquer scci-core (LB interno).</text>
+  <text x="58" y="102" class="s" font-size="12.5"><tspan fill="#161B22" font-weight="700">pascal-executor</tspan> é <tspan fill="#B4692A" font-weight="700">pinado</tspan> ao host com os binários Pascal + <tspan class="m">ambiente/</tspan> — 1 por caixa, não escala livre, e encolhe com a migração.</text>
+
+  <!-- NLB ext -->
+  <text x="150" y="176" text-anchor="middle" class="eye">edge · escala 1..N</text>
+  <g><rect x="40" y="250" width="80" height="54" rx="9" fill="#fff" stroke="#5A6577" stroke-width="1.5"/>
+     <text x="80" y="282" text-anchor="middle" class="mb" font-size="11">NLB</text></g>
+
+  <!-- launcher replicas -->
+  <g fill="#fff" stroke="#0F7E8A">
+    <rect x="160" y="196" width="180" height="52" rx="10" stroke-width="2"/>
+    <rect x="160" y="256" width="180" height="52" rx="10" stroke-width="2"/>
+    <rect x="160" y="316" width="180" height="52" rx="10" stroke-width="1.4" stroke-dasharray="5 4" fill="#EAF6F7"/>
+  </g>
+  <text x="250" y="227" text-anchor="middle" class="mb" fill="#0F7E8A">launcher #1</text>
+  <text x="250" y="287" text-anchor="middle" class="mb" fill="#0F7E8A">launcher #2</text>
+  <text x="250" y="347" text-anchor="middle" class="m" fill="#0F7E8A">+N réplicas</text>
+  <path class="lnk" style="stroke:#0F7E8A" d="M120,270 L156,222" marker-end="url(#arrE)"/>
+  <path class="lnk" style="stroke:#0F7E8A" d="M120,277 L156,282" marker-end="url(#arrE)"/>
+  <path class="lnk" style="stroke:#0F7E8A" d="M120,284 L156,340" marker-end="url(#arrE)"/>
+  <text x="250" y="392" text-anchor="middle" class="s">carga de transporte (W_COP, sessão)</text>
+
+  <!-- LB interno -->
+  <g><rect x="392" y="238" width="96" height="120" rx="10" fill="#EEF1F5" stroke="#5A6577" stroke-width="1.5"/>
+     <text x="440" y="292" text-anchor="middle" class="mb" font-size="11">LB / service</text>
+     <text x="440" y="310" text-anchor="middle" class="s" font-size="10">interno</text>
+     <text x="440" y="326" text-anchor="middle" class="s" font-size="10">any → any</text></g>
+  <path class="lnk" d="M340,222 L388,268" marker-end="url(#arr)"/>
+  <path class="lnk" d="M340,282 L388,290" marker-end="url(#arr)"/>
+  <path class="lnk" d="M340,342 L388,320" marker-end="url(#arr)"/>
+
+  <!-- scci-core replicas -->
+  <text x="642" y="176" text-anchor="middle" class="eye">domínios · escala 1..M</text>
+  <g fill="#fff" stroke="#2C7A4B">
+    <rect x="540" y="214" width="200" height="52" rx="10" stroke-width="2"/>
+    <rect x="540" y="274" width="200" height="52" rx="10" stroke-width="2"/>
+    <rect x="540" y="334" width="200" height="52" rx="10" stroke-width="1.4" stroke-dasharray="5 4" fill="#EEF6F1"/>
+  </g>
+  <text x="640" y="245" text-anchor="middle" class="mb" fill="#2C7A4B">scci-core #1</text>
+  <text x="640" y="305" text-anchor="middle" class="mb" fill="#2C7A4B">scci-core #2</text>
+  <text x="640" y="365" text-anchor="middle" class="m" fill="#2C7A4B">+M réplicas</text>
+  <path class="lnk" style="stroke:#2C7A4B" d="M488,270 L536,240" marker-end="url(#arrE)"/>
+  <path class="lnk" style="stroke:#2C7A4B" d="M488,290 L536,300" marker-end="url(#arrE)"/>
+  <path class="lnk" style="stroke:#2C7A4B" d="M488,320 L536,356" marker-end="url(#arrE)"/>
+  <text x="640" y="410" text-anchor="middle" class="s">carga de negócio · <tspan fill="#2C7A4B" font-weight="700">independente do launcher</tspan></text>
+
+  <!-- pascal-executor host (pinned) -->
+  <text x="1035" y="176" text-anchor="middle" class="eye" fill="#B4692A">legado · pinado</text>
+  <rect x="868" y="196" width="336" height="196" rx="14" fill="#FBF6EF" stroke="#B4692A" stroke-width="1.6" stroke-dasharray="7 4"/>
+  <text x="888" y="220" class="m" fill="#B4692A">host legado (caixa do Pascal)</text>
+  <rect x="888" y="232" width="200" height="52" rx="10" fill="#fff" stroke="#B4692A" stroke-width="2"/>
+  <text x="988" y="255" text-anchor="middle" class="mb" fill="#B4692A">pascal-executor</text>
+  <text x="988" y="272" text-anchor="middle" class="s" font-size="10">:8091 · JNA/oserver</text>
+  <rect x="888" y="298" width="296" height="46" rx="9" fill="#fff" stroke="#B4692A" stroke-width="1.2"/>
+  <text x="900" y="318" class="m" fill="#5A6577">binários Pascal + ambiente/ (disco local)</text>
+  <text x="900" y="334" class="m" fill="#5A6577">→ prende o executor a esta caixa</text>
+  <text x="888" y="372" class="mb" font-size="11" fill="#B4692A">1 por caixa · NÃO escala livre · encolhe</text>
+  <!-- launcher -> pascal-executor -->
+  <path class="lnk" style="stroke:#B4692A" d="M340,300 C560,300 720,258 864,252" marker-end="url(#arrL)"/>
+  <text x="600" y="290" text-anchor="middle" class="m" fill="#B4692A">REST (execução Pascal)</text>
+
+  <!-- shared state band -->
+  <rect x="160" y="470" width="1044" height="76" rx="12" fill="#fff" stroke="#6C7A93" stroke-width="1.5"/>
+  <g transform="translate(184,486)" fill="#FBE7E6" stroke="#C6302B" stroke-width="1.3">
+    <path d="M0,7 l14,-7 l14,7 l-14,7 z"/><path d="M0,16 l14,7 l14,-7 M0,7 v9 M28,7 v9" fill="none"/>
+  </g>
+  <text x="228" y="500" class="mb" font-size="12" fill="#C6302B">Redis</text>
+  <g transform="translate(300,484)" fill="#EAF0F6" stroke="#4B739B" stroke-width="1.3">
+    <path d="M0,5 v22 a11,5 0 0 0 22,0 v-22" /><ellipse cx="11" cy="5" rx="11" ry="5" fill="#fff"/>
+  </g>
+  <text x="336" y="500" class="mb" font-size="12" fill="#4B739B">bancos</text>
+  <text x="420" y="500" class="t" font-size="13">estado compartilhado</text>
+  <text x="420" y="522" class="s" font-size="12">é o que permite N réplicas <tspan font-weight="700">sem afinidade de sessão</tspan> — qualquer réplica atende qualquer usuário.</text>
+  <text x="420" y="540" class="s" font-size="11">(o pascal-executor não entra aqui: seu "estado" são os arquivos em disco, por isso fica pinado)</text>
+  <path class="dot" style="stroke:#C6302B" d="M250,368 C250,420 250,450 300,470"/>
+  <path class="dot" style="stroke:#C6302B" d="M640,386 C640,430 600,455 560,470"/>
+
+  <!-- mini legend -->
+  <text x="1240" y="474" class="eye">como ler</text>
+  <g font-size="11" transform="translate(1240,486)">
+    <rect x="0" y="4" width="70" height="20" rx="6" fill="#fff" stroke="#2C7A4B"/><text x="80" y="18" fill="#5A6577">= 1 réplica</text>
+    <rect x="0" y="30" width="70" height="20" rx="6" fill="#fff" stroke="#2C7A4B" stroke-dasharray="4 3"/><text x="80" y="44" fill="#5A6577">= mais réplicas (escala)</text>
+    <rect x="0" y="56" width="70" height="20" rx="6" fill="#FBF6EF" stroke="#B4692A" stroke-dasharray="6 3"/><text x="80" y="70" fill="#5A6577">= host pinado (1 caixa)</text>
+  </g>
+</svg>
