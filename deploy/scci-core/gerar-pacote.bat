@@ -3,11 +3,11 @@ setlocal
 set "NOPAUSE=%~1"
 echo ===============================================
 echo  Gerador de pacote - SCCI-CORE (8090, interno)
-echo  (empacota o scci-core-bootstrap; JDK 21 embutido)
+echo  (empacota o scci-core/bootstrap; JDK 21 embutido)
 echo ===============================================
 set "HERE=%~dp0"
 set "ROOT=%HERE%..\.."
-set "BOOT=%ROOT%\scci-core\scci-core-bootstrap"
+set "BOOT=%ROOT%\scci-core\bootstrap"
 set "DIST=%HERE%dist"
 set "TGZ=%HERE%scci-core.tar.gz"
 rem -- reusa o JRE ja baixado (mesmo cache do launcher) --

@@ -304,5 +304,5 @@ por operação** acontece **dentro do programa** (`UsuarioTemPerm(getenv('USER')
 | **OTel Collector** (`otel`) | Métricas + traces (OTLP); pronto p/ AWS (EMF/X-Ray comentados) |
 | **Banco (multi-banco)** (por ambiente) | Base real por ambiente via `launcherenv.ini`: **PostgreSQL · Firebird · Oracle · SQL Server** (driver por `DRIVERNAME`). Queries ANSI-padrão/parametrizadas (sem `NOW()`/`SYSDATE`/`TOP`/`LIMIT`/`::`) — portáveis. Só Postgres validado ao vivo; os demais driver+query prontos |
 
-Build: `mvn -q clean package` → `launcher-bootstrap/target/launcher.jar`. Deploy: `deploy/`
+Build: `mvn -q clean package` → `launcher/bootstrap/target/launcher.jar`. Deploy: `deploy/`
 (envia o jar + `kong.yml`, sobe via `run.sh 8083`, JDK 21 embutido, sem cron).

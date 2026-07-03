@@ -28,11 +28,11 @@
   <description>Monólito modular (DDD) da plataforma SCCI — domínios em Java, escalável</description>
 
   <modules>
-    <module>scci-core-kernel</module>
-    <module>scci-core-notificacao</module>
-    <module>scci-core-acesso</module>
-    <module>scci-core-sessao</module>
-    <module>scci-core-documentos</module>
-    <module>scci-core-bootstrap</module>
+    <module>kernel</module>
+    <module>notificacao</module>
+    <module>acesso</module>
+    <module>sessao</module>
+    <module>documentos</module>
+    <module>bootstrap</module>
   </modules>
 </project>

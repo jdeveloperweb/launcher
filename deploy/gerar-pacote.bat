@@ -3,11 +3,11 @@ setlocal
 set "NOPAUSE=%~1"
 echo ===============================================
 echo  Gerador de pacote - Launcher HEXAGONAL (8083)
-echo  (empacota o launcher-bootstrap; JDK 21 embutido)
+echo  (empacota o launcher/bootstrap; JDK 21 embutido)
 echo ===============================================
 set "HERE=%~dp0"
 set "ROOT=%HERE%.."
-set "BOOT=%ROOT%\launcher-bootstrap"
+set "BOOT=%ROOT%\launcher\bootstrap"
 set "DIST=%HERE%dist"
 set "TGZ=%HERE%launcher.tar.gz"
 rem -- reusa o JRE ja baixado (cache do pipeline legado, agora em legacy/) --

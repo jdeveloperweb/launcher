@@ -32,12 +32,8 @@
     p/ o scci-core atrás de feature-flag (roteador). Ver docs/ e DECISOES-ADR.md.
   -->
   <modules>
-    <module>launcher-domain</module>
-    <module>launcher-application</module>
-    <module>launcher-adapters-in</module>
-    <module>launcher-adapters-out</module>
-    <module>launcher-bootstrap</module>
     <module>comum</module>
+    <module>launcher</module>
     <module>scci-core</module>
   </modules>
 

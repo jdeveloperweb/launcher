@@ -8,11 +8,12 @@
     <groupId>com.prognum</groupId>
     <artifactId>launcher-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>launcher-adapters-in</artifactId>
-  <name>launcher-adapters-in</name>
-  <description>Adapters de entrada (driving): controllers REST, DTOs, filtros e crypto de borda (W_COP).</description>
+  <artifactId>launcher-application</artifactId>
+  <name>launcher-application</name>
+  <description>Casos de uso (impl dos ports-in) que orquestram os ports-out. Java puro (sem Spring web/JDBC).</description>
 
   <dependencies>
     <dependency>
@@ -21,15 +22,12 @@
     </dependency>
     <dependency>
       <groupId>com.prognum</groupId>
-      <artifactId>launcher-application</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.prognum</groupId>
       <artifactId>launcher-domain</artifactId>
     </dependency>
+    <!-- Logs estruturados (apenas helper de logging, nao framework). -->
     <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
     </dependency>
     <dependency>
       <groupId>net.logstash.logback</groupId>
