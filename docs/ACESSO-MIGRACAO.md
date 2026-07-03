@@ -115,6 +115,15 @@ front → Kong → launcher (EDGE)                         scci-core (interno, e
   usuário inexistente → `{"sucesso":false,"codErro":"F"}` (conexão + query na base de usuários OK). Launcher
   local **intacto** (fallback). Falta: `MAPEADO_*` (família B), senha, email-pwd, valida-acesso.
 
+- ✅ **Fase 2 (sessão)** — copiado o ciclo de vida p/ `com.prognum.scci.sessao.*`: `SessaoService`
+  (cache Redis + SCCI_SESSION), `RedisRepositorioSessao`, `SccSessionRepository` + `SessaoInternoController`
+  (`POST /interno/sessao`, `GET /validar|/contar|/{key}`, `DELETE /{key}`) + wiring. **Contrato do Redis
+  compartilhado fixado:** `sess:<key>` + `SEP = (char) 1` (SOH/U+0001, = ao byte do launcher; ASCII no fonte,
+  sem byte invisível). `SessaoServiceTest` verde. **Validado ao vivo:** register→consult→encerrar OK +
+  **prova cruzada** — o **gate do launcher (8083) leu a sessão escrita pelo scci-core (8090)** no mesmo Redis
+  (sem E004), confirmando serialização idêntica entre os dois processos. Gate slim no launcher e consolidação
+  numa classe única ficam p/ a Fase 4.
+
 ## Ordem sugerida de execução
 `Fase 0 → 1 (login) → validar login isolado → 2 (sessão) → validar gate → 3 (edge/flag) → 4 (promover+limpar)`.
 Depois: `/w/password`, `/w/email-pwd`, `/w/valida-acesso` (mesma mecânica, um de cada vez).

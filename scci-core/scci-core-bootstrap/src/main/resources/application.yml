@@ -21,6 +21,8 @@ scci:
     tentativas-ttl-segundos: 900
     # metodos:                          # trecho-do-ambiente -> METODO (default: BANCO/loginbd)
     #   c6bank: OAUTH
+  sessao:
+    ttl-segundos: 1800                  # TTL do cache sess: (== launcher.sessao.ttl-segundos, Redis compartilhado)
 
 management:
   endpoints:
