@@ -69,9 +69,10 @@ front → Kong → launcher (EDGE)                         scci-core (interno, e
 - `scci-core` passa a **criar** a sessão no login (Redis + `SCCI_SESSION`) e a **encerrar** no logout.
 - No **launcher**, deixar um validador de sessão **slim, read-only** sobre o **mesmo Redis**
   (`GateSessaoRedis`) — mesma chave/serialização da Fase 0. É o gate por-request (sem hop).
-- **Decisão a bater:** no **miss** de Redis (sessão expirada/evccionada), o gate (a) **rejeita** →
-  re-login (simples, recomendado; TTL 1800s cobre o caso comum) ou (b) faz **1 REST**
-  `/interno/sessao/validar` p/ o fallback `SCCI_SESSION`. Recomendo **(a)** com **(b)** atrás de flag.
+- **Decisão (batida):** no **miss** de Redis (sessão expirada/evccionada), o gate **rejeita → re-login**
+  (simples, sem hop, TTL 1800s cobre o caso comum). O fallback `SCCI_SESSION` (1 REST
+  `/interno/sessao/validar`) fica **atrás de flag** (`sessao.fallback-scci-session`), desligado por padrão,
+  pra ligar em cenários como restart do Redis.
 - **Risco:** médio — a consistência Redis entre 2 processos é o ponto sensível (Fase 0 mitiga).
 
 ### Fase 3 — Launcher vira EDGE (cliente REST + flag)
@@ -102,6 +103,17 @@ front → Kong → launcher (EDGE)                         scci-core (interno, e
 5. **W_COP fica no edge**: a chave AES/contexto é config do launcher; o scci-core recebe texto pela rede interna (confiável). Se precisar, mTLS interno.
 6. **Ir ao ar por cliente** exige endpoint/credenciais **daquele** cliente (não extrapolar de um ambiente para outro).
 7. **Produção `/aejs` (launcher Pascal) intocada** — tudo no trilho paralelo `/aejs-l` (8083) + scci-core (8090).
+
+## Progresso
+
+- ✅ **Fase 0** — módulos `scci-core-acesso`/`sessao` ligados (poms/deps: web, data-redis, security-crypto,
+  commons-codec, logstash); Redis + `scci.auth.*` no bootstrap; serialização da sessão = **reusar a classe**
+  `RedisRepositorioSessao` (chave `sess:<key>`, valor `usuarioambiente`, TTL 1800s) — sem reimplementar.
+- ✅ **Fase 1 (login BANCO)** — copiada a fatia `login BANCO` p/ `com.prognum.scci.acesso.*`
+  (domínio/aplicação/adaptadores) + `AcessoInternoController` (`POST /interno/acesso/login`, sem W_COP) +
+  `AcessoWiringConfig`. `LoginServiceTest` verde. **Validado ao vivo (scat112934, read-only):** endpoint UP,
+  usuário inexistente → `{"sucesso":false,"codErro":"F"}` (conexão + query na base de usuários OK). Launcher
+  local **intacto** (fallback). Falta: `MAPEADO_*` (família B), senha, email-pwd, valida-acesso.
 
 ## Ordem sugerida de execução
 `Fase 0 → 1 (login) → validar login isolado → 2 (sessão) → validar gate → 3 (edge/flag) → 4 (promover+limpar)`.

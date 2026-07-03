@@ -4,6 +4,23 @@ server:
 spring:
   application:
     name: scci-core
+  data:
+    redis:                              # MESMO Redis do launcher (contador de tentativas att:, sessao sess:)
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+
+# Contexto ACESSO (login). Espelha launcher.auth.* (os @Value ja tem estes defaults).
+scci:
+  auth:
+    login-err-delay-ms: 1000
+    max-erros: 5
+    max-erros-captcha: 3
+    captcha-habilitado: true
+    dias-aviso-expiracao: 5
+    tentativas-ttl-segundos: 900
+    # metodos:                          # trecho-do-ambiente -> METODO (default: BANCO/loginbd)
+    #   c6bank: OAUTH
 
 management:
   endpoints:
@@ -14,5 +31,6 @@ management:
     health:
       probes:
         enabled: true
-
-# Config dos contextos (banco/redis/etc.) entra nas fases de migracao.
+  health:
+    redis:
+      enabled: false                    # Redis lazy: nao derruba o health se estiver fora no boot
