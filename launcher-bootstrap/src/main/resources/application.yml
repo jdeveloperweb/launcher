@@ -29,12 +29,14 @@ launcher:
   # feature-flag do modulo aponta JAVA; senao executa o programa Pascal (wdoc/wtela/...).
   scci-core:
     url: ${SCCI_CORE_URL:http://localhost:8090}
-  # Feature-flags do Strangler (ConfigFeatureRegistry). Sem entrada = PASCAL (executa o binario).
-  # Ligue 'documentos' p/ o DOWNLOAD de documento rodar no scci-core (Java, escalavel). Upload/relatorio
-  # seguem Pascal de qualquer forma (nao migrados). Override por metodo com 'documentos.<Metodo>'.
+  # Feature-flags do Strangler (ConfigFeatureRegistry -> mapa 'flags'). Sem entrada = PASCAL (executa o
+  # binario). A chave e o NOME consultado pelo roteador: 'documentos.<Metodo>' (override por metodo) ou
+  # 'documentos' (default do dominio). Chave com ponto -> notacao de colchetes '[...]' (bind do Spring).
+  # Resiliencia: se o scci-core estiver fora, o cliente cai no Pascal automaticamente.
   roteamento:
-    # documentos: { habilitado: true }              # todo o download de documento -> scci-core
-    # documentos.GetDocumento: { habilitado: true }  # so este metodo -> scci-core
+    flags:
+      "[documentos.GetDocumento]": { habilitado: true }   # GetDocumento (por ID) -> scci-core (Java). VALIDADO ao vivo.
+      # "[documentos]": { habilitado: true }               # ligaria TODO o dominio (download + upload) -> Java
   sessao:
     ttl-segundos: 1800              # TTL da sessao no Redis (cache do VALIDA)
   legacy:
