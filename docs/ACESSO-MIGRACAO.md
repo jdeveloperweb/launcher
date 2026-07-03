@@ -136,6 +136,14 @@ front → Kong → launcher (EDGE)                         scci-core (interno, e
   fiel ao loginbd). Reaproveitável por qualquer contexto (acesso usa na recuperação de senha; documentos/
   alertas podem usar). Regra DDD mantida: contexto não referencia entidade de outro, só a porta.
 
+- ✅ **Fase 3 (edge, CÓDIGO)** — launcher vira edge do `acesso`: `AcessoJavaPort` (port out) +
+  `ClienteScciCoreAcesso` (RestClient p/ `/interno/acesso/*`, resiliente: scci-core fora → vazio → local) +
+  4 roteadores (`RoteadorLogin/TrocarSenha/RecuperarSenha/ValidarAcesso`) decorando os serviços LOCAIS por
+  flag `acesso.<metodo>` → `acesso` → LOCAL. Wiring no `WiringConfig` (envolve os locais). Flags no
+  `application.yml` **OFF por padrão** (login segue local até promover). `RoteadorLoginTest` verde
+  (off→local / on→scci / scci-fora→fallback). **Sem deploy ainda** — o redeploy do launcher (10s de downtime
+  no /aejs-l) fica p/ quando o ambiente estiver livre; comportamento inalterado até ligar a flag.
+
 ## Ordem sugerida de execução
 `Fase 0 → 1 (login) → validar login isolado → 2 (sessão) → validar gate → 3 (edge/flag) → 4 (promover+limpar)`.
 Depois: `/w/password`, `/w/email-pwd`, `/w/valida-acesso` (mesma mecânica, um de cada vez).

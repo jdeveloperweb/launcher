@@ -32,6 +32,11 @@ import com.prognum.launcher.autenticacao.port.out.SessaoPersistente;
 import com.prognum.launcher.autenticacao.port.out.SenhaRepository;
 import com.prognum.launcher.autenticacao.port.out.ValidacaoAcessoRepository;
 import com.prognum.launcher.autenticacao.port.out.VerificadorSenha;
+import com.prognum.launcher.autenticacao.port.out.AcessoJavaPort;
+import com.prognum.launcher.autenticacao.RoteadorLogin;
+import com.prognum.launcher.autenticacao.RoteadorTrocarSenha;
+import com.prognum.launcher.autenticacao.RoteadorRecuperarSenha;
+import com.prognum.launcher.autenticacao.RoteadorValidarAcesso;
 import com.prognum.comum.cripto.WcopCrypto;
 import com.prognum.comum.ambiente.LauncherEnvReader;
 import com.prognum.comum.ambiente.JdbcConnectionFactory;
@@ -145,23 +150,30 @@ public class WiringConfig {
     @Bean
     LoginUseCase loginService(
             java.util.List<Autenticador> autenticadores, MetodoLoginResolver resolver, ContadorTentativas attempts,
+            AcessoJavaPort acessoJava, com.prognum.launcher.roteamento.port.out.FeatureRegistry flags,
             @Value("${launcher.auth.login-err-delay-ms:1000}") long delayMs,
             @Value("${launcher.auth.max-erros:5}") int maxErros,
             @Value("${launcher.auth.max-erros-captcha:3}") int maxErrosCaptcha,
             @Value("${launcher.auth.captcha-habilitado:true}") boolean captchaHabilitado) {
-        return new LoginService(autenticadores, resolver, attempts, delayMs, maxErros,
+        // Strangler: flag acesso.Login -> scci-core (acessoJava); senao o login LOCAL (fallback).
+        var local = new LoginService(autenticadores, resolver, attempts, delayMs, maxErros,
                 maxErrosCaptcha, captchaHabilitado);
+        return new RoteadorLogin(local, acessoJava, flags);
     }
 
     @Bean
-    TrocarSenhaUseCase trocarSenhaService(SenhaRepository repo, VerificadorSenha verificador, PasswordPolicy policy) {
-        return new TrocarSenhaService(repo, verificador, policy);
+    TrocarSenhaUseCase trocarSenhaService(SenhaRepository repo, VerificadorSenha verificador, PasswordPolicy policy,
+            AcessoJavaPort acessoJava, com.prognum.launcher.roteamento.port.out.FeatureRegistry flags) {
+        var local = new TrocarSenhaService(repo, verificador, policy);
+        return new RoteadorTrocarSenha(local, acessoJava, flags);
     }
 
     @Bean
     RecuperarSenhaUseCase recuperarSenhaService(RecuperacaoSenhaRepository repo, VerificadorSenha verificador,
-                                                EnvioEmail email) {
-        return new RecuperarSenhaService(repo, verificador, email);
+            EnvioEmail email, AcessoJavaPort acessoJava,
+            com.prognum.launcher.roteamento.port.out.FeatureRegistry flags) {
+        var local = new RecuperarSenhaService(repo, verificador, email);
+        return new RoteadorRecuperarSenha(local, acessoJava, flags);
     }
 
     @Bean
@@ -170,8 +182,10 @@ public class WiringConfig {
     }
 
     @Bean
-    ValidarAcessoUseCase validacaoAcessoService(ValidacaoAcessoRepository repo) {
-        return new ValidacaoAcessoService(repo);
+    ValidarAcessoUseCase validacaoAcessoService(ValidacaoAcessoRepository repo,
+            AcessoJavaPort acessoJava, com.prognum.launcher.roteamento.port.out.FeatureRegistry flags) {
+        var local = new ValidacaoAcessoService(repo);
+        return new RoteadorValidarAcesso(local, acessoJava, flags);
     }
 
     // ---- casos de uso (execucao) ----

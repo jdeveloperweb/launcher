@@ -37,6 +37,12 @@ launcher:
     flags:
       "[documentos.GetDocumento]": { habilitado: true }   # GetDocumento (por ID) -> scci-core (Java). VALIDADO ao vivo.
       # "[documentos]": { habilitado: true }               # ligaria TODO o dominio (download + upload) -> Java
+      # --- acesso (login/senha/etc -> scci-core). OFF por padrao = auth LOCAL. Resiliencia: scci-core fora -> local.
+      # "[acesso.Login]": { habilitado: true }             # /w/login -> scci-core (acesso)
+      # "[acesso.TrocaSenha]": { habilitado: true }        # /w/password
+      # "[acesso.EmailPwd]": { habilitado: true }          # /w/email-pwd
+      # "[acesso.ValidaAcesso]": { habilitado: true }      # /w/valida-acesso
+      # "[acesso]": { habilitado: true }                   # ligaria TODO o dominio acesso -> scci-core
   sessao:
     ttl-segundos: 1800              # TTL da sessao no Redis (cache do VALIDA)
   legacy:
