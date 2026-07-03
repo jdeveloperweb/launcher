@@ -101,6 +101,46 @@ Regra DDD: um contexto só referencia a **porta** do outro, nunca a entidade.
 
 ---
 
+## Papel de cada peça
+
+### `launcher` — a borda (edge / gateway)
+**Papel:** ser o **único ponto de entrada** e um **tradutor/orquestrador** — recebe o mundo do front e
+decide para onde vai cada chamada. É deliberadamente **fino**.
+
+- **Faz:** termina o protocolo **W_COP** (decifra request / cifra resposta); mantém o **gate de sessão**
+  (valida o token lendo o Redis a cada requisição); **decide por feature-flag** quem atende
+  (`scci-core` ou `pascal-executor`) e **delega**; expõe os canais do front (`/w/*`, `/sccidoc`).
+- **Não faz:** **regra de negócio** (nenhuma), acesso a banco de domínio, nem código **nativo/JNA** — é
+  Java puro. Se um backend cair, aplica _fallback_.
+
+### `scci-core` — o cérebro (domínios em Java)
+**Papel:** ser o **dono da regra de negócio** migrada. Um **monólito modular** onde cada _bounded
+context_ (`acesso`, `sessao`, `documentos`, `notificacao`) encapsula suas regras, dados e portas.
+
+- **Faz:** autentica (login/senha/família B), gerencia o ciclo de sessão, lê/grava documentos
+  (FileSystem + BLOB), envia notificações; abre as conexões **JDBC multi-banco** por ambiente.
+- **Não faz:** transporte W_COP nem roteamento do front — ele só é chamado (REST interno) pelo edge.
+  **Stateless** → escala em N réplicas.
+
+### `pascal-executor` — a âncora legada
+**Papel:** **isolar tudo que ainda é Pascal/nativo** num só lugar. É a ponte para o mundo legado, que
+**encolhe** conforme os domínios migram — até poder ser **desligado**.
+
+- **Faz:** a ponte **oserver/JNA** (`socketpair` + `posix_spawn` no fd 6) que **spawna os programas "w"**
+  (wdoc, wtela, …) e fala o protocolo de blocos do oserver; expõe isso por REST interno.
+- **Não faz:** nenhuma regra nova — só executa o binário Pascal real. É o **único** módulo com JNA;
+  fica **pinado** à caixa onde estão os binários + `ambiente/` + oserver.
+
+### `common` — as ferramentas compartilhadas
+**Papel:** guardar as **capacidades técnicas** que os apps usam **in-process**, sem regra de domínio —
+para não duplicar entre launcher e scci-core.
+
+- **Faz:** `crypto` (W_COP: AES no request, XOR na resposta); `environment` (lê o `launcherenv.ini` e
+  monta a conexão JDBC por `DRIVERNAME`); `contract` (contratos compartilhados).
+- **Não faz:** nada de negócio nem de transporte — é **biblioteca** (jar), não um serviço.
+
+---
+
 ## Stack
 
 | Camada | Tecnologia |
@@ -158,6 +198,20 @@ launcher:
       "[documentos.GetDocumento]": { habilitado: true }   # download por ID -> scci-core
       "[acesso.Login]":            { habilitado: true }   # /w/login       -> scci-core
 ```
+
+A chave é o **nome consultado** pelo roteador: `dominio.<Metodo>` (override por método) **vence**
+`dominio` (default do domínio); sem entrada = **legado**.
+
+### Exemplos já aplicados (validados ao vivo)
+
+| Flag | Estado | Roteia | Validação |
+| --- | --- | --- | --- |
+| `documentos.GetDocumento` | **ON** | download de documento por ID → `scci-core` | PDF **byte-idêntico** ao legado (FileSystem + zlib) |
+| `acesso.Login` | **ON** | `/w/login` → `scci-core/acesso` | login real (supervisor) autenticado + sessão validada pelo gate |
+| _execução Pascal_ | **fixo** | **sempre** via `pascal-executor` | não é mais flag — launcher virou Java puro |
+
+Disponíveis, ainda **em legado** (é só ligar quando validar): `acesso.TrocaSenha`, `acesso.EmailPwd`,
+`acesso.ValidaAcesso`, `documentos.PostDocumento`, ou o domínio inteiro (`documentos`, `acesso`).
 
 A flag carrega um campo `percentual`, então a evolução natural é **canary / rollout gradual**
 (10% → 50% → 100%) ou decisão **por ambiente/cliente** — mudando só o roteador.
