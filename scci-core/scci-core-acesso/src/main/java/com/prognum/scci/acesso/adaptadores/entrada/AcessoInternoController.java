@@ -1,5 +1,9 @@
 package com.prognum.scci.acesso.adaptadores.entrada;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,6 +31,8 @@ import com.prognum.scci.acesso.dominio.port.in.ValidarAcessoUseCase;
 @RestController
 public class AcessoInternoController {
 
+    private static final Logger log = LoggerFactory.getLogger(AcessoInternoController.class);
+
     private final LoginUseCase login;
     private final TrocarSenhaUseCase trocarSenha;
     private final RecuperarSenhaUseCase recuperarSenha;
@@ -42,17 +48,27 @@ public class AcessoInternoController {
 
     @PostMapping("/interno/acesso/login")
     public ResponseEntity<ResultadoLogin> login(@RequestBody LoginRequest req) {
-        return ResponseEntity.ok(login.login(req.usuario(), req.senha(), req.ambiente(), req.ip()));
+        ResultadoLogin r = login.login(req.usuario(), req.senha(), req.ambiente(), req.ip());
+        // observabilidade: NUNCA loga senha; so usuario/ambiente/estado
+        log.info("acesso_login", kv("usuario", req.usuario()), kv("ambiente", req.ambiente()),
+                kv("sucesso", r.sucesso()), kv("codErro", String.valueOf(r.codErro())));
+        return ResponseEntity.ok(r);
     }
 
     @PostMapping("/interno/acesso/senha")
     public ResponseEntity<ResultadoTroca> senha(@RequestBody TrocaSenhaRequest req) {
-        return ResponseEntity.ok(trocarSenha.trocar(req.usuario(), req.senhaAtual(), req.novaSenha(), req.ambiente()));
+        ResultadoTroca r = trocarSenha.trocar(req.usuario(), req.senhaAtual(), req.novaSenha(), req.ambiente());
+        log.info("acesso_senha", kv("usuario", req.usuario()), kv("ambiente", req.ambiente()),
+                kv("sucesso", r.sucesso()));
+        return ResponseEntity.ok(r);
     }
 
     @PostMapping("/interno/acesso/email-pwd")
     public ResponseEntity<ResultadoTroca> emailPwd(@RequestBody RecuperacaoRequest req) {
-        return ResponseEntity.ok(recuperarSenha.recuperar(req.usuario(), req.cpf(), req.ambiente()));
+        ResultadoTroca r = recuperarSenha.recuperar(req.usuario(), req.cpf(), req.ambiente());
+        log.info("acesso_email_pwd", kv("usuario", req.usuario()), kv("ambiente", req.ambiente()),
+                kv("sucesso", r.sucesso()));
+        return ResponseEntity.ok(r);
     }
 
     @PostMapping("/interno/acesso/valida-acesso")
@@ -60,6 +76,7 @@ public class AcessoInternoController {
         boolean valido = "protocolo".equalsIgnoreCase(req.tipo())
                 ? validarAcesso.protocoloValido(req.valor(), req.ambiente())
                 : validarAcesso.cpfValido(req.valor(), req.ambiente());
+        log.info("acesso_valida", kv("tipo", req.tipo()), kv("ambiente", req.ambiente()), kv("valido", valido));
         return ResponseEntity.ok(new ValidaResponse(valido));
     }
 
