@@ -54,21 +54,7 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-redis</artifactId>
     </dependency>
-    <!-- SMTP (JavaMail): envio do e-mail de recuperacao de senha (ExecutaEmailPwd do loginbd). -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-mail</artifactId>
-    </dependency>
-
-    <!-- Hash: bcrypt (Rota A) + md5crypt legado ($1$). -->
-    <dependency>
-      <groupId>org.springframework.security</groupId>
-      <artifactId>spring-security-crypto</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>commons-codec</groupId>
-      <artifactId>commons-codec</artifactId>
-    </dependency>
+    <!-- (auth movido para o scci-core: SMTP/bcrypt/md5crypt agora vivem em scci-core-acesso/notificacao) -->
 
     <!-- Drivers JDBC: a conexao de cada ambiente vem do launcherenv.ini (DRIVERNAME). -->
     <dependency>

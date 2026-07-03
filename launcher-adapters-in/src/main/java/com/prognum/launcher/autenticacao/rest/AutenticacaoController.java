@@ -5,11 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prognum.launcher.autenticacao.model.ResultadoLogin;
 import com.prognum.launcher.autenticacao.model.ResultadoTroca;
 import com.prognum.launcher.autenticacao.model.Sessao;
-import com.prognum.launcher.autenticacao.port.in.LoginUseCase;
-import com.prognum.launcher.autenticacao.port.in.RecuperarSenhaUseCase;
 import com.prognum.launcher.autenticacao.port.in.SessaoUseCase;
-import com.prognum.launcher.autenticacao.port.in.TrocarSenhaUseCase;
-import com.prognum.launcher.autenticacao.port.in.ValidarAcessoUseCase;
+import com.prognum.launcher.autenticacao.port.out.AcessoJavaPort;
 import com.prognum.comum.cripto.WcopCrypto;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -38,28 +35,25 @@ public class AutenticacaoController {
 
     private static final Logger log = LoggerFactory.getLogger(AutenticacaoController.class);
 
+    /** Resultado padrão quando o scci-core/acesso está indisponível (sem fallback local — o edge só orquestra). */
+    private static final ResultadoLogin ACESSO_INDISPONIVEL =
+            new ResultadoLogin(false, ' ', null, "Servico de acesso indisponivel. Tente novamente.", null);
+
     private final ObjectMapper mapper;
     private final WcopCrypto crypto;
-    private final LoginUseCase loginService;
-    private final TrocarSenhaUseCase passwordService;
+    private final AcessoJavaPort acesso;
     private final SessaoUseCase sessoes;
-    private final RecuperarSenhaUseCase recuperarService;
-    private final ValidarAcessoUseCase validarAcesso;
     private final String contexto;
     private final int maxLoginsSimultaneos;
 
-    public AutenticacaoController(ObjectMapper mapper, WcopCrypto crypto, LoginUseCase loginService,
-                                  TrocarSenhaUseCase passwordService, SessaoUseCase sessoes,
-                                  RecuperarSenhaUseCase recuperarService, ValidarAcessoUseCase validarAcesso,
+    public AutenticacaoController(ObjectMapper mapper, WcopCrypto crypto, AcessoJavaPort acesso,
+                                  SessaoUseCase sessoes,
                                   @Value("${launcher.legacy.wcop.contexto:CORP_WEB}") String contexto,
                                   @Value("${launcher.auth.max-logins-simultaneos:0}") int maxLoginsSimultaneos) {
         this.mapper = mapper;
         this.crypto = crypto;
-        this.loginService = loginService;
-        this.passwordService = passwordService;
+        this.acesso = acesso;
         this.sessoes = sessoes;
-        this.recuperarService = recuperarService;
-        this.validarAcesso = validarAcesso;
         this.contexto = contexto;
         this.maxLoginsSimultaneos = maxLoginsSimultaneos;   // 0 = ilimitado (QtMaxLogin do launcher)
     }
@@ -87,7 +81,7 @@ public class AutenticacaoController {
 
         ResultadoLogin r;
         try {
-            r = loginService.login(usuario, senha, ambiente, req.getRemoteAddr());
+            r = acesso.login(usuario, senha, ambiente, req.getRemoteAddr()).orElse(ACESSO_INDISPONIVEL);
         } catch (RuntimeException e) {
             log.warn("web_login_erro", kv("usuario", usuario), kv("ambiente", ambiente),
                     kv("erro", String.valueOf(e.getMessage())));
@@ -146,7 +140,8 @@ public class AutenticacaoController {
 
         ResultadoTroca r;
         try {
-            r = passwordService.trocar(usuario, senhaAtual, novaSenha, ambiente);
+            r = acesso.trocarSenha(usuario, senhaAtual, novaSenha, ambiente)
+                    .orElse(new ResultadoTroca(false, "Servico de acesso indisponivel. Tente novamente."));
         } catch (RuntimeException e) {
             log.warn("web_passwd_erro", kv("usuario", usuario), kv("erro", String.valueOf(e.getMessage())));
             return resposta(cifrado, "{\"success\":false,\"message\":\"Falha ao trocar a senha.\"}");
@@ -174,7 +169,8 @@ public class AutenticacaoController {
 
         ResultadoTroca r;
         try {
-            r = recuperarService.recuperar(usuario, cpf, ambiente);
+            r = acesso.recuperar(usuario, cpf, ambiente)
+                    .orElse(new ResultadoTroca(false, "Servico de acesso indisponivel. Tente novamente."));
         } catch (RuntimeException e) {
             log.warn("web_email_pwd_erro", kv("usuario", usuario), kv("erro", String.valueOf(e.getMessage())));
             return resposta(cifrado, "{\"success\":false,\"message\":\"Falha ao recuperar a senha.\"}");
@@ -201,8 +197,8 @@ public class AutenticacaoController {
         boolean valido;
         try {
             valido = "protocolo".equalsIgnoreCase(tipo)
-                    ? validarAcesso.protocoloValido(valor, ambiente)
-                    : validarAcesso.cpfValido(valor, ambiente);
+                    ? acesso.validarProtocolo(valor, ambiente).orElse(false)
+                    : acesso.validarCpf(valor, ambiente).orElse(false);
         } catch (RuntimeException e) {
             log.warn("web_valida_acesso_erro", kv("tipo", tipo), kv("erro", String.valueOf(e.getMessage())));
             return resposta(cifrado, "{\"success\":false,\"message\":\"Falha ao validar o acesso.\"}");
