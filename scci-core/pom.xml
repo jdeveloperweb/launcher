@@ -12,6 +12,7 @@
           - acesso     (login BANCO + família B, senha, recuperação)
           - sessao     (emitir / validar / encerrar)
           - documentos (ver / baixar / enviar)
+          - notificacao(capacidade transversal: envio de e-mail/SMTP — outros contextos reaproveitam)
     Regra DDD: um contexto NÃO referencia entidade de outro — só porta/contrato. Fronteiras verificáveis por build.
   -->
   <parent>
@@ -28,6 +29,7 @@
 
   <modules>
     <module>scci-core-kernel</module>
+    <module>scci-core-notificacao</module>
     <module>scci-core-acesso</module>
     <module>scci-core-sessao</module>
     <module>scci-core-documentos</module>

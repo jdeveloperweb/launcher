@@ -26,6 +26,11 @@
       <groupId>com.prognum</groupId>
       <artifactId>scci-core-sessao</artifactId>
     </dependency>
+    <!-- Recuperacao de senha reaproveita a capacidade de e-mail do contexto notificacao -->
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>scci-core-notificacao</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.prognum</groupId>
       <artifactId>comum-cripto</artifactId>

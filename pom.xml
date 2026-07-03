@@ -111,6 +111,11 @@
         <artifactId>scci-core-documentos</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>scci-core-notificacao</artifactId>
+        <version>${project.version}</version>
+      </dependency>
 
       <!-- Bibliotecas cujas versoes nao vem do spring-boot-parent. -->
       <dependency>

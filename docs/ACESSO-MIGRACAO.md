@@ -124,6 +124,18 @@ front → Kong → launcher (EDGE)                         scci-core (interno, e
   (sem E004), confirmando serialização idêntica entre os dois processos. Gate slim no launcher e consolidação
   numa classe única ficam p/ a Fase 4.
 
+- ✅ **Fase 1 (resto)** — copiada a fatia restante p/ `com.prognum.scci.acesso.*` (32 arquivos):
+  MAPEADO_* (família B: Itaú/C6/BRB/Cashme/Unicred/Ailos/Direto — `AutenticadorMapeado` + `Provisao*`),
+  `TrocarSenhaService`, `RecuperarSenhaService`, `ValidacaoAcessoService`, `PasswordPolicy` + repos DB
+  (`Scc*`). `AcessoInternoController` estendido (`/senha`, `/email-pwd`, `/valida-acesso`); `AcessoWiringConfig`
+  com os 8 autenticadores (BANCO + 7 MAPEADO) + política + serviços. **Validado ao vivo:** contexto inteiro
+  UP (sem erro de boot); `valida-acesso` (read-only) → `{"valido":false}` HTTP 200. Senha/email-pwd/MAPEADO
+  (escrita/SMTP/creds) ficam p/ validar na Fase 4 ou em ambiente que você nomear.
+- ✅ **Novo contexto `notificacao`** — o envio de e-mail SAIU do `acesso` e virou bounded context próprio
+  (`scci-core-notificacao`): porta pública `Notificador` + `Email` + `SmtpNotificador` (SMTP por-requisição,
+  fiel ao loginbd). Reaproveitável por qualquer contexto (acesso usa na recuperação de senha; documentos/
+  alertas podem usar). Regra DDD mantida: contexto não referencia entidade de outro, só a porta.
+
 ## Ordem sugerida de execução
 `Fase 0 → 1 (login) → validar login isolado → 2 (sessão) → validar gate → 3 (edge/flag) → 4 (promover+limpar)`.
 Depois: `/w/password`, `/w/email-pwd`, `/w/valida-acesso` (mesma mecânica, um de cada vez).

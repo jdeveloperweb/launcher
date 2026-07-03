@@ -1,6 +1,8 @@
 package com.prognum.scci.acesso.config;
 
+import java.security.SecureRandom;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -8,29 +10,102 @@ import org.springframework.context.annotation.Configuration;
 
 import com.prognum.scci.acesso.aplicacao.AutenticadorBanco;
 import com.prognum.scci.acesso.aplicacao.LoginService;
+import com.prognum.scci.acesso.aplicacao.RecuperarSenhaService;
+import com.prognum.scci.acesso.aplicacao.TrocarSenhaService;
+import com.prognum.scci.acesso.aplicacao.ValidacaoAcessoService;
+import com.prognum.scci.acesso.aplicacao.mapeado.AutenticadorMapeado;
+import com.prognum.scci.acesso.aplicacao.mapeado.ProvisaoAilos;
+import com.prognum.scci.acesso.aplicacao.mapeado.ProvisaoBrb;
+import com.prognum.scci.acesso.aplicacao.mapeado.ProvisaoC6;
+import com.prognum.scci.acesso.aplicacao.mapeado.ProvisaoCashmeweb;
+import com.prognum.scci.acesso.aplicacao.mapeado.ProvisaoDireto;
+import com.prognum.scci.acesso.aplicacao.mapeado.ProvisaoItau;
+import com.prognum.scci.acesso.aplicacao.mapeado.ProvisaoUnicred;
+import com.prognum.scci.acesso.dominio.policy.PasswordPolicy;
 import com.prognum.scci.acesso.dominio.port.in.LoginUseCase;
+import com.prognum.scci.acesso.dominio.port.in.RecuperarSenhaUseCase;
+import com.prognum.scci.acesso.dominio.port.in.TrocarSenhaUseCase;
+import com.prognum.scci.acesso.dominio.port.in.ValidarAcessoUseCase;
 import com.prognum.scci.acesso.dominio.port.out.Autenticador;
 import com.prognum.scci.acesso.dominio.port.out.ContadorTentativas;
 import com.prognum.scci.acesso.dominio.port.out.CredenciaisRepository;
 import com.prognum.scci.acesso.dominio.port.out.MetodoLoginResolver;
+import com.prognum.scci.acesso.dominio.port.out.ProvisionamentoUsuario;
+import com.prognum.scci.acesso.dominio.port.out.RecuperacaoSenhaRepository;
+import com.prognum.scci.acesso.dominio.port.out.SenhaRepository;
+import com.prognum.scci.acesso.dominio.port.out.ValidacaoAcessoRepository;
 import com.prognum.scci.acesso.dominio.port.out.VerificadorSenha;
+import com.prognum.scci.notificacao.dominio.port.Notificador;
 
 /**
- * Fia os POJOs do contexto acesso (LoginService coordenador + Strategies). Espelha a seção de auth do
- * WiringConfig do launcher, com as chaves sob {@code scci.auth.*}. Os adapters de saída
- * (Scc..., Redis..., Verificador..., Metodo...) são {@code @Component} e entram por injeção.
+ * Fia os POJOs do contexto acesso (coordenador LoginService + Strategies BANCO/família B + senha/
+ * recuperação/valida). Espelha a seção de auth do WiringConfig do launcher, com as chaves sob
+ * {@code scci.auth.*}. Os adapters de saída (Scc..., Redis..., Verificador..., Metodo...) e o
+ * {@code Notificador} (contexto notificacao) são {@code @Component}/bean e entram por injeção.
  */
 @Configuration
 public class AcessoWiringConfig {
 
-    /** Strategy BANCO (loginbd, md5crypt) — o método padrão/fallback. */
+    private static final SecureRandom RND = new SecureRandom();
+    private static final char[] ALFABETO_TOKEN = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
+
+    /** Token de sessão (29 chars), mesmo formato do LoginService.novaSessionKey(). */
+    private static String tokenSessao() {
+        StringBuilder sb = new StringBuilder(29);
+        for (int i = 0; i < 29; i++) {
+            sb.append(ALFABETO_TOKEN[RND.nextInt(ALFABETO_TOKEN.length)]);
+        }
+        return sb.toString();
+    }
+
+    private static final Supplier<String> GERADOR_TOKEN = AcessoWiringConfig::tokenSessao;
+
+    // ---- Strategy BANCO (loginbd, md5crypt) — o método padrão/fallback ----
     @Bean
     Autenticador autenticadorBanco(CredenciaisRepository repo, VerificadorSenha senhas,
             @Value("${scci.auth.dias-aviso-expiracao:5}") int diasAviso) {
         return new AutenticadorBanco(repo, senhas, diasAviso);
     }
 
-    /** Coordenador do login: recebe TODAS as Strategies (Autenticador) + o resolver de método por cliente. */
+    // ---- Strategies "payload-mapeado" (família B: IdP externo já autenticou, provisiona o USUARIO) ----
+    // Um Autenticador por cliente; o LoginService os coleta na List<Autenticador> e o MetodoLoginResolver
+    // escolhe por ambiente. Token de sessão = 29 chars (mesmo formato do coordenador).
+    @Bean
+    Autenticador autItau(ProvisionamentoUsuario p) {
+        return new AutenticadorMapeado(new ProvisaoItau(p), GERADOR_TOKEN);
+    }
+
+    @Bean
+    Autenticador autC6(ProvisionamentoUsuario p) {
+        return new AutenticadorMapeado(new ProvisaoC6(p), GERADOR_TOKEN);
+    }
+
+    @Bean
+    Autenticador autBrb(ProvisionamentoUsuario p) {
+        return new AutenticadorMapeado(new ProvisaoBrb(p), GERADOR_TOKEN);
+    }
+
+    @Bean
+    Autenticador autCashmeweb(ProvisionamentoUsuario p) {
+        return new AutenticadorMapeado(new ProvisaoCashmeweb(p), GERADOR_TOKEN);
+    }
+
+    @Bean
+    Autenticador autDireto(ProvisionamentoUsuario p) {
+        return new AutenticadorMapeado(new ProvisaoDireto(p), GERADOR_TOKEN);
+    }
+
+    @Bean
+    Autenticador autUnicred(ProvisionamentoUsuario p) {
+        return new AutenticadorMapeado(new ProvisaoUnicred(p), GERADOR_TOKEN);
+    }
+
+    @Bean
+    Autenticador autAilos(ProvisionamentoUsuario p) {
+        return new AutenticadorMapeado(new ProvisaoAilos(p), GERADOR_TOKEN);
+    }
+
+    // ---- Coordenador do login ----
     @Bean
     LoginUseCase loginService(List<Autenticador> autenticadores, MetodoLoginResolver resolver,
             ContadorTentativas tentativas,
@@ -40,5 +115,37 @@ public class AcessoWiringConfig {
             @Value("${scci.auth.captcha-habilitado:true}") boolean captchaHabilitado) {
         return new LoginService(autenticadores, resolver, tentativas, delayMs, maxErros,
                 maxErrosCaptcha, captchaHabilitado);
+    }
+
+    // ---- Política de senha (RN-010..012) ----
+    @Bean
+    PasswordPolicy passwordPolicy(
+            @Value("${scci.auth.policy.min-caracteres:8}") int minCarac,
+            @Value("${scci.auth.policy.requer-composicao:true}") boolean requerComposicao,
+            @Value("${scci.auth.policy.min-letras:1}") int minLetras,
+            @Value("${scci.auth.policy.min-maiusculas:1}") int minMaiusc,
+            @Value("${scci.auth.policy.min-digitos:1}") int minDigitos,
+            @Value("${scci.auth.policy.min-especiais:1}") int minEspeciais,
+            @Value("${scci.auth.policy.max-repetidos:3}") int maxRep,
+            @Value("${scci.auth.policy.max-sequenciais:3}") int maxSeq) {
+        return new PasswordPolicy(minCarac, requerComposicao, minLetras, minMaiusc,
+                minDigitos, minEspeciais, maxRep, maxSeq);
+    }
+
+    // ---- Troca / recuperação / valida ----
+    @Bean
+    TrocarSenhaUseCase trocarSenhaService(SenhaRepository repo, VerificadorSenha verificador, PasswordPolicy policy) {
+        return new TrocarSenhaService(repo, verificador, policy);
+    }
+
+    @Bean
+    RecuperarSenhaUseCase recuperarSenhaService(RecuperacaoSenhaRepository repo, VerificadorSenha verificador,
+            Notificador notificador) {
+        return new RecuperarSenhaService(repo, verificador, notificador);
+    }
+
+    @Bean
+    ValidarAcessoUseCase validacaoAcessoService(ValidacaoAcessoRepository repo) {
+        return new ValidacaoAcessoService(repo);
     }
 }
