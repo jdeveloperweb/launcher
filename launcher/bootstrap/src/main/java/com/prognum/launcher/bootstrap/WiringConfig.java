@@ -10,16 +10,11 @@ import com.prognum.common.environment.JdbcConnectionFactory;
 import com.prognum.launcher.documentos.port.in.BaixarDocumentoUseCase;
 import com.prognum.launcher.documentos.port.in.EnviarDocumentoUseCase;
 import com.prognum.launcher.execucao.DespachoService;
-import com.prognum.launcher.execucao.RoteadorExecutor;
-import com.prognum.launcher.execucao.oserver.ProgramExecutor;
-import com.prognum.launcher.execucao.pascal.ClientePascalExecutor;
 import com.prognum.launcher.execucao.port.in.DespachoUseCase;
 import com.prognum.launcher.execucao.port.out.ExecutorPrograma;
-import com.prognum.launcher.roteamento.port.out.FeatureRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
 /**
  * Wiring (composition root) dos casos de uso, que sao POJOs puros (application/domain sem Spring).
@@ -56,17 +51,8 @@ public class WiringConfig {
     }
 
     // ---- casos de uso (execucao) ----
-    /**
-     * Roteador da execucao de programas Pascal (Strangler): flag {@code executor.remoto} decide entre o
-     * servico {@code pascal-executor} (JNA fora do launcher) e a ponte JNA LOCAL (fallback/transicao).
-     * {@code @Primary} para os consumidores (despacho + roteadores de documentos) receberem ESTE.
-     */
-    @Bean
-    @Primary
-    ExecutorPrograma executorPrograma(ProgramExecutor local, ClientePascalExecutor remoto, FeatureRegistry flags) {
-        return new RoteadorExecutor(local, remoto, flags);
-    }
-
+    // A execucao de programas Pascal e SEMPRE via pascal-executor (ClientePascalExecutor, @Component):
+    // o launcher e Java PURO, sem JNA/nativo. A ponte oserver vive so no pascal-executor.
     @Bean
     DespachoUseCase despachoService(ExecutorPrograma executor) {
         return new DespachoService(executor);

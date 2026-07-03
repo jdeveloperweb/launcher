@@ -47,8 +47,7 @@ launcher:
       # "[acesso.EmailPwd]": { habilitado: true }          # /w/email-pwd
       # "[acesso.ValidaAcesso]": { habilitado: true }      # /w/valida-acesso
       # "[acesso]": { habilitado: true }                   # ligaria TODO o dominio acesso -> scci-core
-      # --- execucao Pascal: OFF = ponte JNA LOCAL (in-process). ON = pascal-executor (JNA fora do launcher).
-      # "[executor.remoto]": { habilitado: true }          # /w e /sccidoc Pascal -> pascal-executor (8091)
+  # (execucao Pascal e SEMPRE via pascal-executor agora; o launcher nao tem mais ponte JNA local)
   sessao:
     ttl-segundos: 1800              # TTL da sessao no Redis (cache do VALIDA)
   legacy:

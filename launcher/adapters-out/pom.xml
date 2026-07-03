@@ -43,12 +43,7 @@
       <artifactId>jackson-databind</artifactId>
     </dependency>
 
-    <!-- JNA: socketpair + posix_spawn nativos (ponte do oserver, sem Python) — dominio execucao. -->
-    <dependency>
-      <groupId>net.java.dev.jna</groupId>
-      <artifactId>jna</artifactId>
-      <version>5.14.0</version>
-    </dependency>
+    <!-- (JNA/oserver movido p/ o pascal-executor: o launcher e Java PURO, chama a execucao por REST) -->
 
     <!-- Redis (Lettuce): sessao distribuida + contador de tentativas (cache do VALIDA). -->
     <dependency>
