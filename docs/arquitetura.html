@@ -1,664 +1,552 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Launcher SCCI em Java — Arquitetura &amp; Inventário</title>
+<meta charset="utf-8">
+<title>Plataforma SCCI — Arquitetura</title>
 <style>
   :root{
-    --bg:#0f172a; --bg2:#1e293b; --card:#ffffff; --ink:#1e293b; --muted:#64748b;
-    --line:#e2e8f0; --brand:#2563eb; --brand2:#1d4ed8; --accent:#0ea5e9;
-    --green:#16a34a; --amber:#d97706; --red:#dc2626; --violet:#7c3aed;
-    --code-bg:#f1f5f9; --shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.05);
+    --paper:#F3F5F8; --panel:#FFFFFF; --ink:#161B22; --slate:#5A6577; --faint:#8B95A5;
+    --line:#D6DCE5; --grid:#E6EBF1;
+    --edge:#0F7E8A;      /* launcher / edge — teal */
+    --core:#2C7A4B;      /* scci-core — evergreen */
+    --legacy:#B4692A;    /* pascal-executor — amber (sunsetting) */
+    --common:#6C7A93;    /* common — steel */
+    --edge-w:#E1F0F1; --core-w:#E2F0E9; --legacy-w:#F6ECE0; --common-w:#EAEDF2;
+    --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"Cascadia Code","JetBrains Mono","SF Mono",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    color:var(--ink);background:#f8fafc;line-height:1.6;font-size:15px}
-  code,pre,.mono{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace}
-  header.hero{background:linear-gradient(135deg,var(--bg) 0%,var(--bg2) 100%);color:#e2e8f0;
-    padding:56px 24px 40px;text-align:center}
-  header.hero h1{margin:0 0 8px;font-size:2rem;font-weight:700;letter-spacing:-.02em}
-  header.hero .sub{color:#94a3b8;font-size:1.05rem;max-width:760px;margin:0 auto}
-  header.hero .pills{margin-top:20px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-  .pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#cbd5e1;
-    padding:5px 12px;border-radius:999px;font-size:.8rem}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
-  nav.toc{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);
-    border-bottom:1px solid var(--line);padding:12px 24px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-  nav.toc a{color:var(--muted);text-decoration:none;font-size:.85rem;padding:6px 12px;border-radius:8px;font-weight:500}
-  nav.toc a:hover{background:var(--code-bg);color:var(--brand)}
-  section{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
-    margin:28px 0;padding:28px 32px}
-  h2{font-size:1.45rem;margin:0 0 6px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
-  h2 .n{background:var(--brand);color:#fff;width:30px;height:30px;border-radius:8px;display:inline-flex;
-    align-items:center;justify-content:center;font-size:.9rem;flex:0 0 auto}
-  h3{font-size:1.05rem;margin:26px 0 10px;color:var(--brand2)}
-  p{margin:10px 0}
-  .lead{color:var(--muted);font-size:1rem}
-  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.9rem}
-  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{background:var(--code-bg);font-weight:600;color:#334155;font-size:.82rem;text-transform:uppercase;letter-spacing:.03em}
-  tr:hover td{background:#fafcff}
-  td code, p code, li code{background:var(--code-bg);padding:1.5px 6px;border-radius:5px;font-size:.85em;color:#0f172a}
-  .cls{font-weight:600;color:#0f172a;white-space:nowrap}
-  pre{background:var(--bg);color:#e2e8f0;padding:18px 20px;border-radius:12px;overflow-x:auto;
-    font-size:.82rem;line-height:1.5}
-  .badge{display:inline-block;padding:2px 9px;border-radius:6px;font-size:.72rem;font-weight:700;
-    letter-spacing:.02em;white-space:nowrap}
-  .b-d{background:#ede9fe;color:#6d28d9}       /* domain */
-  .b-a{background:#dbeafe;color:#1d4ed8}       /* application */
-  .b-in{background:#dcfce7;color:#15803d}      /* adapters-in */
-  .b-out{background:#ffedd5;color:#c2410c}     /* adapters-out */
-  .b-b{background:#e2e8f0;color:#475569}       /* bootstrap */
-  .tag{background:#f1f5f9;color:#475569;border:1px solid var(--line);padding:1px 7px;border-radius:5px;
-    font-size:.75rem;font-family:monospace}
-  .callout{border-left:4px solid var(--accent);background:#f0f9ff;padding:14px 18px;border-radius:0 10px 10px 0;margin:16px 0}
-  .callout.warn{border-color:var(--amber);background:#fffbeb}
-  .callout.ok{border-color:var(--green);background:#f0fdf4}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
-  .frontier{border-radius:12px;overflow:hidden;border:1px solid var(--line)}
-  .frontier .row{display:grid;grid-template-columns:1.3fr 1.4fr .9fr;gap:0}
-  .frontier .row>div{padding:12px 14px;border-bottom:1px solid var(--line)}
-  .frontier .head>div{background:var(--code-bg);font-weight:600;font-size:.8rem;text-transform:uppercase;color:#334155}
-  .rw{color:var(--red);font-weight:700}.ex{color:var(--green);font-weight:700}
-  footer{text-align:center;color:var(--muted);font-size:.85rem;padding:30px 24px 60px}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;margin:8px 0 4px;font-size:.82rem;color:var(--muted)}
-  .legend span{display:inline-flex;align-items:center;gap:6px}
-  .count{display:inline-flex;gap:14px;flex-wrap:wrap;margin-top:10px}
-  .count .c{background:var(--code-bg);border-radius:10px;padding:10px 16px;text-align:center;min-width:90px}
-  .count .c b{display:block;font-size:1.4rem;color:var(--brand)}
-  .count .c span{font-size:.75rem;color:var(--muted)}
-  /* diagramas SVG */
-  svg.dg{display:block;width:100%;height:auto;margin:22px 0 6px;border:1px solid var(--line);
-    border-radius:12px;background:#fcfdff;padding:6px}
-  .dg text{font-family:-apple-system,"Segoe UI",Roboto,sans-serif;dominant-baseline:middle}
-  .dg .t{font-size:13px;font-weight:600;fill:#1e293b}
-  .dg .s{font-size:10.5px;fill:#64748b}
-  .dg .tw{font-size:13px;font-weight:700;fill:#fff}
-  .dg .sw{font-size:10.5px;fill:#dbeafe}
-  .dg .cap{font-size:11px;font-weight:600;fill:#475569;text-transform:uppercase;letter-spacing:.04em}
-  .dg .bx{stroke-width:1.5;rx:9}
-  .dg .b-core{fill:#ede9fe;stroke:#7c3aed}
-  .dg .b-app{fill:#dbeafe;stroke:#2563eb}
-  .dg .b-in{fill:#dcfce7;stroke:#16a34a}
-  .dg .b-out{fill:#ffedd5;stroke:#c2410c}
-  .dg .b-infra{fill:#f1f5f9;stroke:#94a3b8}
-  .dg .b-dark{fill:#1e293b;stroke:#0f172a}
-  .dg .b-kong{fill:#0ea5e9;stroke:#0284c7}
-  .dg .b-warn{fill:#fffbeb;stroke:#d97706}
-  .dg .hex-core{fill:#ede9fe;stroke:#7c3aed;stroke-width:2}
-  .dg .hex-app{fill:#eff6ff;stroke:#2563eb;stroke-width:2}
-  .dg .arw{stroke:#94a3b8;stroke-width:2;fill:none;marker-end:url(#ah)}
-  .dg .arw2{stroke:#2563eb;stroke-width:2;fill:none;marker-end:url(#ahb)}
-  .dg .dash{stroke:#dc2626;stroke-width:2.5;stroke-dasharray:7 5;fill:none}
-  .dg .num{fill:#2563eb;font-size:12px;font-weight:700}
-  .dg .numc{fill:#fff;font-size:11px;font-weight:700}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+    line-height:1.65;-webkit-font-smoothing:antialiased;font-size:16px}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+  a{color:var(--edge);text-underline-offset:3px}
+  h1,h2,h3{text-wrap:balance;letter-spacing:-.02em;line-height:1.15;margin:0}
+  h2{font-size:clamp(1.5rem,3.4vw,2.15rem);font-weight:800}
+  h3{font-size:1.16rem;font-weight:750}
+  p{margin:.7em 0;max-width:70ch}
+  code,.mono{font-family:var(--mono);font-size:.9em}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--faint);font-weight:600}
+
+  header.top{border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fbfcfd)}
+  .mast{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-end;justify-content:space-between;
+    padding:44px 0 34px}
+  .mast .tt{max-width:60ch}
+  .mast .kicker{font-family:var(--mono);font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--edge);font-weight:700;margin-bottom:14px}
+  .mast h1{font-size:clamp(2.2rem,5.4vw,3.4rem);font-weight:820}
+  .mast p{color:var(--slate);font-size:1.06rem;margin:.6em 0 0}
+  .stamp{font-family:var(--mono);font-size:.72rem;color:var(--faint);border:1px solid var(--line);
+    border-radius:7px;padding:9px 12px;white-space:nowrap;background:#fff}
+  .stamp b{color:var(--ink)}
+
+  .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .strip .cell{background:#fff;padding:16px 18px}
+  .strip .n{font-family:var(--mono);font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums;
+    letter-spacing:-.02em}
+  .strip .l{font-size:.8rem;color:var(--slate);margin-top:3px}
+
+  section{padding:60px 0;border-bottom:1px solid var(--line)}
+  section:last-of-type{border-bottom:0}
+  .lead-in{max-width:72ch;margin-bottom:30px}
+  .lead-in h2{margin:10px 0 0}
+  .lead-in p{color:var(--slate);font-size:1.05rem}
+
+  .fig{border:1px solid var(--line);border-radius:14px;background:var(--panel);
+    background-image:radial-gradient(var(--grid) 1px,transparent 1px);background-size:20px 20px;
+    padding:26px;overflow-x:auto}
+  .fig .cap{font-family:var(--mono);font-size:.74rem;color:var(--faint);margin-top:16px;
+    padding-top:12px;border-top:1px dashed var(--line);letter-spacing:.02em;max-width:none}
+  .fig .cap b{color:var(--slate)}
+
+  .node{border:1.5px solid var(--ink);border-radius:10px;background:#fff;padding:12px 14px;min-width:0}
+  .node .h{font-family:var(--mono);font-weight:700;font-size:.9rem;letter-spacing:-.01em}
+  .node .s{font-size:.8rem;color:var(--slate);margin-top:4px;line-height:1.45}
+  .node.edge{border-color:var(--edge);box-shadow:inset 0 0 0 3px var(--edge-w)}
+  .node.core{border-color:var(--core);box-shadow:inset 0 0 0 3px var(--core-w)}
+  .node.legacy{border-color:var(--legacy);box-shadow:inset 0 0 0 3px var(--legacy-w)}
+  .node.common{border-color:var(--common);box-shadow:inset 0 0 0 3px var(--common-w)}
+  .node.ghost{border-style:dashed;border-color:var(--faint);background:#fbfcfd}
+  .tag{display:inline-block;font-family:var(--mono);font-size:.66rem;text-transform:uppercase;
+    letter-spacing:.1em;padding:2px 7px;border-radius:20px;font-weight:700;color:#fff}
+  .tag.edge{background:var(--edge)} .tag.core{background:var(--core)}
+  .tag.legacy{background:var(--legacy)} .tag.common{background:var(--common)}
+
+  .flow{display:flex;align-items:stretch;gap:14px;min-width:640px}
+  .flow .col{display:flex;flex-direction:column;gap:12px;justify-content:center;flex:1}
+  .arrow{align-self:center;font-family:var(--mono);color:var(--slate);font-weight:700;
+    display:flex;flex-direction:column;align-items:center;gap:3px;white-space:nowrap}
+  .arrow small{font-size:.64rem;color:var(--faint);letter-spacing:.04em}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:14px;font-size:.82rem;color:var(--slate)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:22px;
+    border-top:3px solid var(--c)}
+  .card.edge{--c:var(--edge)} .card.core{--c:var(--core)}
+  .card.legacy{--c:var(--legacy)} .card.common{--c:var(--common)}
+  .card .role{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--c);font-weight:700}
+  .card h3{margin:8px 0 2px}
+  .card h3 code{font-size:.86em}
+  .card .desc{color:var(--slate);font-size:.95rem;margin:10px 0 14px}
+  .card ul{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+  .card li{font-size:.9rem;padding-left:20px;position:relative;color:var(--ink)}
+  .card li::before{content:"▸";position:absolute;left:0;color:var(--c);font-size:.8em;top:.15em}
+  .card li b{font-family:var(--mono);font-weight:600;font-size:.92em}
+  .meta{margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);display:flex;flex-wrap:wrap;
+    gap:6px 14px;font-family:var(--mono);font-size:.74rem;color:var(--faint)}
+  .meta b{color:var(--slate);font-weight:600}
+
+  .hex{display:grid;grid-template-columns:1fr auto 1.15fr auto 1fr;gap:0;align-items:stretch;min-width:720px}
+  .hex .band{display:flex;flex-direction:column;gap:10px;justify-content:center;padding:6px}
+  .hex .bandlabel{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--faint);text-align:center;margin-bottom:6px;font-weight:700}
+  .core-stack{border:1.5px solid var(--core);border-radius:12px;background:var(--core-w);padding:12px;
+    display:flex;flex-direction:column;gap:10px}
+  .core-stack .inner{border:1.5px dashed var(--core);border-radius:9px;background:#fff;padding:11px 12px}
+  .core-stack .inner .h{font-family:var(--mono);font-weight:700;font-size:.86rem}
+  .core-stack .inner .s{font-size:.78rem;color:var(--slate);margin-top:3px}
+  .portcol{display:flex;flex-direction:column;justify-content:center;gap:8px;padding:0 6px;min-width:78px}
+  .port{font-family:var(--mono);font-size:.68rem;text-align:center;border:1px solid var(--core);
+    color:var(--core);border-radius:20px;padding:4px 6px;background:#fff;font-weight:600;line-height:1.25}
+  .small-node{border:1.4px solid var(--slate);border-radius:9px;background:#fff;padding:9px 11px}
+  .small-node .h{font-family:var(--mono);font-weight:700;font-size:.82rem}
+  .small-node .s{font-size:.76rem;color:var(--slate);margin-top:2px}
+  .ruleline{margin-top:18px;border:1px solid var(--line);border-left:3px solid var(--core);
+    border-radius:8px;background:#fff;padding:12px 16px;font-size:.9rem;color:var(--slate)}
+  .ruleline b{color:var(--ink)}
+
+  .styles{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+  .stylebox{border:1px solid var(--line);border-radius:12px;background:#fff;padding:18px}
+  .stylebox .t{font-weight:750;font-size:1rem;margin-bottom:4px}
+  .stylebox .t code{font-size:.82em}
+  .stylebox .sub{font-size:.85rem;color:var(--slate);margin-bottom:12px}
+  .layers{display:flex;flex-direction:column;gap:6px}
+  .layer{font-family:var(--mono);font-size:.8rem;border:1px solid var(--line);border-radius:7px;
+    padding:7px 10px;background:#fbfcfd;display:flex;justify-content:space-between;gap:10px}
+  .layer .role{color:var(--faint);font-size:.72rem}
+
+  .flagflow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:560px}
+  .decision{border:1.5px solid var(--edge);background:#fff;border-radius:10px;padding:12px 14px;
+    font-family:var(--mono);font-size:.82rem;text-align:center;box-shadow:inset 0 0 0 3px var(--edge-w)}
+  table.flags{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:4px}
+  table.flags th,table.flags td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);
+    vertical-align:top}
+  table.flags th{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--faint);font-weight:700}
+  table.flags td code{font-size:.86em}
+  table.flags tr:last-child td{border-bottom:0}
+  .pill{font-family:var(--mono);font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:20px;
+    display:inline-block;white-space:nowrap}
+  .pill.on{background:var(--core-w);color:var(--core)}
+  .pill.off{background:var(--common-w);color:var(--slate)}
+  .pill.always{background:var(--legacy-w);color:var(--legacy)}
+
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+  .note{background:#fff;border:1px solid var(--line);border-left:3px solid var(--edge);
+    border-radius:8px;padding:14px 16px;font-size:.92rem;color:var(--slate);margin-top:16px}
+  .note b{color:var(--ink)}
+
+  .scale-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;min-width:680px}
+  .rack{border:1px solid var(--line);border-radius:12px;padding:14px;background:#fff}
+  .rack .rt{font-family:var(--mono);font-size:.78rem;font-weight:700;margin-bottom:12px;
+    display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .replicas{display:flex;flex-direction:column;gap:6px;padding-right:8px}
+  .rep{border:1.4px solid var(--c);border-radius:7px;background:#fff;padding:8px 10px;font-size:.78rem;
+    font-family:var(--mono)}
+  .rack.edge{--c:var(--edge)} .rack.core{--c:var(--core)} .rack.legacy{--c:var(--legacy)}
+  .rep.stacked{box-shadow:4px 4px 0 -1px #fff,4px 4px 0 var(--c),8px 8px 0 -1px #fff,8px 8px 0 var(--c)}
+  .scaleword{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;
+    margin-top:16px;color:var(--c);font-weight:700}
+  .shared{margin-top:14px;border:1px dashed var(--slate);border-radius:10px;background:#fbfcfd;
+    padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;min-width:640px}
+  .shared .h{font-family:var(--mono);font-size:.78rem;font-weight:700;color:var(--slate)}
+  .shared .i{font-size:.85rem;color:var(--slate);flex:1;min-width:280px}
+
+  .status-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .scol{border:1px solid var(--line);border-radius:12px;background:#fff;padding:18px}
+  .scol.java{border-top:3px solid var(--core)}
+  .scol.pas{border-top:3px solid var(--legacy)}
+  .scol h3{font-size:1rem;display:flex;align-items:center;gap:9px}
+  .scol ul{margin:12px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+  .scol li{font-size:.9rem;padding-left:22px;position:relative}
+  .scol.java li::before{content:"✓";position:absolute;left:0;color:var(--core);font-weight:800}
+  .scol.pas li::before{content:"→";position:absolute;left:0;color:var(--legacy);font-weight:800;font-family:var(--mono)}
+  .scol li b{font-family:var(--mono);font-size:.9em;font-weight:600}
+
+  .invariants{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 22px;margin-top:8px}
+  .inv{font-size:.9rem;color:var(--slate);padding-left:20px;position:relative}
+  .inv::before{content:"\00a7";position:absolute;left:0;color:var(--edge);font-weight:700}
+  .inv b{color:var(--ink)}
+
+  footer{padding:34px 0 60px;color:var(--faint);font-family:var(--mono);font-size:.76rem}
+
+  @media(max-width:760px){
+    .strip{grid-template-columns:repeat(2,1fr)} .cards{grid-template-columns:1fr}
+    .twocol,.styles,.status-cols,.invariants,.scale-grid{grid-template-columns:1fr}
+    .mast{padding:34px 0 26px}
+  }
 </style>
-</head>
-<body>
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#94a3b8"/></marker>
-  <marker id="ahb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#2563eb"/></marker>
-</defs></svg>
-
-<header class="hero">
-  <h1>Launcher SCCI em Java — Arquitetura &amp; Inventário</h1>
-  <p class="sub">Migração do <b>launcher</b> do SCCI (daemon Pascal / W_COP) para um <b>reator hexagonal</b>
-  (Ports &amp; Adapters), preservando o contrato do front <b>byte-a-byte</b> e <b>executando os programas
-  legados reais</b> (<code>wtela</code>, <code>wmenu</code>, <code>wdoc</code>) — sem reescrevê-los.</p>
-  <div class="pills">
-    <span class="pill">Java 21 · Spring Boot 3.3</span>
-    <span class="pill">Hexagonal / Ports &amp; Adapters</span>
-    <span class="pill">73 classes · 5 módulos</span>
-    <span class="pill">Kong · Redis · OTel</span>
-    <span class="pill">launcher.jar · :8083</span>
+<header class="top">
+  <div class="wrap">
+    <div class="mast">
+      <div class="tt">
+        <div class="kicker">Plataforma SCCI &middot; reator hexagonal</div>
+        <h1>Do launcher Pascal a uma plataforma Java, sem parar produção.</h1>
+        <p>Uma migração <b>Strangler Fig</b>: o launcher legado vira uma borda fina em Java, os
+           domínios migram para um monólito modular, e o que ainda é Pascal fica isolado atrás de um
+           serviço próprio — cada peça trocável, escalável e desligável no seu tempo.</p>
+      </div>
+      <div class="stamp">estado&nbsp;atual<br><b>4 deployables</b> &middot; Java 21<br>8083 &middot; 8090 &middot; 8091</div>
+    </div>
+    <div class="strip">
+      <div class="cell"><div class="n" style="color:var(--edge)">launcher</div><div class="l">edge / gateway — Java <b>puro</b> (sem JNA)</div></div>
+      <div class="cell"><div class="n" style="color:var(--core)">scci-core</div><div class="l">monólito modular (DDD) — domínios Java</div></div>
+      <div class="cell"><div class="n" style="color:var(--legacy)">pascal&#8209;executor</div><div class="l">âncora legada — ponte oserver/JNA</div></div>
+      <div class="cell"><div class="n" style="color:var(--common)">common</div><div class="l">libs técnicas compartilhadas</div></div>
+    </div>
   </div>
 </header>
 
-<nav class="toc">
-  <a href="#s1">1 · Visão &amp; fronteira</a>
-  <a href="#s2">2 · Camadas</a>
-  <a href="#s3">3 · Legado → reator</a>
-  <a href="#s4">4 · Inventário</a>
-  <a href="#s5">5 · Fluxos</a>
-  <a href="#s6">6 · Infra</a>
-  <a href="#s7">7 · Cobertura</a>
-</nav>
-
-<div class="wrap">
-
-<!-- ===================== 1 ===================== -->
-<section id="s1">
-  <h2><span class="n">1</span> Visão geral e a fronteira</h2>
-  <p class="lead">O SCCI roda um <b>launcher</b> (daemon Pascal) que faz a ponte entre o front web e os
-  <b>programas “w”</b> (<code>wtela</code>, <code>wmenu</code>, <code>wdoc</code>…). O launcher <b>não é</b>
-  a regra de negócio — ele <b>transporta</b>: recebe o HTTP, decifra, valida a sessão, monta o ambiente,
-  <b>executa o programa real</b> e fala o <b>protocolo de blocos do oserver</b> com ele.</p>
-
-  <p>O reator Java reproduz <b>exatamente esse papel</b>, do jeito hexagonal, e <b>não reimplementa a
-  lógica dos programas</b>. A fronteira é o <b>oserver</b>: abaixo dela, os programas continuam donos da
-  regra; o reator só monta o ambiente e conversa o protocolo.</p>
-
-  <svg class="dg" viewBox="0 0 780 362" role="img" aria-label="Diagrama da fronteira">
-    <rect class="bx b-infra" x="250" y="14" width="200" height="42"/>
-    <text class="t" x="350" y="30" text-anchor="middle">Front (SPA · /aejs-l)</text>
-    <text class="s" x="350" y="45" text-anchor="middle">contrato byte-a-byte (W_COP)</text>
-    <path class="arw2" d="M350 56 L350 74"/>
-    <rect class="bx b-kong" x="270" y="74" width="160" height="38"/>
-    <text class="tw" x="350" y="96" text-anchor="middle">Kong · :8082</text>
-    <path class="arw2" d="M350 112 L350 136"/>
-
-    <rect class="bx b-app" x="100" y="136" width="500" height="94"/>
-    <text class="t" x="120" y="159">REATOR — <tspan font-family="monospace">launcher.jar</tspan> · :8083</text>
-    <text class="cap" x="120" y="180" fill="#1d4ed8">Transporte / orquestração — REESCRITO em Java</text>
-    <text class="s" x="120" y="200">decifra W_COP · VALIDA sessão · monta ambiente · roteia · emite sessão</text>
-    <text class="s" x="120" y="217">login/senha/sessão · despacho /w · canal /sccidoc</text>
-
-    <path class="dash" d="M84 253 L616 253"/>
-    <rect x="100" y="242" width="238" height="22" rx="11" fill="#fef2f2" stroke="#dc2626"/>
-    <text x="219" y="254" text-anchor="middle" font-size="11" font-weight="700" fill="#dc2626">▸ FRONTEIRA · oserver (socketpair)</text>
-    <path class="arw" d="M420 230 L420 274"/>
-
-    <rect class="bx b-in" x="100" y="274" width="500" height="74"/>
-    <text class="t" x="120" y="296">Programas Pascal REAIS · <tspan font-family="monospace">wtela · wmenu · wdoc</tspan></text>
-    <text class="cap" x="120" y="316" fill="#15803d">Regra de negócio — EXECUTADA, não reescrita</text>
-    <text class="s" x="120" y="335">o reator abre o binário e fala o protocolo — zero lógica de programa em Java</text>
-
-    <rect class="bx b-infra" x="628" y="150" width="140" height="184"/>
-    <text class="t" x="698" y="234" text-anchor="middle">Banco do ambiente</text>
-    <text class="s" x="698" y="253" text-anchor="middle">PG · FB · Oracle · MSSQL</text>
-    <path class="arw" d="M600 183 L626 183"/><text class="s" x="613" y="174" text-anchor="middle">login</text>
-    <path class="arw" d="M600 311 L626 311"/><text class="s" x="613" y="302" text-anchor="middle">progs</text>
-  </svg>
-
-  <div class="frontier">
-    <div class="row head"><div>Camada</div><div>Quem faz (legado)</div><div>No reator</div></div>
-    <div class="row"><div><b>Transporte / orquestração</b><br><span class="lead">o papel do <i>launcher</i></span></div>
-      <div><code>launcher.pas</code>, <code>wcorp.pas</code>, <code>sccidoc.pas</code>, <code>oserver.pas</code></div>
-      <div><span class="rw">REESCRITO</span> em Java</div></div>
-    <div class="row"><div><b>Login / senha / sessão</b><br><span class="lead">regra simples, mapeável</span></div>
-      <div><code>loginbd.pas</code></div>
-      <div><span class="rw">REESCRITO</span> (nativo, mesma base)</div></div>
-    <div class="row" style="border-bottom:none"><div><b>Regra dos programas</b><br><span class="lead">crédito, produção, documentos…</span></div>
-      <div><code>wtela</code>, <code>wmenu</code>, <code>wdoc</code> (via <code>apilib</code>/<code>apiscci</code>/<code>execlib</code>)</div>
-      <div><span class="ex">NÃO reescrito</span> — o reator <b>EXECUTA o binário real</b></div></div>
-  </div>
-  <div class="callout ok"><b>Por quê assim:</b> zero reimplementação de regra de programa mantém o risco
-  baixo e o contrato byte-a-byte com o front. Só o <b>transporte</b> virou Java.</div>
-</section>
-
-<!-- ===================== 2 ===================== -->
-<section id="s2">
-  <h2><span class="n">2</span> Camadas hexagonais (Ports &amp; Adapters)</h2>
-  <p class="lead">A dependência aponta <b>sempre para dentro</b>. O núcleo não conhece framework.</p>
-  <svg class="dg" viewBox="0 0 900 428" role="img" aria-label="Arquitetura hexagonal Ports and Adapters">
-    <!-- hexágonos concêntricos: fora=application, dentro=domain -->
-    <polygon class="hex-app" points="290,196 370,57 530,57 610,196 530,335 370,335"/>
-    <polygon class="hex-core" points="358,196 404,116 496,116 542,196 496,276 404,276"/>
-    <text class="cap" x="450" y="86" text-anchor="middle" fill="#1d4ed8">application</text>
-    <text class="s" x="450" y="103" text-anchor="middle">casos de uso · POJO puro</text>
-    <text class="t" x="450" y="188" text-anchor="middle" fill="#6d28d9">domain</text>
-    <text class="s" x="450" y="205" text-anchor="middle">ports · WcopCrypto</text>
-    <text class="s" x="450" y="220" text-anchor="middle">PasswordPolicy</text>
-
-    <!-- adapters-in (driving) -->
-    <rect class="bx b-in" x="18" y="116" width="220" height="162"/>
-    <text class="cap" x="30" y="136" fill="#15803d">adapters-in · driving</text>
-    <text class="s" x="30" y="160">AutenticacaoController</text>
-    <text class="s" x="30" y="180">DespachoController</text>
-    <text class="s" x="30" y="200">SccidocController</text>
-    <text class="s" x="30" y="220">filtros (RequestId, Slash)</text>
-    <text class="s" x="30" y="252" fill="#16a34a">HTTP → ports IN</text>
-    <path class="arw2" d="M238 197 L286 197"/>
-    <text class="num" x="255" y="188" text-anchor="middle">IN</text>
-
-    <!-- adapters-out (driven) -->
-    <rect class="bx b-out" x="662" y="116" width="220" height="162"/>
-    <text class="cap" x="674" y="136" fill="#c2410c">adapters-out · driven</text>
-    <text class="s" x="674" y="160">ProgramExecutor + Bridge</text>
-    <text class="s" x="674" y="180">Scc* (JDBC multi-banco)</text>
-    <text class="s" x="674" y="200">Redis* · SMTP</text>
-    <text class="s" x="674" y="220">LauncherEnvReader</text>
-    <text class="s" x="674" y="252" fill="#c2410c">implementam os ports OUT</text>
-    <path class="arw2" d="M610 197 L660 197"/>
-    <text class="num" x="637" y="188" text-anchor="middle">OUT</text>
-
-    <!-- bootstrap -->
-    <rect class="bx b-dark" x="18" y="360" width="864" height="46"/>
-    <text class="tw" x="450" y="378" text-anchor="middle">bootstrap · WiringConfig + LauncherApplication</text>
-    <text class="sw" x="450" y="394" text-anchor="middle" fill="#94a3b8">wiring dos casos de uso (POJO) + component-scan dos adapters — o único que conhece todos</text>
-
-    <text class="s" x="450" y="350" text-anchor="middle" fill="#7c3aed">▸ a dependência aponta SEMPRE para dentro (adapters → application → domain)</text>
-  </svg>
-  <div class="grid2">
-    <div>
-      <h3 style="margin-top:6px">A regra da dependência</h3>
-      <ul>
-        <li><b>domain</b> não conhece ninguém (nem Spring). Modelos, ports e regra técnica pura
-          (<code>WcopCrypto</code>, <code>PasswordPolicy</code>).</li>
-        <li><b>application</b> depende só de domain. <b>POJOs puros</b>, sem anotação.</li>
-        <li><b>adapters</b> (in/out) dependem de application+domain, nunca o contrário.</li>
-        <li><b>bootstrap</b> é o único que conhece todos (wiring + component-scan).</li>
-      </ul>
+<section>
+  <div class="wrap">
+    <div class="lead-in">
+      <div class="eyebrow">01 — O que temos hoje</div>
+      <h2>Uma borda fina na frente, dois backends atrás.</h2>
+      <p>O front fala só com o <b>launcher</b>. Ele não contém regra de negócio: transporta o protocolo
+         W_COP, decide por <i>feature-flag</i> quem atende cada chamada e delega — para o
+         <b>scci-core</b> (domínios já em Java) ou para o <b>pascal-executor</b> (o que ainda é Pascal).</p>
     </div>
-    <div>
-      <h3 style="margin-top:6px">Classes por módulo</h3>
-      <div class="count">
-        <div class="c"><b>40</b><span>domain</span></div>
-        <div class="c"><b>8</b><span>application</span></div>
-        <div class="c"><b>7</b><span>adapters-in</span></div>
-        <div class="c"><b>16</b><span>adapters-out</span></div>
-        <div class="c"><b>2</b><span>bootstrap</span></div>
+    <div class="fig">
+      <div class="flow">
+        <div class="col">
+          <div class="node ghost"><div class="h">front / SPA</div><div class="s">Tomcat serve o estático &middot; HTTPS</div></div>
+          <div class="node ghost"><div class="h">Kong</div><div class="s">TLS &middot; WAF &middot; rate-limit &middot; rota</div></div>
+        </div>
+        <div class="arrow">&rarr;<small>W_COP</small></div>
+        <div class="col">
+          <div class="node edge"><span class="tag edge">edge</span>
+            <div class="h" style="margin-top:8px">launcher&nbsp;:8083</div>
+            <div class="s">decifra W_COP &middot; roteador por flag &middot; gate de sessão &middot; zero regra de negócio</div></div>
+        </div>
+        <div class="arrow">&rarr;<small>REST interno</small></div>
+        <div class="col">
+          <div class="node core"><span class="tag core">domínios</span>
+            <div class="h" style="margin-top:8px">scci-core&nbsp;:8090</div>
+            <div class="s">acesso &middot; sessão &middot; documentos &middot; notificação (Java, DDD)</div></div>
+          <div class="node legacy"><span class="tag legacy">legado</span>
+            <div class="h" style="margin-top:8px">pascal-executor&nbsp;:8091</div>
+            <div class="s">spawn dos "w" Pascal via oserver/JNA</div></div>
+        </div>
       </div>
-      <p class="lead" style="margin-top:14px">Total: <b>73 classes</b>. O núcleo testável (domain+application)
-      é <b>48</b> — mais da metade do projeto vive sem framework.</p>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--edge)"></i> launcher (edge)</span>
+        <span><i class="dot" style="background:var(--core)"></i> scci-core (domínios)</span>
+        <span><i class="dot" style="background:var(--legacy)"></i> pascal-executor (legado)</span>
+        <span><i class="dot" style="background:var(--common)"></i> common (libs, in-process)</span>
+      </div>
+      <div class="cap"><b>Fluxo de uma requisição.</b> O launcher é o único ponto de entrada; os dois
+        backends são internos (não expostos ao front). A escolha entre eles é por flag, com fallback.</div>
     </div>
   </div>
 </section>
 
-<!-- ===================== 3 ===================== -->
-<section id="s3">
-  <h2><span class="n">3</span> Mapa legado → reator</h2>
-  <p class="lead">Qual peça do reator cobre qual papel do launcher legado.</p>
-
-  <h3><code>launcher.pas</code> — daemon (executor + ambiente + sessão)</h3>
-  <table>
-    <tr><th>Papel no legado</th><th>Peça no reator</th></tr>
-    <tr><td><code>fpfork</code>/<code>fpexecve</code> do programa “w”</td><td><span class="cls">NativeOserverBridge</span> (socketpair + <code>posix_spawn</code> no fd 6, via JNA)</td></tr>
-    <tr><td><code>SetAmbiente</code> (env do <code>launcherenv.ini [ENVIRONMENT]</code> + <code>USER</code>)</td><td><span class="cls">LauncherEnvReader.ambienteEnv</span></td></tr>
-    <tr><td><code>DBINIT</code> (abre conexão do ambiente)</td><td><span class="cls">JdbcConnectionFactory</span> + <span class="cls">SccDbConfig</span></td></tr>
-    <tr><td><b>VALIDA</b> (<code>VerificaSessionKeyExpirada</code>, <code>SCCI_SESSION</code>)</td><td><span class="cls">SessaoService</span> + <span class="cls">SccSessionRepository</span> (+ cache Redis)</td></tr>
-  </table>
-
-  <h3><code>wcorp.pas</code> — a chamada remota (<code>DoRemoteCall</code>)</h3>
-  <table>
-    <tr><th>Papel no legado</th><th>Peça no reator</th></tr>
-    <tr><td>Params como XML raiz <code>&lt;PMEMORY&gt;</code> (<code>Params.saveToStream</code>)</td><td><code>ProgramExecutor.jsonParaPmemoryXml</code></td></tr>
-    <tr><td>Prefixo de verbo (<code>Get</code>/<code>Post</code>… só se <code>requestMethod</code> é verbo HTTP)</td><td><code>ProgramExecutor.montaMetodo</code></td></tr>
-    <tr><td>Relay do 1º bloco; wrap de exceção em JSON</td><td><code>ProgramExecutor.parseBlocos</code></td></tr>
-    <tr><td><code>codifica</code> (XOR na resposta)</td><td><code>WcopCrypto.cifraResposta</code></td></tr>
-  </table>
-
-  <div class="grid2">
-    <div>
-      <h3><code>oserver.pas</code> — protocolo de blocos</h3>
-      <table>
-        <tr><th>Legado</th><th>Reator</th></tr>
-        <tr><td>Bloco = <code>magic + len(4,BE) + dados</code> [zlib]</td><td><code>ProgramExecutor.bloco/parseBlocos</code></td></tr>
-        <tr><td><code>InitFD</code> (fd bidirecional = socketpair)</td><td><span class="cls">NativeOserverBridge</span></td></tr>
-      </table>
+<section>
+  <div class="wrap">
+    <div class="lead-in">
+      <div class="eyebrow">02 — As quatro peças</div>
+      <h2>O que é cada coisa — e o que tem dentro.</h2>
+      <p>O repositório (<code>launcher/</code>) é o guarda-chuva. Dentro, quatro grupos com papéis
+         distintos. Regra DDD: um contexto só referencia a <b>porta</b> do outro, nunca a entidade.</p>
     </div>
-    <div>
-      <h3><code>sccidoc.pas</code> — CGI de documentos</h3>
-      <table>
-        <tr><th>Legado</th><th>Reator</th></tr>
-        <tr><td><code>DoRawRemoteCall</code> (download)</td><td><span class="cls">DocumentoService</span></td></tr>
-        <tr><td><code>DoMultiPartRemoteCall</code> (upload)</td><td><span class="cls">EnvioDocumentoService</span></td></tr>
-        <tr><td><code>DecodeProgramNameAndMethod</code> (GET path)</td><td><code>@GetMapping /sccidoc/{p}/{m}</code></td></tr>
-      </table>
-    </div>
-  </div>
-
-  <h3><code>loginbd.pas</code> — login / senha / recuperação / validações</h3>
-  <table>
-    <tr><th>Papel no legado</th><th>Peça no reator</th></tr>
-    <tr><td><code>TestaUsuario</code> (login, md5crypt, códigos T/C/E/M/B/F)</td><td><span class="cls">LoginService</span> + <span class="cls">SccCredenciaisRepository</span> + <span class="cls">VerificadorSenhaBcryptMd5</span></td></tr>
-    <tr><td><code>PASSWD</code>/<code>ExecutaPasswdBD</code> (troca + rodízio <code>NO_SENHA1..5</code>)</td><td><span class="cls">TrocarSenhaService</span> + <span class="cls">SccSenhaRepository</span> + <span class="cls">PasswordPolicy</span></td></tr>
-    <tr><td><code>ExecutaEmailPwd</code> (esqueci a senha → e-mail)</td><td><span class="cls">RecuperarSenhaService</span> + <span class="cls">SccRecuperacaoSenhaRepository</span> + <span class="cls">SmtpEnvioEmail</span></td></tr>
-    <tr><td><code>ValidaCpf</code>/<code>ValidaProtocolo</code></td><td><span class="cls">ValidacaoAcessoService</span> + <span class="cls">SccValidacaoAcessoRepository</span></td></tr>
-    <tr><td>Cripto do request (AES-128-CBC) + <code>TrataSenhaEncriptografada</code></td><td><span class="cls">WcopCrypto</span></td></tr>
-  </table>
-
-  <div class="callout warn"><b>NÃO reescrito (executado):</b> <code>wtela</code>, <code>wmenu</code>,
-  <code>wdoc</code> e toda a regra em <code>apilib</code>/<code>apiscci</code>/<code>execlib</code>. Inclusive
-  a <b>autorização por operação</b> (<code>UsuarioTemPerm</code> via <code>getenv('USER')</code>), que o
-  programa enforça sozinho com o <code>USER</code> que o reator injeta.</div>
-</section>
-
-<!-- ===================== 4 ===================== -->
-<section id="s4">
-  <h2><span class="n">4</span> Inventário classe por classe</h2>
-  <div class="legend">
-    <span><span class="badge b-d">domain</span> núcleo puro</span>
-    <span><span class="badge b-a">application</span> casos de uso</span>
-    <span><span class="badge b-in">adapters-in</span> REST</span>
-    <span><span class="badge b-out">adapters-out</span> infra</span>
-    <span><span class="badge b-b">bootstrap</span> wiring</span>
-  </div>
-
-  <h3><span class="badge b-d">domain</span> &nbsp;modelos, ports e regra técnica pura (40)</h3>
-  <table>
-    <tr><th>Classe</th><th>Tipo</th><th>Papel</th><th>Legado</th></tr>
-    <tr><td class="cls">CredenciaisUsuario</td><td class="tag">record</td><td>Dados do usuário p/ login: hash, validade, datas de troca, min/max dias, flag de troca</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">DadosRecuperacao</td><td class="tag">record</td><td>Usuário + SMTP da entidade p/ recuperação (CPF, e-mail, credenciais)</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">HistoricoSenhas</td><td class="tag">record</td><td>Senha atual + 5 anteriores em md5crypt (<code>NO_SENHA1..5</code>)</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">ResultadoLogin</td><td class="tag">record</td><td>Resultado do login: código T/C/E/M/B/F, sessionKey, mensagem, dias restantes</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">ResultadoTroca</td><td class="tag">record</td><td>Resultado da troca de senha (sucesso + mensagem)</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">Sessao</td><td class="tag">record</td><td>Sessão isolada emitida no login: usuário + ambiente operacional</td><td>—</td></tr>
-    <tr><td class="cls">PasswordPolicy</td><td class="tag">class</td><td>Política de complexidade: mín. caracteres, composição, repetições e sequências</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">LoginUseCase</td><td class="tag">port in</td><td>Login nativo W_COP com estados T/C/E/M/B/F/K/X</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">TrocarSenhaUseCase</td><td class="tag">port in</td><td>Troca de senha (PASSWD)</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">RecuperarSenhaUseCase</td><td class="tag">port in</td><td>“Esqueci a senha”: senha temporária + e-mail</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">SessaoUseCase</td><td class="tag">port in</td><td>Gestão de sessão: registrar/consultar/validar/encerrar/contar</td><td class="tag">launcher · VALIDA</td></tr>
-    <tr><td class="cls">ValidarAcessoUseCase</td><td class="tag">port in</td><td>Validações isoladas por CPF/protocolo</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">CredenciaisRepository</td><td class="tag">port out</td><td>Consulta credenciais na base do ambiente (só leitura)</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">SenhaRepository</td><td class="tag">port out</td><td>Lê/grava senha p/ troca, rotacionando <code>NO_SENHA1..5</code></td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">SessaoPersistente</td><td class="tag">port out</td><td>Sessão autoritativa na <code>SCCI_SESSION</code>; implementa VALIDA</td><td class="tag">launcher · SCCI_SESSION</td></tr>
-    <tr><td class="cls">RepositorioSessao</td><td class="tag">port out</td><td>Armazenamento de sessões (cache) <code>sessionKey → Sessao</code></td><td>—</td></tr>
-    <tr><td class="cls">RecuperacaoSenhaRepository</td><td class="tag">port out</td><td>Lê dados+SMTP da entidade e grava senha temporária</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">ValidacaoAcessoRepository</td><td class="tag">port out</td><td>Validações CPF/protocolo (crédito + existência de protocolo)</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">VerificadorSenha</td><td class="tag">port out</td><td>Verifica/gera hash (bcrypt/md5crypt)</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">ContadorTentativas</td><td class="tag">port out</td><td>Contador de tentativas erradas (bloqueio/captcha)</td><td>—</td></tr>
-    <tr><td class="cls">EnvioEmail</td><td class="tag">port out</td><td>Envio de e-mail atrás de interface (SMTP hoje)</td><td>—</td></tr>
-    <tr><td class="cls">AutorizacaoPort</td><td class="tag">port out</td><td>Hook opcional de autorização — <b>sem uso</b> (enforce fica no programa via <code>getenv('USER')</code>)</td><td class="tag">apiscci</td></tr>
-    <tr><td class="cls">WcopCrypto</td><td class="tag">class</td><td>Cripto W_COP: AES-128-CBC no request + XOR na resposta; <code>WebDeCrypt</code> de senhas <code>[..]</code></td><td class="tag">wcorp · loginbd</td></tr>
-    <tr><td class="cls">ComandoExecucao</td><td class="tag">record</td><td>Comando p/ executar programa “w”: params, roteamento, flags de stream + upload binário</td><td class="tag">sccidoc · apilib</td></tr>
-    <tr><td class="cls">ResultadoExecucao</td><td class="tag">record</td><td>Resultado: flag de erro (bloco EXCEPT) + corpo cru</td><td>—</td></tr>
-    <tr><td class="cls">DespachoUseCase</td><td class="tag">port in</td><td>Despacho <code>/w</code>: valida sessão e orquestra a execução</td><td>—</td></tr>
-    <tr><td class="cls">ExecutorPrograma</td><td class="tag">port out</td><td>Executa o binário “w” via protocolo de blocos do oserver</td><td class="tag">oserver · wtela</td></tr>
-    <tr><td class="cls">RespostaDocumento</td><td class="tag">record</td><td>Envelope <code>/sccidoc</code>: metadados + binário OU texto/JSON</td><td class="tag">sccidoc</td></tr>
-    <tr><td class="cls">BaixarDocumentoUseCase</td><td class="tag">port in</td><td>Download: despacha ao programa e devolve binário+metadados</td><td class="tag">wdoc · sccidoc</td></tr>
-    <tr><td class="cls">EnviarDocumentoUseCase</td><td class="tag">port in</td><td>Upload multipart (putDoc): 1 chamada/arquivo com XML+bytes</td><td class="tag">sccidoc</td></tr>
-    <tr><td class="cls">Documento · ConsultarDocumentosUseCase · RepositorioDocumentos</td><td class="tag">scaffold</td><td>Placeholders do BC documentos (sem regra ainda)</td><td>—</td></tr>
-    <tr><td class="cls">AmbienteOperacional · Usuario · MapeamentoAmbiente</td><td class="tag">identidade</td><td>Visão de domínio do ambiente + identidade mínima (scaffold)</td><td class="tag">launcherenv.ini</td></tr>
-    <tr><td class="cls">Licenca · ConsultarLicencasUseCase · RepositorioLicencas</td><td class="tag">scaffold</td><td>BC licenças (REST responde 501)</td><td>—</td></tr>
-    <tr><td class="cls">FeatureFlag · FeatureRegistry</td><td class="tag">scaffold</td><td>Roteador Strangler A/B/C — <b>não-produtivo</b></td><td>—</td></tr>
-  </table>
-
-  <h3><span class="badge b-a">application</span> &nbsp;casos de uso (POJO puro, 8)</h3>
-  <table>
-    <tr><th>Classe</th><th>Papel</th><th>Legado</th></tr>
-    <tr><td class="cls">LoginService</td><td>Autentica usuário nativo (W_COP): bloqueio, captcha, expiração de senha</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">TrocarSenhaService</td><td>Troca de senha: política de força, histórico e rodízio</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">RecuperarSenhaService</td><td>“Esqueci a senha”: valida CPF, gera senha temporária, envia SMTP</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">SessaoService</td><td>Sessão = cache Redis + <code>SCCI_SESSION</code> persistente; valida/renova/conta</td><td class="tag">launcher · VALIDA</td></tr>
-    <tr><td class="cls">ValidacaoAcessoService</td><td>Valida acesso por CPF ou protocolo contra operações do ambiente</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">DespachoService</td><td>Executa o programa “w” do <code>/w</code> após validar sessão</td><td class="tag">launcher</td></tr>
-    <tr><td class="cls">DocumentoService</td><td>Download <code>/sccidoc</code>: interpreta <code>[len][XML metadados][binário]</code></td><td class="tag">sccidoc</td></tr>
-    <tr><td class="cls">EnvioDocumentoService</td><td>Upload (putDoc): itera arquivos, coleta respostas JSON</td><td class="tag">sccidoc</td></tr>
-  </table>
-
-  <div class="grid2">
-    <div>
-      <h3><span class="badge b-in">adapters-in</span> &nbsp;REST + filtros (7)</h3>
-      <table>
-        <tr><th>Classe</th><th>Papel</th></tr>
-        <tr><td class="cls">AutenticacaoController</td><td><code>/w/login</code>, <code>/w/password</code>, <code>/w/email-pwd</code>, <code>/w/valida-acesso</code>, <code>/w/logout</code></td></tr>
-        <tr><td class="cls">DespachoController</td><td><code>/w</code>: VALIDA a sessão antes de executar <code>wmenu</code>/<code>wtela</code></td></tr>
-        <tr><td class="cls">SccidocController</td><td><code>/sccidoc</code>: download, upload multipart, view GET path-based</td></tr>
-        <tr><td class="cls">DocumentosController · LicencasController</td><td>Scaffolds — 501</td></tr>
-        <tr><td class="cls">RequestIdFilter</td><td>Garante <code>X-Request-Id</code> (MDC), loga acesso</td></tr>
-        <tr><td class="cls">SlashNormalizationFilter</td><td>Normaliza <code>//</code> no path (atrás do proxy)</td></tr>
-      </table>
-    </div>
-    <div>
-      <h3><span class="badge b-b">bootstrap</span> &nbsp;composition root (2)</h3>
-      <table>
-        <tr><th>Classe</th><th>Papel</th></tr>
-        <tr><td class="cls">LauncherApplication</td><td>Spring Boot main; porta 8083; component-scan</td></tr>
-        <tr><td class="cls">WiringConfig</td><td><code>@Bean</code> dos casos de uso POJO + injeção dos adapters</td></tr>
-      </table>
+    <div class="cards">
+      <div class="card edge">
+        <div class="role">app &middot; edge</div>
+        <h3><code>launcher/</code> — a borda</h3>
+        <div class="desc">O gateway fino. Traduz o mundo do front (W_COP, sessão, /w e /sccidoc) e
+          <b>orquestra</b>: decide e chama. Não tem lógica de negócio nem código nativo.</div>
+        <ul>
+          <li><b>adapters-in</b> — controllers /w/*, /sccidoc</li>
+          <li><b>application</b> — SessaoService (gate) + roteadores Strangler</li>
+          <li><b>adapters-out</b> — clientes REST (scci-core, pascal-executor), Redis, SCCI_SESSION</li>
+          <li><b>domain</b> — modelos + portas (ResultadoLogin, Sessao, ...)</li>
+        </ul>
+        <div class="meta"><span><b>porta</b> 8083</span><span><b>estado</b> Java puro (sem JNA)</span><span><b>escala</b> horizontal</span></div>
+      </div>
+      <div class="card core">
+        <div class="role">app &middot; domínios</div>
+        <h3><code>scci-core/</code> — o monólito modular</h3>
+        <div class="desc">Onde a regra migrada vive, em Java. DDD: um módulo por <b>bounded context</b>,
+          cada um com sua hexagonal interna. Um deployable, N réplicas.</div>
+        <ul>
+          <li><b>acesso</b> — login (BANCO + família B), senha, recuperação, valida</li>
+          <li><b>sessao</b> — ciclo de vida (Redis + SCCI_SESSION)</li>
+          <li><b>documentos</b> — ver / baixar / enviar (FileSystem + BLOB)</li>
+          <li><b>notificacao</b> — e-mail/SMTP, reaproveitável</li>
+          <li><b>kernel</b> &middot; <b>bootstrap</b> — infra JDBC multi-banco + main</li>
+        </ul>
+        <div class="meta"><span><b>porta</b> 8090</span><span><b>estilo</b> DDD + hexagonal</span><span><b>escala</b> horizontal</span></div>
+      </div>
+      <div class="card legacy">
+        <div class="role">app &middot; legado</div>
+        <h3><code>pascal-executor/</code> — a âncora legada</h3>
+        <div class="desc">O <b>único</b> módulo com nativo. Isola a ponte oserver (JNA:
+          <code>socketpair</code> + <code>posix_spawn</code> no fd&nbsp;6) que spawna os programas Pascal.
+          Co-localizado com os binários; encolhe até o decommission.</div>
+        <ul>
+          <li><b>NativeOserverBridge</b> — a ponte JNA/libc</li>
+          <li><b>ProgramExecutor</b> — protocolo de blocos do oserver</li>
+          <li><b>ExecutarController</b> — REST /interno/executar (binário base64)</li>
+        </ul>
+        <div class="meta"><span><b>porta</b> 8091</span><span><b>preso à</b> caixa do Pascal</span><span><b>futuro</b> desligar</span></div>
+      </div>
+      <div class="card common">
+        <div class="role">libs &middot; in-process</div>
+        <h3><code>common/</code> — o compartilhado</h3>
+        <div class="desc">Módulos técnicos usados <b>in-process</b> pelos apps — sem regra de domínio.
+          Único ponto onde a estrutura é inglês; o negócio segue em PT.</div>
+        <ul>
+          <li><b>crypto</b> — W_COP (AES no request, XOR na resposta)</li>
+          <li><b>environment</b> — leitor do launcherenv.ini + JDBC multi-banco</li>
+          <li><b>contract</b> — contratos compartilhados</li>
+        </ul>
+        <div class="meta"><span><b>forma</b> jar biblioteca</span><span><b>usado por</b> os três apps</span></div>
+      </div>
     </div>
   </div>
-
-  <h3><span class="badge b-out">adapters-out</span> &nbsp;infra / driven (16)</h3>
-  <table>
-    <tr><th>Classe</th><th>Papel</th><th>Legado</th></tr>
-    <tr><td class="cls">ProgramExecutor</td><td>Executa <code>wmenu</code>/<code>wtela</code>/<code>wdoc</code>; monta env, JSON→XML PMEMORY, blocos, retry</td><td class="tag">launcher · wcorp · sccidoc</td></tr>
-    <tr><td class="cls">NativeOserverBridge</td><td>Ponte JNA: socketpair + <code>posix_spawn</code> no fd 6 (protocolo oserver)</td><td class="tag">launcher · oserver · InitFD</td></tr>
-    <tr><td class="cls">VerificadorSenhaBcryptMd5</td><td>Verifica/gera bcrypt (<code>$2</code>) e md5crypt (<code>$1$</code> legado)</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">SmtpEnvioEmail</td><td>Envia e-mail via SMTP (JavaMail) com credenciais da entidade</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">RedisContadorTentativas</td><td>Conta tentativas falhas no Redis com TTL (bloqueio distribuído)</td><td>—</td></tr>
-    <tr><td class="cls">RedisRepositorioSessao</td><td>Cache de sessão no Redis (JSON + TTL)</td><td class="tag">launcher · SCCI_SESSION</td></tr>
-    <tr><td class="cls">SccCredenciaisRepository</td><td>Busca hash/validade/limites na base do ambiente</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">SccSenhaRepository</td><td>Lê/grava senha rotacionando <code>NO_SENHA1..5</code></td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">SccSessionRepository</td><td>Autoritativo da <code>SCCI_SESSION</code>: registra/valida/encerra/conta</td><td class="tag">launcher · VALIDA</td></tr>
-    <tr><td class="cls">SccRecuperacaoSenhaRepository</td><td>Lê e-mail/SMTP da entidade e grava senha temporária</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">SccValidacaoAcessoRepository</td><td>Valida CPF (operação/crédito) e existência de protocolo (SISAT)</td><td class="tag">loginbd</td></tr>
-    <tr><td class="cls">LauncherEnvReader</td><td>Lê <code>launcherenv.ini</code> (<code>[USERS]</code>/<code>[ENVIRONMENT]</code>), expande <code>$VAR</code></td><td class="tag">launcher · launcherenv.ini</td></tr>
-    <tr><td class="cls">JdbcConnectionFactory</td><td>Abre conexão JDBC pelo driver do ini (FB/PG/Oracle/MSSQL)</td><td class="tag">launcher · DBINIT</td></tr>
-    <tr><td class="cls">SccDbConfig</td><td>Config JDBC + mapeamento de 13 colunas do usuário</td><td class="tag">launcher</td></tr>
-    <tr><td class="cls">MapeamentoAmbienteScc</td><td>Carrega <code>AmbienteOperacional</code> do <code>[USERS]</code></td><td class="tag">launcherenv.ini</td></tr>
-    <tr><td class="cls">InMemoryFeatureRegistry</td><td>Registro <b>não-produtivo</b> de feature flags (Strangler)</td><td>—</td></tr>
-  </table>
 </section>
 
-<!-- ===================== 5 ===================== -->
-<section id="s5">
-  <h2><span class="n">5</span> Fluxos ponta a ponta</h2>
-
-  <h3>Login &nbsp;<span class="tag">POST /w/login</span></h3>
-  <p><code>AutenticacaoController</code> decifra o blob AES (<code>WcopCrypto</code>) → <code>LoginService</code>
-  → <code>SccCredenciaisRepository</code> lê a base do ambiente → <code>VerificadorSenhaBcryptMd5</code>
-  compara md5crypt → em sucesso, <code>SessaoService.registrar</code> grava na <code>SCCI_SESSION</code>
-  + cache Redis → resposta <code>{success, sessionKey, contexto}</code> cifrada em XOR.</p>
-
-  <svg class="dg" viewBox="0 0 900 192" role="img" aria-label="Fluxo de login">
-    <g font-size="12">
-      <rect class="bx b-infra" x="12" y="24" width="124" height="54"/><text class="t" x="74" y="51" text-anchor="middle">Front</text>
-      <rect class="bx b-kong"  x="148" y="24" width="124" height="54"/><text class="tw" x="210" y="51" text-anchor="middle">Kong :8082</text>
-      <rect class="bx b-in"    x="284" y="24" width="124" height="54"/><text class="t" x="346" y="46" text-anchor="middle">Autenticacao</text><text class="s" x="346" y="63" text-anchor="middle">decifra AES</text>
-      <rect class="bx b-app"   x="420" y="24" width="124" height="54"/><text class="t" x="482" y="46" text-anchor="middle">LoginService</text><text class="s" x="482" y="63" text-anchor="middle">coordenador</text>
-      <rect class="bx b-app"   x="556" y="24" width="124" height="54"/><text class="t" x="618" y="46" text-anchor="middle">Autent.Banco</text><text class="s" x="618" y="63" text-anchor="middle">md5crypt</text>
-      <rect class="bx b-out"   x="692" y="24" width="124" height="54"/><text class="t" x="754" y="46" text-anchor="middle">Banco</text><text class="s" x="754" y="63" text-anchor="middle">do ambiente</text>
-    </g>
-    <path class="arw2" d="M136 51 L146 51"/><path class="arw2" d="M272 51 L282 51"/>
-    <path class="arw2" d="M408 51 L418 51"/><path class="arw2" d="M544 51 L554 51"/>
-    <path class="arw2" d="M680 51 L690 51"/>
-    <rect class="bx b-out" x="420" y="110" width="200" height="46"/>
-    <text class="t" x="520" y="128" text-anchor="middle">SessaoService</text>
-    <text class="s" x="520" y="145" text-anchor="middle">grava Redis + SCCI_SESSION</text>
-    <path class="arw2" d="M482 78 L482 108"/><text class="num" x="452" y="95" text-anchor="middle">ok</text>
-    <path class="arw" d="M814 178 L74 178 L74 80"/>
-    <text class="s" x="150" y="170" fill="#c2410c">◂ resposta { sessionKey, contexto } cifrada (XOR)</text>
-  </svg>
-
-  <h3>Despacho <span class="tag">POST /w</span> &nbsp;(executar um programa)</h3>
-  <p><code>DespachoController</code> decifra → <b>VALIDA</b> a sessão → <code>DespachoService</code> →
-  <code>ProgramExecutor</code>: monta env (com <code>USER=&lt;usuário&gt;</code>), resolve o binário,
-  converte params JSON→<code>&lt;PMEMORY&gt;</code>, monta os blocos e executa via
-  <code>NativeOserverBridge</code> (socketpair) → lê o 1º bloco → resposta cifrada. A <b>autorização por
-  operação</b> acontece <b>dentro do programa</b> (<code>UsuarioTemPerm(getenv('USER'))</code>).</p>
-
-  <svg class="dg" viewBox="0 0 900 192" role="img" aria-label="Fluxo do despacho /w">
-    <g font-size="12">
-      <rect class="bx b-infra" x="12" y="24" width="110" height="54"/><text class="t" x="67" y="51" text-anchor="middle">Front</text>
-      <rect class="bx b-kong"  x="134" y="24" width="104" height="54"/><text class="tw" x="186" y="51" text-anchor="middle">Kong</text>
-      <rect class="bx b-in"    x="250" y="24" width="130" height="54"/><text class="t" x="315" y="46" text-anchor="middle">DespachoController</text><text class="s" x="315" y="63" text-anchor="middle">VALIDA sessão</text>
-      <rect class="bx b-out"   x="392" y="24" width="134" height="54"/><text class="t" x="459" y="46" text-anchor="middle">ProgramExecutor</text><text class="s" x="459" y="63" text-anchor="middle">env · PMEMORY · blocos</text>
-      <rect class="bx b-out"   x="538" y="24" width="126" height="54"/><text class="t" x="601" y="46" text-anchor="middle">OserverBridge</text><text class="s" x="601" y="63" text-anchor="middle">socketpair · fd 6</text>
-      <rect class="bx b-in"    x="676" y="24" width="124" height="54"/><text class="t" x="738" y="46" text-anchor="middle">Programa Pascal</text><text class="s" x="738" y="63" text-anchor="middle">wtela · wmenu</text>
-    </g>
-    <path class="arw2" d="M122 51 L132 51"/><path class="arw2" d="M238 51 L248 51"/>
-    <path class="arw2" d="M380 51 L390 51"/><path class="arw2" d="M526 51 L536 51"/>
-    <path class="arw2" d="M664 51 L674 51"/>
-    <rect class="bx b-warn" x="596" y="110" width="292" height="46"/>
-    <text class="s" x="742" y="128" text-anchor="middle" fill="#92400e">autorização por operação acontece DENTRO</text>
-    <text class="s" x="742" y="144" text-anchor="middle" fill="#92400e">do programa — UsuarioTemPerm(getenv('USER'))</text>
-    <path class="arw" d="M738 78 L738 108"/>
-    <path class="arw" d="M800 178 L67 178 L67 80"/>
-    <text class="s" x="150" y="170" fill="#c2410c">◂ 1º bloco de resposta cifrado (XOR)</text>
-  </svg>
-
-  <h3>Documentos <span class="tag">/sccidoc</span></h3>
-  <ul>
-    <li><b>Ler/baixar</b> (POST body): <code>DocumentoService</code> → params size-prefixed <code>[LE32]</code>
-      → resposta <code>[len][XML metadados][binário]</code> → arquivo (mime por extensão) ou JSON.</li>
-    <li><b>Ver no navegador</b> (<code>AbrirUrl</code>, GET): <code>/sccidoc/{programa}/{metodo}?query</code>
-      → programa/método do path, params da query, auth por cookie → arquivo inline.</li>
-    <li><b>Enviar</b> (<code>Importar</code>, multipart): <code>EnvioDocumentoService</code> → 1 chamada/arquivo,
-      <code>[LE32][XML+FileName]+bytes</code> → <code>PostX</code> → respostas JSON juntadas (com o prefixo
-      <code>[LE32]</code> removido, como o <code>ReadAnsiString</code> faz).</li>
-  </ul>
-
-  <svg class="dg" viewBox="0 0 900 200" role="img" aria-label="Fluxo do canal de documentos">
-    <g font-size="12">
-      <rect class="bx b-in" x="12" y="20" width="212" height="46"/><text class="t" x="24" y="38">Ver · AbrirUrl</text><text class="s" x="24" y="55">GET /sccidoc/{prog}/{metodo}</text>
-      <rect class="bx b-in" x="12" y="78" width="212" height="46"/><text class="t" x="24" y="96">Enviar · Importar</text><text class="s" x="24" y="113">POST multipart → PostX</text>
-      <rect class="bx b-in" x="12" y="136" width="212" height="46"/><text class="t" x="24" y="154">Ler · RDoc/RProc</text><text class="s" x="24" y="171">POST body → GetX</text>
-
-      <rect class="bx b-app" x="256" y="76" width="150" height="50"/><text class="t" x="331" y="95" text-anchor="middle">SccidocController</text><text class="s" x="331" y="112" text-anchor="middle">VALIDA · cripto · mime</text>
-      <rect class="bx b-out" x="430" y="78" width="140" height="46"/><text class="t" x="500" y="96" text-anchor="middle">ProgramExecutor</text><text class="s" x="500" y="113" text-anchor="middle">[LE32] size-prefix</text>
-      <rect class="bx b-in"  x="594" y="78" width="96" height="46"/><text class="t" x="642" y="96" text-anchor="middle">wdoc</text><text class="s" x="642" y="113" text-anchor="middle">get/putDoc</text>
-      <rect class="bx b-infra" x="714" y="76" width="172" height="50"/><text class="t" x="800" y="95" text-anchor="middle">arquivo (mime)</text><text class="s" x="800" y="112" text-anchor="middle">inline · attachment · JSON</text>
-    </g>
-    <path class="arw2" d="M224 43 C244 43 254 78 256 90"/>
-    <path class="arw2" d="M224 101 L254 101"/>
-    <path class="arw2" d="M224 159 C244 159 254 124 256 112"/>
-    <path class="arw2" d="M406 101 L428 101"/>
-    <path class="arw2" d="M570 101 L592 101"/>
-    <path class="arw2" d="M690 101 L712 101"/>
-    <text class="s" x="500" y="150" text-anchor="middle" fill="#c2410c">no upload, o prefixo [LE32] da resposta é removido (fiel ao ReadAnsiString)</text>
-  </svg>
-</section>
-
-<!-- ===================== 6 ===================== -->
-<section id="s6">
-  <h2><span class="n">6</span> Infraestrutura e deploy</h2>
-  <table>
-    <tr><th>Peça</th><th>Papel</th></tr>
-    <tr><td class="cls">Apache</td><td>Borda; <code>ProxyPass /aejs-l/rest → :8082</code> (remove o prefixo); <code>LimitRequestBody</code> 30 MB</td></tr>
-    <tr><td class="cls">Kong <span class="tag">:8082</span></td><td>API gateway DB-less: roteia por domínio (<code>/w/login</code>, <code>/w</code>, <code>/sccidoc</code>…) p/ o reator; plugins correlation-id + opentelemetry</td></tr>
-    <tr><td class="cls">Reator <span class="tag">:8083</span></td><td><code>launcher.jar</code> — este projeto</td></tr>
-    <tr><td class="cls">Redis <span class="tag">redis</span></td><td>Cache de sessão (<code>sess:*</code>) e contador de tentativas (<code>att:*</code>)</td></tr>
-    <tr><td class="cls">OTel Collector <span class="tag">otel</span></td><td>Métricas + traces (OTLP); pronto p/ AWS (EMF/X-Ray comentados)</td></tr>
-    <tr><td class="cls">Banco (multi-banco)</td><td>Base real por ambiente, lida por request via <code>launcherenv.ini</code>: <b>PostgreSQL · Firebird · Oracle · SQL Server</b> (o driver é escolhido pelo <code>DRIVERNAME</code>)</td></tr>
-  </table>
-
-  <h3>Multi-banco — pronto (drivers + queries portáveis)</h3>
-  <p class="lead">Cada cliente aponta para o seu banco no <code>launcherenv.ini</code> (<code>[USERS]</code>);
-  o <code>JdbcConnectionFactory</code> monta a URL pelo <code>DRIVERNAME</code>. Portar um cliente novo do
-  mesmo tipo de banco = configuração.</p>
-  <table>
-    <tr><th>Banco</th><th>Driver</th><th>JDBC URL</th><th>Status</th></tr>
-    <tr><td class="cls">PostgreSQL</td><td><code>postgresql</code></td><td><code>jdbc:postgresql://host:5432/db</code></td><td>✅ validado ao vivo (c6bank)</td></tr>
-    <tr><td class="cls">Firebird (INTERBASE)</td><td><code>jaybird</code></td><td><code>jdbc:firebirdsql://host:3050/db</code> · ou <code>embedded</code> (.gdb local)</td><td>🟡 driver + URL prontos; validar ao vivo</td></tr>
-    <tr><td class="cls">Oracle</td><td><code>ojdbc11</code></td><td><code>jdbc:oracle:thin:@host:1521:sid</code></td><td>🟡 driver + URL prontos; validar ao vivo</td></tr>
-    <tr><td class="cls">SQL Server</td><td><code>mssql-jdbc</code></td><td><code>jdbc:sqlserver://host:port;databaseName=db</code></td><td>🟡 driver + URL prontos; validar ao vivo</td></tr>
-  </table>
-  <div class="callout ok"><b>Queries portáveis entre bancos:</b> tudo <b>ANSI-padrão e parametrizado</b>
-  (<code>?</code>), <b>sem</b> funções específicas de banco (<code>NOW()</code>/<code>SYSDATE</code>/<code>GETDATE()</code>),
-  <b>sem</b> <code>LIMIT</code>/<code>TOP</code>/<code>::cast</code>/<code>ILIKE</code>. Datas via
-  <code>setTimestamp</code> (Java); <b>tabela e colunas vêm do <code>launcherenv.ini</code></b> por cliente.
-  Só o <code>SELECT 1</code>/<code>COUNT(*)</code>/<code>UPDATE</code>/<code>DELETE</code> e atribuição
-  coluna-a-coluna (<code>NO_SENHA1=NO_SENHA2</code>) — roda igual nos 4.</div>
-
-  <svg class="dg" viewBox="0 0 900 196" role="img" aria-label="Pipeline de infraestrutura">
-    <g font-size="12">
-      <rect class="bx b-infra" x="12" y="24" width="128" height="54"/><text class="t" x="76" y="51" text-anchor="middle">Browser</text>
-      <rect class="bx b-infra" x="162" y="24" width="196" height="54"/><text class="t" x="260" y="45" text-anchor="middle">Apache · :443</text><text class="s" x="260" y="62" text-anchor="middle">ProxyPass · LimitRequestBody 30 MB</text>
-      <rect class="bx b-kong"  x="380" y="24" width="170" height="54"/><text class="tw" x="465" y="45" text-anchor="middle">Kong · :8082</text><text class="sw" x="465" y="62" text-anchor="middle">roteia por domínio</text>
-      <rect class="bx b-app"   x="572" y="24" width="180" height="54"/><text class="t" x="662" y="45" text-anchor="middle">Reator · :8083</text><text class="s" x="662" y="62" text-anchor="middle">launcher.jar</text>
-    </g>
-    <path class="arw2" d="M140 51 L160 51"/><path class="arw2" d="M358 51 L378 51"/><path class="arw2" d="M550 51 L570 51"/>
-    <!-- serviços de apoio -->
-    <path d="M662 78 L662 104" class="arw"/>
-    <path d="M447 104 L799 104" stroke="#94a3b8" stroke-width="2" fill="none"/>
-    <path class="arw" d="M447 104 L447 122"/><path class="arw" d="M623 104 L623 122"/><path class="arw" d="M799 104 L799 122"/>
-    <g font-size="12">
-      <rect class="bx b-infra" x="372" y="124" width="150" height="48"/><text class="t" x="447" y="142" text-anchor="middle">Redis</text><text class="s" x="447" y="159" text-anchor="middle">sessão · tentativas</text>
-      <rect class="bx b-infra" x="548" y="124" width="150" height="48"/><text class="t" x="623" y="142" text-anchor="middle">OTel Collector</text><text class="s" x="623" y="159" text-anchor="middle">métricas · traces</text>
-      <rect class="bx b-infra" x="712" y="124" width="174" height="48"/><text class="t" x="799" y="142" text-anchor="middle">Banco (multi-banco)</text><text class="s" x="799" y="159" text-anchor="middle">PG/FB/Oracle/MSSQL · por ambiente</text>
-    </g>
-  </svg>
-
-  <p class="lead"><b>Build:</b> <code>mvn -q clean package</code> → <code>launcher/bootstrap/target/launcher.jar</code>.
-  &nbsp;<b>Deploy:</b> <code>deploy/</code> (envia jar + <code>kong.yml</code>, sobe via <code>run.sh 8083</code>,
-  JDK 21 embutido, sem cron).</p>
-</section>
-
-<!-- ===================== 7 ===================== -->
-<section id="s7">
-  <h2><span class="n">7</span> Cobertura vs. blueprint — o que já tem (com evidência) × o que falta</h2>
-  <p class="lead">Cruzamento com a análise crítica de arquitetura. Legenda:
-    <b style="color:#16a34a">✅ feito e validado</b> ·
-    <b style="color:#d97706">🟡 parcial</b> ·
-    <b style="color:#dc2626">⛔ falta</b>.</p>
-
-  <h3>Login · sessão · senha</h3>
-  <table>
-    <tr><th>Item do blueprint</th><th style="width:70px">Status</th><th>Evidência / peça no reator</th></tr>
-    <tr><td>Estados detalhados de login (sucesso, senha expirada, troca obrigatória, captcha, bloqueio…)</td><td>✅</td><td>códigos <code>T/C/E/M/B/F/K/X</code> em <code>ResultadoLogin</code>; <code>LoginServiceTest</code>+<code>AutenticadorBancoTest</code>; enum <code>CodigoLogin</code> (<code>CodigoLoginTest</code>). <span style="color:#d97706">🟡 falta expor via OpenAPI público</span></td></tr>
-    <tr><td>Bloqueio progressivo + captcha, distribuído (Redis), sem race</td><td>✅</td><td><code>RedisContadorTentativas</code> (<code>att:*</code>, INCR atômico + TTL); config <code>max-erros</code>/<code>captcha</code>; testado</td></tr>
-    <tr><td>Timeout de sessão + múltiplas sessões parametrizáveis (nunca hardcoded 1)</td><td>✅</td><td><code>ttl 1800</code> config · <code>max-logins-simultaneos:0</code> (parametrizável) · <code>SessaoService</code> + Redis + <code>SCCI_SESSION</code></td></tr>
-    <tr><td>Histórico de senha — bloqueio de reuso das últimas N</td><td>✅</td><td><code>TrocarSenhaService</code> + rodízio <code>NO_SENHA1..5</code>; testado</td></tr>
-    <tr><td>Hardening: delay + respostas/tempo indistinguíveis (anti-enumeração/brute-force)</td><td>✅</td><td>atraso configurável + mensagem genérica (inexistente = senha errada)</td></tr>
-    <tr><td>Recuperação de senha por e-mail</td><td>✅</td><td><code>RecuperarSenhaService</code> + SMTP da entidade (feito, além do escopo inicial)</td></tr>
-  </table>
-
-  <h3>Segurança &amp; criptografia</h3>
-  <table>
-    <tr><th>Item</th><th style="width:70px">Status</th><th>Evidência / observação</th></tr>
-    <tr><td>Criptografia de entrada AES mantida obrigatória</td><td>✅</td><td><code>WcopCrypto</code> — decifra request AES real (teste com blob capturado)</td></tr>
-    <tr><td>Autorização granular por operação (não só por usuário)</td><td>✅</td><td>enforçada pelos <b>programas</b> via <code>getenv('USER')</code>; validado (<code>GetSetaPermissoes</code> true/false)</td></tr>
-    <tr><td>SSL na borda</td><td>✅</td><td>Apache (TLS/vhost); Kong sem TLS próprio</td></tr>
-    <tr><td>JWT/OAuth2 (clientes pré-autenticados)</td><td>✅</td><td>família "payload-mapeado" (IdP externo já autenticou) <b>portada</b>: itau/c6/brb/cashmeweb/direto/ailos + unicred (🟡 subordinação transitiva) — <code>AutenticadorMapeado</code>+<code>ProvisaoXXX</code>+<code>SccProvisionamentoRepository</code>; <code>ProvisaoMapeadoTest</code> (26). JWT próprio ⛔. Famílias C/D (SOAP/LDAP externos) precisam das credenciais do cliente</td></tr>
-    <tr><td>Rate limiting na borda</td><td>✅</td><td>plugin <code>rate-limiting</code> do Kong ligado (20/min na rota de login por IP + 300/min global)</td></tr>
-    <tr><td>Spring Security completo</td><td>⛔</td><td>a auth é o W_COP (bcrypt/md5crypt via libs); não usamos Spring Security</td></tr>
-  </table>
-
-  <h3>Gateway · Strangler · feature flags</h3>
-  <table>
-    <tr><th>Item</th><th style="width:70px">Status</th><th>Evidência / observação</th></tr>
-    <tr><td>Kong na borda, roteamento por domínio</td><td>✅</td><td>Kong DB-less roteando <code>/w/login</code>, <code>/w</code>, <code>/sccidoc</code>… p/ o reator</td></tr>
-    <tr><td>Feature flags / registry (rollout A/B/C)</td><td>⛔</td><td><code>FeatureRegistry</code>/<code>FeatureFlag</code> = scaffold <b>não-produtivo</b></td></tr>
-    <tr><td>Proxy de rollback p/ W_COP (kill-switch global)</td><td>⛔</td><td>rota "legado" no Kong não existe. Rollback hoje = <code>/aejs</code> real <b>intacto</b> (isolamento por ambiente)</td></tr>
-    <tr><td>Rollback rápido</td><td>🟡</td><td>via isolamento (<code>/aejs-l</code> separado, produção intacta); kill-switch por rota ⛔</td></tr>
-  </table>
-
-  <h3>Execução dos programas Pascal</h3>
-  <table>
-    <tr><th>Item</th><th style="width:70px">Status</th><th>Evidência / observação</th></tr>
-    <tr><td>Isolamento de execução + protocolo/encoding compatível</td><td>✅</td><td><code>ProgramExecutor</code> + <code>NativeOserverBridge</code> (socketpair — fala o oserver <b>real</b>, melhor que ProcessBuilder); ISO-8859-1 tratado</td></tr>
-    <tr><td>Zero alteração nos programas Pascal (não quebrar o legado)</td><td>✅</td><td>o reator <b>executa os binários reais</b> — nenhuma linha Pascal tocada</td></tr>
-    <tr><td>Isolamento por identidade do SO (usuário correto)</td><td>🟡</td><td>passa <code>USER=&lt;usuário&gt;</code> ao programa (permissões OK); NÃO faz <code>fpsetreuid</code> como o <code>launcher.pas</code> — pendência p/ outros ambientes</td></tr>
-    <tr><td>Uploads grandes via S3/pre-signed; pequenos via multipart</td><td>⛔</td><td>multipart pequeno ✅ validado; <b>&gt;10 GB (chunking/resumível/S3) = débito principal</b></td></tr>
-  </table>
-
-  <h3>Observabilidade · auditoria · testes</h3>
-  <table>
-    <tr><th>Item</th><th style="width:70px">Status</th><th>Evidência / observação</th></tr>
-    <tr><td>request-id full chain + logs JSON/ELK</td><td>✅</td><td><code>RequestIdFilter</code> + correlation-id do Kong; <code>logstash-logback</code></td></tr>
-    <tr><td>Métricas (Prometheus) + traces</td><td>✅</td><td>OTel Collector (métricas <code>:9464</code> + traces OTLP); pronto p/ AWS</td></tr>
-    <tr><td>Auditoria de eventos críticos, sem dado sensível</td><td>✅</td><td><code>web_login</code>/<code>program_exec</code>/<code>sccidoc*</code>/<code>w_password</code> (senha só como chave)</td></tr>
-    <tr><td>Dashboards de rollout Java vs Pascal</td><td>🟡</td><td>telemetria pronta; sem rollout comparativo ainda (depende do Strangler)</td></tr>
-    <tr><td>Testes automatizados de todos os cenários</td><td>✅</td><td><b>116 testes verdes</b> (login/bloqueio/cripto/transporte/documentos/login multi-cliente/multi-banco) — ver <code>EVIDENCIAS-TESTES.md</code></td></tr>
-    <tr><td>Testes de rollback/migração</td><td>⛔</td><td>dependem das feature flags (ainda não produtivas)</td></tr>
-  </table>
-
-  <h3>API / contrato · governança</h3>
-  <table>
-    <tr><th>Item</th><th style="width:70px">Status</th><th>Evidência / observação</th></tr>
-    <tr><td>Retrocompatibilidade byte-a-byte c/ front e banco</td><td>✅</td><td>contrato W_COP preservado (AES/XOR/ISO-8859-1); nenhum breaking change</td></tr>
-    <tr><td>Healthcheck</td><td>✅</td><td><code>/actuator/health</code></td></tr>
-    <tr><td>problem+json · Swagger/OpenAPI · versionamento · endpoints admin</td><td>⛔</td><td>o contrato é o W_COP (não REST moderno) por retrocompat; API moderna fica p/ quando o front evoluir</td></tr>
-    <tr><td>Documentação viva segmentada</td><td>✅</td><td>README + <code>ARQUITETURA-INVENTARIO</code> + <code>REGRAS-NEGOCIO</code> + <code>VALIDACAO-REQUISITOS</code> + <code>EVIDENCIAS-TESTES</code> + este HTML</td></tr>
-    <tr><td>ADRs por decisão</td><td>✅</td><td>10 ADRs formais em <code>DECISOES-ADR.md</code> (hexagonal, fronteira oserver, JNA, login nativo, W_COP, sessão, Strategy multi-cliente, autorização, Kong, nome do artefato)</td></tr>
-    <tr><td>Mapear hooks/side-effects legados (login/troca/logoff)</td><td>✅</td><td><code>ANALISE-LEGADO.md</code>: matriz de hooks do loginbd (§1) + provisionamento da família B (§3); GAPs residuais sinalizados (USUARIO_SCAT_INTERNET, GeraLog, subordinação unicred)</td></tr>
-    <tr><td>Matriz de encoding/codificação por programa</td><td>✅</td><td>matriz formal por fluxo/programa em <code>ANALISE-LEGADO.md</code> §2 (ISO-8859-1 uniforme; ponto único de ajuste no <code>ProgramExecutor.parseBlocos</code>)</td></tr>
-  </table>
-
-  <div class="callout warn"><b>Principais lacunas (priorizadas):</b>
-    <b>1)</b> Upload &gt; 10 GB (chunking/S3/resumível) — <i>alta</i>. &nbsp;
-    <b>2)</b> Feature flags/Strangler ativos + rota legado no Kong (kill-switch) — <i>média</i>. &nbsp;
-    <b>3)</b> Formalizar catálogo de estados (ENUM/OpenAPI) + problem+json — <i>baixo esforço</i>. &nbsp;
-    <b>4)</b> JWT/rate-limit no Kong + isolamento por usuário do SO (<code>setreuid</code>) — <i>média</i>. &nbsp;
-    <b>5)</b> Mapear hooks/side-effects legados + matriz de encoding + ADRs — <i>governança</i>.
+<section>
+  <div class="wrap">
+    <div class="lead-in">
+      <div class="eyebrow">03 — Ports &amp; Adapters</div>
+      <h2>Como a hexagonal se desenha em cada módulo.</h2>
+      <p>O núcleo (domínio + casos de uso) não conhece o mundo externo — só <b>portas</b>. Os
+         <b>adapters</b> (entrada e saída) dependem para dentro, nunca o contrário. Exemplo do contexto
+         <code>acesso</code>:</p>
+    </div>
+    <div class="fig">
+      <div class="hex">
+        <div class="band">
+          <div class="bandlabel">driving &middot; entrada</div>
+          <div class="small-node"><div class="h">AcessoInternoController</div><div class="s">REST /interno/acesso/*</div></div>
+          <div class="small-node"><div class="h">(edge) launcher</div><div class="s">decifra W_COP &rarr; chama</div></div>
+        </div>
+        <div class="portcol"><div class="port">porta&nbsp;IN<br>LoginUseCase</div></div>
+        <div class="band">
+          <div class="bandlabel">núcleo &middot; domínio + aplicação</div>
+          <div class="core-stack">
+            <div class="inner"><div class="h">application</div><div class="s">LoginService — bloqueio, captcha, emite token</div></div>
+            <div class="inner"><div class="h">domain</div><div class="s">ResultadoLogin &middot; políticas &middot; Strategy por cliente</div></div>
+          </div>
+        </div>
+        <div class="portcol">
+          <div class="port">porta&nbsp;OUT<br>CredenciaisRepo</div>
+          <div class="port">porta&nbsp;OUT<br>Notificador</div>
+        </div>
+        <div class="band">
+          <div class="bandlabel">driven &middot; saída</div>
+          <div class="small-node"><div class="h">SccCredenciaisRepository</div><div class="s">JDBC multi-banco &middot; SOMENTE LEITURA</div></div>
+          <div class="small-node"><div class="h">SmtpNotificador</div><div class="s">contexto notificacao</div></div>
+        </div>
+      </div>
+      <div class="ruleline"><b>Regra de dependência:</b> tudo aponta para o centro. Trocar SMTP por uma
+        fila, ou o banco por outro driver, é trocar o <i>adapter</i> — o caso de uso não muda.</div>
+      <div class="cap"><b>Contexto acesso.</b> O mesmo formato se repete em documentos, sessao e
+        notificacao. O launcher fala com o núcleo pela porta IN via REST; o núcleo fala com o mundo
+        pelas portas OUT.</div>
+    </div>
+    <div class="styles">
+      <div class="stylebox">
+        <div class="t"><code>launcher/</code> — camada por <b>módulo</b></div>
+        <div class="sub">A hexagonal é imposta pelo <i>build</i>: cada camada é um módulo Maven, a
+          fronteira é verificável (o domain não compila dependendo de um adapter).</div>
+        <div class="layers">
+          <div class="layer"><span>adapters-in</span><span class="role">controllers</span></div>
+          <div class="layer"><span>application</span><span class="role">casos de uso</span></div>
+          <div class="layer"><span>domain</span><span class="role">modelos &middot; portas</span></div>
+          <div class="layer"><span>adapters-out</span><span class="role">REST &middot; JDBC &middot; Redis</span></div>
+        </div>
+      </div>
+      <div class="stylebox">
+        <div class="t"><code>scci-core/&lt;contexto&gt;</code> — camada por <b>pacote</b></div>
+        <div class="sub">Cada bounded context é um módulo; a hexagonal fica em pacotes internos. O corte
+          primário é o <b>domínio</b>, não a camada.</div>
+        <div class="layers">
+          <div class="layer"><span>adapters/in</span><span class="role">controller REST</span></div>
+          <div class="layer"><span>application</span><span class="role">casos de uso</span></div>
+          <div class="layer"><span>domain</span><span class="role">model &middot; port/in &middot; port/out</span></div>
+          <div class="layer"><span>adapters/out</span><span class="role">JDBC &middot; Redis &middot; SMTP</span></div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="callout ok"><b>Já entregue além do blueprint inicial:</b> troca e recuperação de senha, sessão
-  distribuída em Redis, observabilidade OpenTelemetry, canal de documentos completo (ver/enviar/baixar),
-  e o <b>frame de login multi-cliente</b> (Strategy) que torna portar um cliente novo uma configuração.</div>
 </section>
 
-</div>
+<section>
+  <div class="wrap">
+    <div class="lead-in">
+      <div class="eyebrow">04 — Como tudo se conecta</div>
+      <h2>Os fios entre as peças.</h2>
+      <p>Comunicação interna é <b>REST HTTP local</b> (sub-milissegundo, mesmo host). O estado de sessão
+         é um <b>contrato de Redis compartilhado</b>; o banco de cada cliente é resolvido por request.</p>
+    </div>
+    <div class="fig">
+      <div class="flow" style="min-width:720px">
+        <div class="col">
+          <div class="node edge"><div class="h">launcher :8083</div>
+            <div class="s">W_COP &middot; flags &middot; gate de sessão (lê Redis direto)</div></div>
+        </div>
+        <div class="arrow">&rarr;<small>REST /interno/*</small></div>
+        <div class="col">
+          <div class="node core"><div class="h">scci-core :8090</div><div class="s">acesso &middot; sessao &middot; documentos &middot; notificacao</div></div>
+          <div class="node legacy"><div class="h">pascal-executor :8091</div><div class="s">&rarr; oserver/JNA &rarr; wdoc / wtela / ...</div></div>
+        </div>
+        <div class="arrow">&rarr;<small>JDBC por ambiente</small></div>
+        <div class="col">
+          <div class="node ghost"><div class="h">bancos por cliente</div><div class="s">Postgres &middot; Oracle &middot; Firebird &middot; MSSQL<br>(DRIVERNAME do launcherenv.ini)</div></div>
+        </div>
+      </div>
+      <div class="shared">
+        <span class="h">Redis compartilhado</span>
+        <span class="i"><code>sess:&lt;key&gt;</code> = usuário<span class="mono">·SEP·</span>ambiente — mesmo formato no gate (launcher) e no ciclo de vida (scci-core)</span>
+      </div>
+      <div class="cap"><b>Contrato de wire.</b> launcher e scci-core são processos separados que
+        compartilham o Redis; o formato da chave é idêntico nos dois (provado por teste cruzado). O
+        W_COP fica só na borda — o interno trafega texto na rede confiável.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="lead-in">
+      <div class="eyebrow">05 — Feature flags (Strangler)</div>
+      <h2>Como o roteador foi desenhado — e como pode evoluir.</h2>
+      <p>Cada canal do launcher é um <b>decorator</b> (roteador) que, por flag, escolhe o caminho JAVA
+         (scci-core) ou o legado (Pascal). Sem entrada = comportamento antigo. Com o scci-core fora, o
+         cliente <b>cai no fallback</b> — resiliência embutida.</p>
+    </div>
+    <div class="twocol">
+      <div>
+        <div class="fig" style="background-image:none">
+          <div class="flagflow">
+            <div class="node ghost" style="min-width:110px"><div class="h">requisição</div><div class="s">método do canal</div></div>
+            <div class="arrow">&rarr;</div>
+            <div class="decision">flag<br><code>dominio.&lt;Metodo&gt;</code><br>&rarr; <code>dominio</code> &rarr; default</div>
+            <div class="arrow">&rarr;</div>
+            <div class="col" style="gap:10px;display:flex;flex-direction:column">
+              <div class="node core"><div class="h">JAVA &middot; scci-core</div><div class="s">se ligada</div></div>
+              <div class="node legacy"><div class="h">Pascal &middot; executor</div><div class="s">senão / fallback</div></div>
+            </div>
+          </div>
+          <div class="cap"><b>ConfigFeatureRegistry.</b> Um mapa <code>launcher.roteamento.flags</code>;
+            a chave é o nome consultado. Override por método vence o default do domínio.</div>
+        </div>
+        <div class="note"><b>Chave com ponto:</b> no YAML usa-se notação de colchetes —
+          <code>"[documentos.GetDocumento]"</code> — para virar chave literal do mapa (bind do Spring).</div>
+      </div>
+      <div>
+        <table class="flags">
+          <thead><tr><th>flag</th><th>canal</th><th>hoje</th></tr></thead>
+          <tbody>
+            <tr><td><code>documentos.GetDocumento</code></td><td>download por ID &rarr; scci-core</td><td><span class="pill on">ON</span></td></tr>
+            <tr><td><code>acesso.Login</code></td><td>/w/login &rarr; scci-core</td><td><span class="pill on">ON</span></td></tr>
+            <tr><td><code>acesso.TrocaSenha</code></td><td>/w/password</td><td><span class="pill off">local</span></td></tr>
+            <tr><td><code>documentos</code></td><td>todo o domínio</td><td><span class="pill off">off</span></td></tr>
+            <tr><td>execução Pascal</td><td>sempre via pascal-executor</td><td><span class="pill always">fixo</span></td></tr>
+          </tbody>
+        </table>
+        <div class="note"><b>Como pode evoluir:</b> a flag já carrega um campo <code>percentual</code> —
+          dá para <b>canary / rollout gradual</b> (10% &rarr; 50% &rarr; 100%), decisão <b>por
+          ambiente/cliente</b>, ou A/B. O roteador é o único ponto que muda.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="lead-in">
+      <div class="eyebrow">06 — Como escala</div>
+      <h2>O que escala livre, e o que fica preso.</h2>
+      <p>launcher e scci-core são <b>stateless</b> — o estado vive no Redis compartilhado e nos bancos.
+         Logo, escalam em N réplicas atrás de um balanceador. O pascal-executor é <b>pinado</b> à caixa
+         legada (precisa dos binários + oserver + ambiente em disco).</p>
+    </div>
+    <div class="fig">
+      <div class="scale-grid">
+        <div class="rack edge">
+          <div class="rt"><span>launcher (edge)</span><span class="tag edge">1..N</span></div>
+          <div class="replicas"><div class="rep stacked">edge &middot; réplica</div></div>
+          <div class="scaleword">escala horizontal &middot; NLB</div>
+        </div>
+        <div class="rack core">
+          <div class="rt"><span>scci-core</span><span class="tag core">1..N</span></div>
+          <div class="replicas"><div class="rep stacked">domínios &middot; réplica</div></div>
+          <div class="scaleword">escala horizontal &middot; NLB</div>
+        </div>
+        <div class="rack legacy">
+          <div class="rt"><span>pascal-executor</span><span class="tag legacy">pinado</span></div>
+          <div class="replicas"><div class="rep">na caixa do Pascal</div></div>
+          <div class="scaleword">preso ao legado &middot; encolhe</div>
+        </div>
+      </div>
+      <div class="shared">
+        <span class="h">estado compartilhado</span>
+        <span class="i"><b>Redis</b> (sessão &middot; tentativas) e <b>bancos por cliente</b> (JDBC por request) — é o que permite N réplicas sem afinidade</span>
+      </div>
+      <div class="cap"><b>Por que funciona.</b> Tirar o JNA do launcher foi o que o tornou portável:
+        edge 100% Java roda em container e escala sem arrastar a caixa legada junto.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="lead-in">
+      <div class="eyebrow">07 — Onde a migração está</div>
+      <h2>Strangler em progresso: o Java cresce, o Pascal encolhe.</h2>
+    </div>
+    <div class="status-cols">
+      <div class="scol java">
+        <h3><span class="tag core">Java</span> já no scci-core — validado ao vivo</h3>
+        <ul>
+          <li><b>documentos</b> — download (FileSystem + BLOB) e upload, byte-idêntico ao legado</li>
+          <li><b>acesso</b> — login BANCO + família B (7 clientes), troca de senha, valida</li>
+          <li><b>sessao</b> — Redis + SCCI_SESSION, contrato de Redis provado entre processos</li>
+          <li><b>notificacao</b> — e-mail extraído para contexto próprio</li>
+          <li><b>execução</b> — externalizada no pascal-executor; launcher virou Java puro</li>
+        </ul>
+      </div>
+      <div class="scol pas">
+        <h3><span class="tag legacy">Pascal</span> ainda via pascal-executor</h3>
+        <ul>
+          <li><b>demais métodos</b> do wdoc/wtela/... não migrados</li>
+          <li><b>relatórios</b> e fluxos que ainda batem no oserver</li>
+          <li>cada um migra atrás de flag, um de cada vez, com fallback</li>
+          <li>ao fim: <b>desligar o pascal-executor</b> — sem cirurgia no launcher</li>
+        </ul>
+      </div>
+    </div>
+    <div class="lead-in" style="margin:32px 0 12px">
+      <div class="eyebrow">invariantes de segurança</div>
+    </div>
+    <div class="invariants">
+      <div class="inv"><b>Login = somente leitura</b> — sem rehash md5crypt&rarr;bcrypt</div>
+      <div class="inv"><b>W_COP fica na borda</b> — o interno trafega texto na rede confiável</div>
+      <div class="inv"><b>Produção /aejs intocada</b> — tudo no trilho paralelo /aejs-l</div>
+      <div class="inv"><b>Redis: contrato idêntico</b> — mesmo formato de chave nos dois processos</div>
+      <div class="inv"><b>Ir ao ar por cliente</b> — exige endpoint/credenciais daquele cliente</div>
+      <div class="inv"><b>Escrita só com OK</b> — provisão/senha em ambiente nomeado</div>
+    </div>
+  </div>
+</section>
 
 <footer>
-  Launcher SCCI em Java · reator hexagonal (<code>launcher</code>) · documento gerado a partir do código.<br>
-  Detalhes: <code>README.md</code> · <code>ARQUITETURA-INVENTARIO.md</code> · <code>VALIDACAO-REQUISITOS.md</code> · <code>EVIDENCIAS-TESTES.md</code> · <code>DECISOES-ADR.md</code> · <code>ANALISE-LEGADO.md</code> · <code>REGRAS-NEGOCIO-LAUNCHER-JAVA.md</code>
+  <div class="wrap">
+    plataforma SCCI &middot; common &middot; launcher &middot; scci-core &middot; pascal-executor — arquitetura hexagonal, Strangler Fig
+  </div>
 </footer>
-
-</body>
-</html>
