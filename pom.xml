@@ -32,7 +32,7 @@
     p/ o scci-core atrás de feature-flag (roteador). Ver docs/ e DECISOES-ADR.md.
   -->
   <modules>
-    <module>comum</module>
+    <module>common</module>
     <module>launcher</module>
     <module>scci-core</module>
   </modules>
@@ -72,17 +72,17 @@
       <!-- comum/* : modulos tecnicos compartilhados (in-process) -->
       <dependency>
         <groupId>com.prognum</groupId>
-        <artifactId>comum-cripto</artifactId>
+        <artifactId>common-crypto</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>com.prognum</groupId>
-        <artifactId>comum-ambiente</artifactId>
+        <artifactId>common-environment</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>com.prognum</groupId>
-        <artifactId>comum-contrato</artifactId>
+        <artifactId>common-contract</artifactId>
         <version>${project.version}</version>
       </dependency>
 

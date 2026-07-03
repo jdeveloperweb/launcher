@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    comum/ : módulos TÉCNICOS compartilhados, usados IN-PROCESS pelo launcher e pelo scci-core.
+    São bibliotecas (JAR) — não deployables, não escalam sozinhos: vão junto de quem os inclui.
+      • cripto   : W_COP (AES/XOR) + WebDeCrypt
+      • ambiente : lê launcherenv.ini (env do Pascal + SccDbConfig)
+      • contrato : DTOs do REST interno + convenção de chave de sessão no Redis
+    NENHUMA regra de domínio aqui.
+  -->
+  <parent>
+    <groupId>com.prognum</groupId>
+    <artifactId>launcher-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>common</artifactId>
+  <packaging>pom</packaging>
+  <name>common</name>
+  <description>Módulos técnicos compartilhados (in-process) da plataforma SCCI</description>
+
+  <modules>
+    <module>crypto</module>
+    <module>environment</module>
+    <module>contract</module>
+  </modules>
+</project>

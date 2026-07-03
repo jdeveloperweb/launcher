@@ -2,7 +2,7 @@ package com.prognum.scci.documentos;
 
 import org.junit.jupiter.api.Test;
 
-import com.prognum.scci.documentos.dominio.TipoMime;
+import com.prognum.scci.documentos.domain.TipoMime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

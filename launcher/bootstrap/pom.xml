@@ -18,11 +18,11 @@
   <dependencies>
     <dependency>
       <groupId>com.prognum</groupId>
-      <artifactId>comum-cripto</artifactId>
+      <artifactId>common-crypto</artifactId>
     </dependency>
     <dependency>
       <groupId>com.prognum</groupId>
-      <artifactId>comum-ambiente</artifactId>
+      <artifactId>common-environment</artifactId>
     </dependency>
     <dependency>
       <groupId>com.prognum</groupId>

@@ -3,27 +3,27 @@ package com.prognum.scci;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.prognum.comum.ambiente.JdbcConnectionFactory;
-import com.prognum.comum.ambiente.LauncherEnvReader;
-import com.prognum.scci.documentos.aplicacao.BaixarDocumentoEntidadeService;
-import com.prognum.scci.documentos.aplicacao.BaixarDocumentoService;
-import com.prognum.scci.documentos.aplicacao.EnviarDocumentoService;
-import com.prognum.scci.documentos.aplicacao.ExcluirDocumentoService;
-import com.prognum.scci.documentos.dominio.port.in.BaixarDocumento;
-import com.prognum.scci.documentos.dominio.port.in.BaixarDocumentoEntidade;
-import com.prognum.scci.documentos.aplicacao.GerarRelatorioService;
-import com.prognum.scci.documentos.aplicacao.GerenciarEstruturaService;
-import com.prognum.scci.documentos.dominio.port.in.EnviarDocumento;
-import com.prognum.scci.documentos.dominio.port.in.GerenciarEstrutura;
-import com.prognum.scci.documentos.dominio.port.out.EstruturaDocumento;
-import com.prognum.scci.documentos.dominio.port.in.ExcluirDocumento;
-import com.prognum.scci.documentos.dominio.port.in.GerarRelatorioPdf;
-import com.prognum.scci.documentos.dominio.port.out.AntiMalware;
-import com.prognum.scci.documentos.dominio.port.out.ArmazenadorDocumento;
-import com.prognum.scci.documentos.dominio.port.out.ConversorImagemPdf;
-import com.prognum.scci.documentos.dominio.port.out.GeradorRelatorio;
-import com.prognum.scci.documentos.dominio.port.out.RepositorioDocumento;
-import com.prognum.scci.documentos.dominio.port.out.ResolvedorDocumento;
+import com.prognum.common.environment.JdbcConnectionFactory;
+import com.prognum.common.environment.LauncherEnvReader;
+import com.prognum.scci.documentos.application.BaixarDocumentoEntidadeService;
+import com.prognum.scci.documentos.application.BaixarDocumentoService;
+import com.prognum.scci.documentos.application.EnviarDocumentoService;
+import com.prognum.scci.documentos.application.ExcluirDocumentoService;
+import com.prognum.scci.documentos.domain.port.in.BaixarDocumento;
+import com.prognum.scci.documentos.domain.port.in.BaixarDocumentoEntidade;
+import com.prognum.scci.documentos.application.GerarRelatorioService;
+import com.prognum.scci.documentos.application.GerenciarEstruturaService;
+import com.prognum.scci.documentos.domain.port.in.EnviarDocumento;
+import com.prognum.scci.documentos.domain.port.in.GerenciarEstrutura;
+import com.prognum.scci.documentos.domain.port.out.EstruturaDocumento;
+import com.prognum.scci.documentos.domain.port.in.ExcluirDocumento;
+import com.prognum.scci.documentos.domain.port.in.GerarRelatorioPdf;
+import com.prognum.scci.documentos.domain.port.out.AntiMalware;
+import com.prognum.scci.documentos.domain.port.out.ArmazenadorDocumento;
+import com.prognum.scci.documentos.domain.port.out.ConversorImagemPdf;
+import com.prognum.scci.documentos.domain.port.out.GeradorRelatorio;
+import com.prognum.scci.documentos.domain.port.out.RepositorioDocumento;
+import com.prognum.scci.documentos.domain.port.out.ResolvedorDocumento;
 
 /**
  * Composition root do scci-core: expõe como @Bean os POJOs de infra compartilhada (comum) e os casos de

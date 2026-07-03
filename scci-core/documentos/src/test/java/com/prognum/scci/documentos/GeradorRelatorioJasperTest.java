@@ -5,7 +5,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
-import com.prognum.scci.documentos.adaptadores.saida.GeradorRelatorioJasper;
+import com.prognum.scci.documentos.adapters.out.GeradorRelatorioJasper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

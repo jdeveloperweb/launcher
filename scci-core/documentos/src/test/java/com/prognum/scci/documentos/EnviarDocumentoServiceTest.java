@@ -5,10 +5,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
-import com.prognum.scci.documentos.aplicacao.EnviarDocumentoService;
-import com.prognum.scci.documentos.dominio.port.out.AntiMalware;
-import com.prognum.scci.documentos.dominio.port.out.ArmazenadorDocumento;
-import com.prognum.scci.documentos.dominio.port.out.ConversorImagemPdf;
+import com.prognum.scci.documentos.application.EnviarDocumentoService;
+import com.prognum.scci.documentos.domain.port.out.AntiMalware;
+import com.prognum.scci.documentos.domain.port.out.ArmazenadorDocumento;
+import com.prognum.scci.documentos.domain.port.out.ConversorImagemPdf;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

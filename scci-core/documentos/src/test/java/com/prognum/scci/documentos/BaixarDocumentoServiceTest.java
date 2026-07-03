@@ -7,12 +7,12 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
-import com.prognum.scci.documentos.aplicacao.BaixarDocumentoService;
-import com.prognum.scci.documentos.aplicacao.BaixarDocumentoService.DocumentoNaoEncontrado;
-import com.prognum.scci.documentos.aplicacao.ExcluirDocumentoService;
-import com.prognum.scci.documentos.dominio.ArquivoBruto;
-import com.prognum.scci.documentos.dominio.Documento;
-import com.prognum.scci.documentos.dominio.port.out.RepositorioDocumento;
+import com.prognum.scci.documentos.application.BaixarDocumentoService;
+import com.prognum.scci.documentos.application.BaixarDocumentoService.DocumentoNaoEncontrado;
+import com.prognum.scci.documentos.application.ExcluirDocumentoService;
+import com.prognum.scci.documentos.domain.ArquivoBruto;
+import com.prognum.scci.documentos.domain.Documento;
+import com.prognum.scci.documentos.domain.port.out.RepositorioDocumento;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

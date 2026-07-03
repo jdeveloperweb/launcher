@@ -1,9 +1,9 @@
 package com.prognum.launcher.autenticacao.scc;
 
 import com.prognum.launcher.autenticacao.port.out.SessaoPersistente;
-import com.prognum.comum.ambiente.JdbcConnectionFactory;
-import com.prognum.comum.ambiente.LauncherEnvReader;
-import com.prognum.comum.ambiente.SccDbConfig;
+import com.prognum.common.environment.JdbcConnectionFactory;
+import com.prognum.common.environment.LauncherEnvReader;
+import com.prognum.common.environment.SccDbConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;

@@ -19,7 +19,7 @@
   <dependencies>
     <dependency>
       <groupId>com.prognum</groupId>
-      <artifactId>comum-ambiente</artifactId>
+      <artifactId>common-environment</artifactId>
     </dependency>
     <!-- Drivers JDBC multi-banco (a conexão ao banco vive no scci-core, não no launcher). -->
     <dependency>

@@ -1,0 +1,126 @@
+package com.prognum.scci.documentos.adapters.in;
+
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.prognum.scci.documentos.application.BaixarDocumentoService.DocumentoNaoEncontrado;
+import com.prognum.scci.documentos.domain.Documento;
+import com.prognum.scci.documentos.domain.port.in.BaixarDocumento;
+import com.prognum.scci.documentos.domain.port.in.BaixarDocumentoEntidade;
+import com.prognum.scci.documentos.domain.port.in.EnviarDocumento;
+import com.prognum.scci.documentos.domain.port.in.ExcluirDocumento;
+
+/**
+ * REST INTERNO do contexto documentos (consumido pelo launcher quando a flag do módulo aponta JAVA). Cobre
+ * a família de leitura/exclusão do wdoc que é id-direta (a resolução por operação/sisat, que depende do
+ * apilib, entra depois). Idiomático: {@code byte[]} + {@code Content-Type} + {@code Content-Disposition}
+ * reais — NÃO o framing Pascal {@code [len][XML]}. Não exposto ao front (rede interna).
+ *
+ * <ul>
+ *   <li>GET  {@code /interno/documentos/{id}}                — GetDocumento (e GetDocumentoContratoAssinatura com {@code download=true});</li>
+ *   <li>GET  {@code /interno/documentos/{id}/versoes/{v}}    — GetDocumentoVersao;</li>
+ *   <li>DELETE {@code /interno/documentos/{id}}              — DeleteDocumento.</li>
+ * </ul>
+ */
+@RestController
+public class DocumentoInternoController {
+
+    private final BaixarDocumento baixar;
+    private final BaixarDocumentoEntidade porEntidade;
+    private final EnviarDocumento enviar;
+    private final ExcluirDocumento excluir;
+
+    public DocumentoInternoController(BaixarDocumento baixar, BaixarDocumentoEntidade porEntidade,
+                                      EnviarDocumento enviar, ExcluirDocumento excluir) {
+        this.baixar = baixar;
+        this.porEntidade = porEntidade;
+        this.enviar = enviar;
+        this.excluir = excluir;
+    }
+
+    @GetMapping("/interno/documentos/{id}")
+    public ResponseEntity<byte[]> baixar(@PathVariable int id,
+                                         @RequestParam String ambiente,
+                                         @RequestParam(defaultValue = "false") boolean download) {
+        return resposta(baixar.baixar(id, download, ambiente));
+    }
+
+    @GetMapping("/interno/documentos/{id}/versoes/{versao}")
+    public ResponseEntity<byte[]> baixarVersao(@PathVariable int id,
+                                               @PathVariable int versao,
+                                               @RequestParam String ambiente,
+                                               @RequestParam(defaultValue = "false") boolean download) {
+        return resposta(baixar.baixarVersao(id, versao, download, ambiente));
+    }
+
+    /** GetDocumentoOperacao / GetDocumentoOperacaoAssinatura (resolve NU_PRETENDENTE+NU_DOCUMENTO → id). */
+    @GetMapping("/interno/documentos/operacao")
+    public ResponseEntity<byte[]> porOperacao(@RequestParam String nuPretendente,
+                                              @RequestParam String nuDocumento,
+                                              @RequestParam String ambiente,
+                                              @RequestParam(defaultValue = "false") boolean caseSensitive,
+                                              @RequestParam(defaultValue = "false") boolean download) {
+        return resposta(porEntidade.porOperacao(nuPretendente, nuDocumento, caseSensitive, download, ambiente));
+    }
+
+    /** GetDocumentoSisat (resolve NU_OCORRENCIA+NU_DOCUMENTO → id). */
+    @GetMapping("/interno/documentos/sisat")
+    public ResponseEntity<byte[]> porSisat(@RequestParam int nuOcorrencia,
+                                           @RequestParam String nuDocumento,
+                                           @RequestParam String ambiente,
+                                           @RequestParam(defaultValue = "false") boolean download) {
+        return resposta(porEntidade.porSisat(nuOcorrencia, nuDocumento, download, ambiente));
+    }
+
+    /** Upload: nova versão de um documento existente (id conhecido) — corpo = bytes crus. Devolve a versão. */
+    @PostMapping("/interno/documentos/{id}/versoes")
+    public ResponseEntity<String> enviar(@PathVariable int id,
+                                         @RequestParam String ambiente,
+                                         @RequestParam String nome,
+                                         @RequestParam(defaultValue = "") String usuario,
+                                         @RequestBody byte[] conteudo) {
+        int versao = enviar.enviar(id, nome, conteudo, usuario, ambiente);
+        return ResponseEntity.ok("{\"success\":true,\"versao\":" + versao + "}");
+    }
+
+    /** PostDocumento: upload p/ a pasta {@code idPai} (cria o doc se novo). Corpo = bytes. Devolve o id. */
+    @PostMapping("/interno/documentos")
+    public ResponseEntity<String> enviarParaPasta(@RequestParam int idPai,
+                                                  @RequestParam String nome,
+                                                  @RequestParam String ambiente,
+                                                  @RequestParam(defaultValue = "") String usuario,
+                                                  @RequestBody byte[] conteudo) {
+        int id = enviar.enviarParaPasta(idPai, nome, conteudo, usuario, ambiente);
+        return ResponseEntity.ok("{\"success\":true,\"dados\":{\"ID_INSERIDO\":" + id + "}}");
+    }
+
+    @DeleteMapping("/interno/documentos/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable int id, @RequestParam String ambiente) {
+        excluir.excluir(id, ambiente);
+        return ResponseEntity.noContent().build();
+    }
+
+    private static ResponseEntity<byte[]> resposta(Documento doc) {
+        ContentDisposition cd = (doc.download() ? ContentDisposition.attachment() : ContentDisposition.inline())
+                .filename(doc.nome()).build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(doc.tipoMime()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, cd.toString())
+                .body(doc.conteudo());
+    }
+
+    @ExceptionHandler(DocumentoNaoEncontrado.class)
+    public ResponseEntity<String> naoEncontrado(DocumentoNaoEncontrado e) {
+        return ResponseEntity.status(404).body(e.getMessage());
+    }
+}

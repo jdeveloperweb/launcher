@@ -7,7 +7,7 @@ import com.prognum.launcher.autenticacao.model.ResultadoTroca;
 import com.prognum.launcher.autenticacao.model.Sessao;
 import com.prognum.launcher.autenticacao.port.in.SessaoUseCase;
 import com.prognum.launcher.autenticacao.port.out.AcessoJavaPort;
-import com.prognum.comum.cripto.WcopCrypto;
+import com.prognum.common.crypto.WcopCrypto;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

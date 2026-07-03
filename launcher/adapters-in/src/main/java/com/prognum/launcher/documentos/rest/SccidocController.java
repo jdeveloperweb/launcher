@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.prognum.launcher.autenticacao.model.Sessao;
 import com.prognum.launcher.autenticacao.port.in.SessaoUseCase;
-import com.prognum.comum.cripto.WcopCrypto;
+import com.prognum.common.crypto.WcopCrypto;
 import com.prognum.launcher.documentos.model.RespostaDocumento;
 import com.prognum.launcher.documentos.port.in.BaixarDocumentoUseCase;
 import com.prognum.launcher.documentos.port.in.EnviarDocumentoUseCase;

@@ -3,10 +3,10 @@ package com.prognum.scci.sessao.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.prognum.scci.sessao.aplicacao.SessaoService;
-import com.prognum.scci.sessao.dominio.port.in.SessaoUseCase;
-import com.prognum.scci.sessao.dominio.port.out.RepositorioSessao;
-import com.prognum.scci.sessao.dominio.port.out.SessaoPersistente;
+import com.prognum.scci.sessao.application.SessaoService;
+import com.prognum.scci.sessao.domain.port.in.SessaoUseCase;
+import com.prognum.scci.sessao.domain.port.out.RepositorioSessao;
+import com.prognum.scci.sessao.domain.port.out.SessaoPersistente;
 
 /**
  * Fia o POJO do contexto sessao ({@link SessaoService}, cache Redis + SCCI_SESSION). Os adapters de

@@ -20,7 +20,7 @@
   <dependencies>
     <dependency>
       <groupId>com.prognum</groupId>
-      <artifactId>comum-contrato</artifactId>
+      <artifactId>common-contract</artifactId>
     </dependency>
     <!-- Envio SMTP (JavaMailSender) -->
     <dependency>

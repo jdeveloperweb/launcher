@@ -2,8 +2,8 @@ package com.prognum.scci.documentos;
 
 import org.junit.jupiter.api.Test;
 
-import com.prognum.scci.documentos.aplicacao.GerenciarEstruturaService;
-import com.prognum.scci.documentos.dominio.port.out.EstruturaDocumento;
+import com.prognum.scci.documentos.application.GerenciarEstruturaService;
+import com.prognum.scci.documentos.domain.port.out.EstruturaDocumento;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

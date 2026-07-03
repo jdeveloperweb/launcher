@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prognum.launcher.autenticacao.model.Sessao;
 import com.prognum.launcher.autenticacao.port.in.SessaoUseCase;
-import com.prognum.comum.cripto.WcopCrypto;
+import com.prognum.common.crypto.WcopCrypto;
 import com.prognum.launcher.execucao.model.ComandoExecucao;
 import com.prognum.launcher.execucao.model.ResultadoExecucao;
 import com.prognum.launcher.execucao.port.in.DespachoUseCase;

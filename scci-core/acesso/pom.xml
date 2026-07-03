@@ -33,11 +33,11 @@
     </dependency>
     <dependency>
       <groupId>com.prognum</groupId>
-      <artifactId>comum-cripto</artifactId>
+      <artifactId>common-crypto</artifactId>
     </dependency>
     <dependency>
       <groupId>com.prognum</groupId>
-      <artifactId>comum-contrato</artifactId>
+      <artifactId>common-contract</artifactId>
     </dependency>
     <!-- Controller interno + @Component/@Value -->
     <dependency>
