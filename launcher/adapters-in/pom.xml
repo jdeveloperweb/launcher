@@ -36,6 +36,13 @@
       <groupId>net.logstash.logback</groupId>
       <artifactId>logstash-logback-encoder</artifactId>
     </dependency>
+    <!-- Anotacoes @Tag/@Operation (especificacao OpenAPI), so os controllers, sem o starter
+         completo aqui (o starter/UI fica no bootstrap, onde o servidor web real sobe). -->
+    <dependency>
+      <groupId>io.swagger.core.v3</groupId>
+      <artifactId>swagger-annotations-jakarta</artifactId>
+      <version>2.2.21</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>

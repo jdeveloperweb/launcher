@@ -7,11 +7,18 @@ import com.prognum.launcher.autenticacao.port.out.SessaoPersistente;
 import com.prognum.common.crypto.WcopCrypto;
 import com.prognum.common.environment.LauncherEnvReader;
 import com.prognum.common.environment.JdbcConnectionFactory;
+import com.prognum.launcher.documentos.UploadChunkadoService;
 import com.prognum.launcher.documentos.port.in.BaixarDocumentoUseCase;
 import com.prognum.launcher.documentos.port.in.EnviarDocumentoUseCase;
+import com.prognum.launcher.documentos.port.in.UploadChunkadoUseCase;
+import com.prognum.launcher.documentos.port.out.RepositorioUploadChunked;
 import com.prognum.launcher.execucao.DespachoService;
 import com.prognum.launcher.execucao.port.in.DespachoUseCase;
 import com.prognum.launcher.execucao.port.out.ExecutorPrograma;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,10 +37,15 @@ public class WiringConfig {
         return new WcopCrypto();
     }
 
-    /** Leitor do launcherenv.ini (comum-ambiente): env do Pascal + config de banco. POJO -> @Bean. */
+    /**
+     * Leitor do launcherenv.ini (comum-ambiente): env do Pascal + config de banco. POJO -> @Bean.
+     * Doc Final de Requisitos (Autenticacao/Sessao): cache de ambiente parametrizavel (TTL/on-off).
+     */
     @Bean
-    LauncherEnvReader launcherEnvReader() {
-        return new LauncherEnvReader();
+    LauncherEnvReader launcherEnvReader(
+            @Value("${common.environment.cache-habilitado:true}") boolean cacheHabilitado,
+            @Value("${common.environment.cache-ttl-segundos:300}") long cacheTtlSegundos) {
+        return new LauncherEnvReader(cacheHabilitado, cacheTtlSegundos);
     }
 
     /** Fabrica de conexao JDBC multi-banco (comum-ambiente). POJO -> @Bean. */
@@ -79,5 +91,23 @@ public class WiringConfig {
             com.prognum.launcher.roteamento.port.out.FeatureRegistry flags) {
         var pascal = new com.prognum.launcher.documentos.EnvioDocumentoService(executor);
         return new com.prognum.launcher.documentos.RoteadorEnviarDocumento(pascal, documentosJava, flags);
+    }
+
+    /**
+     * Doc Final de Requisitos (Upload/Download): upload em blocos (chunking) para arquivos grandes
+     * (>10GB) — reaproveita o MESMO {@link EnviarDocumentoUseCase} (roteador Strangler) na conclusão,
+     * então herda a allow-list de extensões e o roteamento Pascal/scci-core já existentes. Endpoint
+     * PROPOSTO/aditivo (ver Javadoc do controller) — validar contrato com o front antes de produção.
+     */
+    @Bean
+    UploadChunkadoUseCase uploadChunkadoService(RepositorioUploadChunked staging, EnviarDocumentoUseCase envio,
+            @Value("${launcher.documentos.chunked.tamanho-maximo-bytes:16106127360}") long tamanhoMaximoBytes,
+            @Value("${launcher.documentos.chunked.tamanho-bloco-maximo-bytes:10485760}") int tamanhoBlocoMaximoBytes,
+            @Value("${launcher.documentos.extensoes-permitidas:}") String[] extensoesPermitidas) {
+        Set<String> extensoes = Arrays.stream(extensoesPermitidas)
+                .map(e -> e.trim().toLowerCase(Locale.ROOT))
+                .filter(e -> !e.isEmpty())
+                .collect(Collectors.toSet());
+        return new UploadChunkadoService(staging, envio, tamanhoMaximoBytes, tamanhoBlocoMaximoBytes, extensoes);
     }
 }

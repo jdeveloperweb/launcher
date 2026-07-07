@@ -10,7 +10,7 @@ import java.time.Duration;
 /**
  * Adapter de saida: contador de tentativas erradas no REDIS (distribuido, com TTL de auto-reset) —
  * substitui o ConcurrentHashMap do legado. Chave "att:&lt;usuario&gt;". INCR conta a falha; o TTL
- * faz o bloqueio/captcha "esfriar" sozinho apos a janela. Compartilhado com o launcher (mesmo Redis).
+ * faz o bloqueio "esfriar" sozinho apos a janela. Compartilhado com o launcher (mesmo Redis).
  */
 @Component
 public class RedisContadorTentativas implements ContadorTentativas {

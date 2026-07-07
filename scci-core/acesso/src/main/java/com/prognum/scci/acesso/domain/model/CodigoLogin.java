@@ -13,7 +13,6 @@ public enum CodigoLogin {
     TROCA_OBRIGATORIA('M', false, "Troca de senha obrigatória no próximo acesso."),
     SENHA_BRANCA('B', false, "Senha em branco — defina uma senha."),
     INVALIDO('F', false, "Usuário ou senha inválidos."),
-    CAPTCHA('K', false, "Captcha obrigatório (excesso de tentativas)."),
     BLOQUEADO('X', false, "Usuário bloqueado por excesso de tentativas.");
 
     private final char codigo;

@@ -1,11 +1,14 @@
 package com.prognum.common.environment;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.prognum.common.crypto.WcopCrypto;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +19,56 @@ import java.util.regex.Pattern;
  * Le o launcherenv.ini de um ambiente e devolve a {@link SccDbConfig} (secao [USERS]).
  * Fiel ao launcher.pas (TLauncherEnv.create / LoadDBUsers): mesmas chaves e defaults.
  * Copia fiel do launcher SCCI (legado). Infra COMPARTILHADA (autenticacao, identidade, execucao).
+ *
+ * <p><b>Doc Final de Requisitos (Autenticacao/Sessao):</b> cache opcional e parametrizavel da
+ * leitura do launcherenv.ini por ambiente (arquivo de config que raramente muda) — evita reler/
+ * reparsear o .ini do disco em toda requisicao. NAO cacheia credencial/senha de USUARIO final (essa
+ * fica sempre lida ao vivo no banco, decisao deliberada para nao manter login valido apos troca de
+ * senha durante o TTL do cache). {@code cacheHabilitado=false} preserva o comportamento antigo
+ * (sempre le do disco). POJO puro — Caffeine e biblioteca JDK, sem dependencia de Spring.</p>
  */
 public class LauncherEnvReader {
 
+    private final boolean cacheHabilitado;
+    private final Cache<String, SccDbConfig> cache;
+
+    /** Compat: sem cache (sempre le do disco) — comportamento anterior a este requisito. */
+    public LauncherEnvReader() {
+        this(false, 0);
+    }
+
+    /**
+     * @param cacheHabilitado liga/desliga o cache (politica de uso — Doc Final de Requisitos).
+     * @param cacheTtlSegundos tempo de vida de cada entrada; {@code <=0} com cache habilitado = sem
+     *                         expiracao por tempo (só sai por invalidação manual).
+     */
+    public LauncherEnvReader(boolean cacheHabilitado, long cacheTtlSegundos) {
+        this.cacheHabilitado = cacheHabilitado;
+        Caffeine<Object, Object> builder = Caffeine.newBuilder();
+        if (cacheTtlSegundos > 0) {
+            builder.expireAfterWrite(Duration.ofSeconds(cacheTtlSegundos));
+        }
+        this.cache = builder.build();
+    }
+
     public SccDbConfig ler(String ambientePath) {
+        if (!cacheHabilitado) {
+            return lerDoDisco(ambientePath);
+        }
+        return cache.get(ambientePath, this::lerDoDisco);
+    }
+
+    /** Politica de invalidacao (Doc Final de Requisitos): remove um ambiente específico do cache. */
+    public void invalidar(String ambientePath) {
+        cache.invalidate(ambientePath);
+    }
+
+    /** Politica de invalidacao: limpa o cache inteiro (ex.: apos alteracao em lote nos .ini). */
+    public void invalidarTudo() {
+        cache.invalidateAll();
+    }
+
+    private SccDbConfig lerDoDisco(String ambientePath) {
         Path ini = Path.of(ambientePath, "launcherenv.ini");
         try {
             return parse(Files.readAllLines(ini, StandardCharsets.ISO_8859_1));

@@ -60,6 +60,14 @@
       <artifactId>logstash-logback-encoder</artifactId>
     </dependency>
 
+    <!-- Doc Final de Requisitos (TODOs): especificacao OpenAPI navegavel dos endpoints (sccidoc,
+         autenticacao, upload chunked); antes so existia Javadoc, sem especificacao consultavel. -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>2.6.0</version>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>

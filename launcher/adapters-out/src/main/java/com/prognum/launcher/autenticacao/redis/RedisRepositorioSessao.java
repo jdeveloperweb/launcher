@@ -13,6 +13,11 @@ import java.util.Optional;
  * Adapter de saida: sessao no REDIS (cache distribuido, com TTL) — substitui o ConcurrentHashMap
  * do legado. Chave "sess:&lt;sessionKey&gt;", valor "usuarioambiente". A SCCI_SESSION
  * (VALIDA) continua autoritativa; o Redis e o caminho rapido e compartilhado entre instancias.
+ *
+ * Doc Final de Requisitos (Autenticacao/Sessao): timeout de sessao parametrizavel, com default
+ * igual ao comportamento atual -- sessao SEM expiracao. ttl-segundos&lt;=0 (default) = sem TTL
+ * (chave permanece no Redis ate logout explicito); um valor positivo (ex.: 1800 = 30 min) liga a
+ * expiracao/renovacao por inatividade.
  */
 @Component
 public class RedisRepositorioSessao implements RepositorioSessao {
@@ -21,12 +26,14 @@ public class RedisRepositorioSessao implements RepositorioSessao {
     private static final String SEP = "";   // separador de controle (nao aparece em login/path)
 
     private final StringRedisTemplate redis;
+    private final boolean semExpiracao;
     private final Duration ttl;
 
     public RedisRepositorioSessao(StringRedisTemplate redis,
-                                  @Value("${launcher.sessao.ttl-segundos:1800}") long ttlSegundos) {
+                                  @Value("${launcher.sessao.ttl-segundos:0}") long ttlSegundos) {
         this.redis = redis;
-        this.ttl = Duration.ofSeconds(ttlSegundos);
+        this.semExpiracao = ttlSegundos <= 0;
+        this.ttl = semExpiracao ? null : Duration.ofSeconds(ttlSegundos);
     }
 
     @Override
@@ -35,7 +42,11 @@ public class RedisRepositorioSessao implements RepositorioSessao {
             return;
         }
         String valor = nvl(sessao.usuario()) + SEP + nvl(sessao.ambienteOperacional());
-        redis.opsForValue().set(PREFIXO + sessionKey, valor, ttl);
+        if (semExpiracao) {
+            redis.opsForValue().set(PREFIXO + sessionKey, valor);
+        } else {
+            redis.opsForValue().set(PREFIXO + sessionKey, valor, ttl);
+        }
     }
 
     @Override
@@ -50,7 +61,9 @@ public class RedisRepositorioSessao implements RepositorioSessao {
         String[] p = valor.split(SEP, -1);
         String usuario = p.length > 0 ? p[0] : "";
         String ambiente = p.length > 1 ? p[1] : "";
-        redis.expire(PREFIXO + sessionKey, ttl);   // renova o TTL (sessao "viva")
+        if (!semExpiracao) {
+            redis.expire(PREFIXO + sessionKey, ttl);   // renova o TTL (sessao "viva")
+        }
         return Optional.of(new Sessao(usuario, ambiente));
     }
 

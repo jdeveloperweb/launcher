@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.prognum.scci.documentos.application.BaixarDocumentoService.DocumentoNaoEncontrado;
+import com.prognum.scci.documentos.application.EnviarDocumentoService.ExtensaoNaoPermitida;
 import com.prognum.scci.documentos.domain.Documento;
 import com.prognum.scci.documentos.domain.port.in.BaixarDocumento;
 import com.prognum.scci.documentos.domain.port.in.BaixarDocumentoEntidade;
@@ -122,5 +123,12 @@ public class DocumentoInternoController {
     @ExceptionHandler(DocumentoNaoEncontrado.class)
     public ResponseEntity<String> naoEncontrado(DocumentoNaoEncontrado e) {
         return ResponseEntity.status(404).body(e.getMessage());
+    }
+
+    /** Doc Final de Requisitos (Upload/Download): falha de validação -> JSON estruturado (400), não 500. */
+    @ExceptionHandler(ExtensaoNaoPermitida.class)
+    public ResponseEntity<String> extensaoNaoPermitida(ExtensaoNaoPermitida e) {
+        return ResponseEntity.status(400)
+                .body("{\"success\":false,\"message\":\"" + e.getMessage() + "\"}");
     }
 }

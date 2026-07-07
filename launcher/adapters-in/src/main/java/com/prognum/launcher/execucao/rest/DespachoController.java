@@ -4,13 +4,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.prognum.launcher.autenticacao.model.Sessao;
 import com.prognum.launcher.autenticacao.port.in.SessaoUseCase;
+import com.prognum.common.crypto.LogAnonimizador;
 import com.prognum.common.crypto.WcopCrypto;
 import com.prognum.launcher.execucao.model.ComandoExecucao;
 import com.prognum.launcher.execucao.model.ResultadoExecucao;
 import com.prognum.launcher.execucao.port.in.DespachoUseCase;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +32,8 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
  * launcher SCCI (legado). O launcher recebe /w, VALIDA a sessao e EXECUTA o programa real (wmenu/wtela).
  * NENHUMA logica de programa aqui — so orquestracao (decifra -> valida sessao -> executa -> cifra).
  */
+@Tag(name = "Despacho", description = "Execução genérica de programas Pascal (wmenu/wtela/...) via /w. Maior "
+        + "volume esperado em produção.")
 @RestController
 public class DespachoController {
 
@@ -38,19 +43,28 @@ public class DespachoController {
     private final WcopCrypto crypto;
     private final SessaoUseCase sessoes;
     private final DespachoUseCase despacho;
+    // Doc Final de Requisitos (2.9.3): fora do modo dev, a requisicao deve ser cifrada (W_COP).
+    private final boolean exigirCifrado;
 
     public DespachoController(ObjectMapper mapper, WcopCrypto crypto,
-                              SessaoUseCase sessoes, DespachoUseCase despacho) {
+                              SessaoUseCase sessoes, DespachoUseCase despacho,
+                              @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado) {
         this.mapper = mapper;
         this.crypto = crypto;
         this.sessoes = sessoes;
         this.despacho = despacho;
+        this.exigirCifrado = exigirCifrado;
     }
 
     @PostMapping("/w")
     public ResponseEntity<byte[]> dispatch(HttpServletRequest req, @RequestBody(required = false) byte[] body) {
         String rawAscii = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
         boolean cifrado = crypto.estaCifrado(rawAscii);
+        if (exigirCifrado && !cifrado && body != null && body.length > 0) {
+            log.info("wcop_nao_cifrado_rejeitado");
+            return resposta(false,
+                    "{\"success\":false,\"message\":\"Requisicao deve ser cifrada (W_COP).\",\"codigo\":\"E006\"}");
+        }
         String json = cifrado ? crypto.decifraRequest(rawAscii)
                 : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8));
 
@@ -68,7 +82,9 @@ public class DespachoController {
         // Se veio sessionKey mas a sessao NAO e valida -> rejeita (nao executa). Sem sessionKey
         // (chamada de dev/curl), segue com os parametros (facilita teste local).
         if (sessionKey != null && s.isEmpty()) {
-            log.info("w_dispatch_sessao_invalida", kv("sessionKey", sessionKey), kv("usuario", usuarioParam));
+            log.info("w_dispatch_sessao_invalida", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuarioParam)),
+                    kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())),
+                    kv("sessaoId", LogAnonimizador.pseudonimizarSessao(sessionKey)));
             return resposta(cifrado,
                     "{\"success\":false,\"message\":\"Sessao expirada. Faca login novamente.\",\"codigo\":\"E004\"}");
         }
@@ -80,8 +96,10 @@ public class DespachoController {
             paramsDbg = paramsDbg.substring(0, 600);
         }
         log.info("w_dispatch", kv("programName", programName), kv("methodName", methodName),
-                kv("requestMethod", requestMethod), kv("usuario", usuario), kv("sessaoValida", s.isPresent()),
-                kv("params", paramsDbg));
+                kv("requestMethod", requestMethod), kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())),
+                kv("sessaoId", LogAnonimizador.pseudonimizarSessao(sessionKey)),
+                kv("sessaoValida", s.isPresent()), kv("params", paramsDbg));
 
         ResultadoExecucao r = despacho.despachar(new ComandoExecucao(
                 ambiente, programName, methodName, requestMethod, json, usuario, req.getRemoteAddr()));

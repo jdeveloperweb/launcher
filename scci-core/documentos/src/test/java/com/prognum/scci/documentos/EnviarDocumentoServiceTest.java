@@ -1,6 +1,7 @@
 package com.prognum.scci.documentos;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,10 @@ import com.prognum.scci.documentos.domain.port.out.ConversorImagemPdf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Upload: anti-malware → conversão → gravação (por id e por pasta). Testado com fakes dos três ports. */
+/**
+ * Upload: valida extensão → anti-malware → conversão → gravação (por id e por pasta). Testado com
+ * fakes dos três ports (allow-list vazia == sem restrição, salvo teste dedicado).
+ */
 class EnviarDocumentoServiceTest {
 
     private static final String AMB = "/u10/cliente/scat";
@@ -48,7 +52,7 @@ class EnviarDocumentoServiceTest {
         ConversorImagemPdf conv = (c, nome) -> new ConversorImagemPdf.Resultado(convertido, "foto.pdf");
         FakeArmazenador arm = new FakeArmazenador();
 
-        int versao = new EnviarDocumentoService(am, conv, arm).enviar(9, "foto.jpg", original, "joao", AMB);
+        int versao = new EnviarDocumentoService(am, conv, arm, Set.of()).enviar(9, "foto.jpg", original, "joao", AMB);
 
         assertThat(versao).isEqualTo(3);
         assertThat(escaneado.get()).isEqualTo("foto.jpg");     // anti-malware no arquivo original
@@ -62,7 +66,7 @@ class EnviarDocumentoServiceTest {
         ConversorImagemPdf conv = (c, nome) -> new ConversorImagemPdf.Resultado(c, nome);
         FakeArmazenador arm = new FakeArmazenador();
 
-        int id = new EnviarDocumentoService(am, conv, arm)
+        int id = new EnviarDocumentoService(am, conv, arm, Set.of())
                 .enviarParaPasta(50, "contrato.pdf", new byte[]{1, 2}, "maria", AMB);
 
         assertThat(id).isEqualTo(777);
@@ -77,8 +81,35 @@ class EnviarDocumentoServiceTest {
         };
         ConversorImagemPdf conv = (c, nome) -> new ConversorImagemPdf.Resultado(c, nome);
         FakeArmazenador arm = new FakeArmazenador();
-        assertThatThrownBy(() -> new EnviarDocumentoService(am, conv, arm).enviar(1, "x.exe", new byte[]{1}, "u", AMB))
+        assertThatThrownBy(() -> new EnviarDocumentoService(am, conv, arm, Set.of()).enviar(1, "x.exe", new byte[]{1}, "u", AMB))
                 .isInstanceOf(AntiMalware.ArquivoInfectado.class);
         assertThat(arm.conteudoGravado).isNull();
+    }
+
+    @Test
+    void extensao_fora_da_allowlist_e_rejeitada_antes_do_anti_malware() {
+        AtomicReference<String> escaneado = new AtomicReference<>();
+        AntiMalware am = (c, nome) -> escaneado.set(nome);     // não deve ser chamado
+        ConversorImagemPdf conv = (c, nome) -> new ConversorImagemPdf.Resultado(c, nome);
+        FakeArmazenador arm = new FakeArmazenador();
+
+        EnviarDocumentoService svc = new EnviarDocumentoService(am, conv, arm, Set.of("pdf", "jpg"));
+
+        assertThatThrownBy(() -> svc.enviar(1, "script.exe", new byte[]{1}, "u", AMB))
+                .isInstanceOf(EnviarDocumentoService.ExtensaoNaoPermitida.class);
+        assertThat(escaneado.get()).isNull();          // não chegou a escanear
+        assertThat(arm.conteudoGravado).isNull();       // não chegou a gravar
+    }
+
+    @Test
+    void extensao_na_allowlist_passa_normalmente() {
+        AntiMalware am = (c, nome) -> { };
+        ConversorImagemPdf conv = (c, nome) -> new ConversorImagemPdf.Resultado(c, nome);
+        FakeArmazenador arm = new FakeArmazenador();
+
+        EnviarDocumentoService svc = new EnviarDocumentoService(am, conv, arm, Set.of("pdf", "jpg"));
+        int versao = svc.enviar(1, "contrato.PDF", new byte[]{1}, "u", AMB);   // case-insensitive
+
+        assertThat(versao).isEqualTo(3);
     }
 }

@@ -15,7 +15,8 @@ import com.prognum.scci.acesso.domain.port.out.MetodoLoginResolver;
 
 /**
  * Trava o coordenador do login (comum a todos os clientes): sucesso emite sessionKey, credencial
- * inválida conta tentativa e escala captcha/bloqueio. Fakes no lugar de Redis/DB.
+ * inválida conta tentativa e escala para bloqueio. Fakes no lugar de Redis/DB.
+ * (Doc Final de Requisitos: CAPTCHA removido — fora do escopo inicial.)
  */
 class LoginServiceTest {
 
@@ -51,8 +52,7 @@ class LoginServiceTest {
 
     @Test
     void sucesso_emite_sessionkey() {
-        LoginService svc = new LoginService(List.of(banco('T')), banco, new ContadorFake(),
-                0, 5, 3, true);
+        LoginService svc = new LoginService(List.of(banco('T')), banco, new ContadorFake(), 0, 5);
         ResultadoLogin r = svc.login("jose", "senha", "/amb", "1.2.3.4");
         assertThat(r.sucesso()).isTrue();
         assertThat(r.codErro()).isEqualTo('T');
@@ -62,7 +62,7 @@ class LoginServiceTest {
     @Test
     void invalido_conta_tentativa_e_mantem_F() {
         ContadorFake c = new ContadorFake();
-        LoginService svc = new LoginService(List.of(banco('F')), banco, c, 0, 5, 3, true);
+        LoginService svc = new LoginService(List.of(banco('F')), banco, c, 0, 5);
         ResultadoLogin r = svc.login("jose", "errada", "/amb", "ip");
         assertThat(r.sucesso()).isFalse();
         assertThat(r.codErro()).isEqualTo('F');
@@ -70,15 +70,11 @@ class LoginServiceTest {
     }
 
     @Test
-    void escala_para_captcha_e_depois_bloqueio() {
+    void escala_para_bloqueio_apos_max_erros() {
         ContadorFake c = new ContadorFake();
-        LoginService svc = new LoginService(List.of(banco('F')), banco, c, 0, 5, 3, true);
+        LoginService svc = new LoginService(List.of(banco('F')), banco, c, 0, 5);
         char ultimo = 'F';
-        for (int i = 0; i < 4; i++) {                 // 4 falhas: passa de maxErrosCaptcha(3) -> K
-            ultimo = svc.login("jose", "x", "/amb", "ip").codErro();
-        }
-        assertThat(ultimo).isEqualTo('K');            // captcha
-        for (int i = 0; i < 3; i++) {                 // segue falhando: passa de maxErros(5) -> X
+        for (int i = 0; i < 6; i++) {                 // 6 falhas: passa de maxErros(5) -> X
             ultimo = svc.login("jose", "x", "/amb", "ip").codErro();
         }
         assertThat(ultimo).isEqualTo('X');            // bloqueado

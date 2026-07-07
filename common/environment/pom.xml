@@ -21,6 +21,12 @@
       <groupId>com.prognum</groupId>
       <artifactId>common-crypto</artifactId>
     </dependency>
+    <!-- Doc Final de Requisitos (Autenticacao/Sessao): cache de ambientes (launcherenv.ini), com TTL
+         e invalidacao configuraveis. Biblioteca JDK pura (sem Spring), mantem o modulo "JDK puro". -->
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>

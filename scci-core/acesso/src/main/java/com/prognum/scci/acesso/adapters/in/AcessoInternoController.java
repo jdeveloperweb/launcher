@@ -9,10 +9,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.prognum.common.crypto.LogAnonimizador;
 import com.prognum.scci.acesso.domain.model.ResultadoLogin;
 import com.prognum.scci.acesso.domain.model.ResultadoTroca;
 import com.prognum.scci.acesso.domain.port.in.LoginUseCase;
-import com.prognum.scci.acesso.domain.port.in.RecuperarSenhaUseCase;
 import com.prognum.scci.acesso.domain.port.in.TrocarSenhaUseCase;
 import com.prognum.scci.acesso.domain.port.in.ValidarAcessoUseCase;
 
@@ -24,9 +24,11 @@ import com.prognum.scci.acesso.domain.port.in.ValidarAcessoUseCase;
  * <ul>
  *   <li>POST {@code /interno/acesso/login}         — login (BANCO/família B) coordenado;</li>
  *   <li>POST {@code /interno/acesso/senha}         — troca de senha (/w/password);</li>
- *   <li>POST {@code /interno/acesso/email-pwd}     — recuperação por e-mail (/w/email-pwd);</li>
  *   <li>POST {@code /interno/acesso/valida-acesso} — ValidaCpf/ValidaProtocolo (/w/valida-acesso).</li>
  * </ul>
+ *
+ * <p><b>Doc Final de Requisitos (Troca/Recuperação de Senha):</b> recuperação automática por e-mail
+ * removida — fora do escopo inicial (endpoint {@code /interno/acesso/email-pwd} descontinuado).</p>
  */
 @RestController
 public class AcessoInternoController {
@@ -35,22 +37,22 @@ public class AcessoInternoController {
 
     private final LoginUseCase login;
     private final TrocarSenhaUseCase trocarSenha;
-    private final RecuperarSenhaUseCase recuperarSenha;
     private final ValidarAcessoUseCase validarAcesso;
 
     public AcessoInternoController(LoginUseCase login, TrocarSenhaUseCase trocarSenha,
-                                   RecuperarSenhaUseCase recuperarSenha, ValidarAcessoUseCase validarAcesso) {
+                                   ValidarAcessoUseCase validarAcesso) {
         this.login = login;
         this.trocarSenha = trocarSenha;
-        this.recuperarSenha = recuperarSenha;
         this.validarAcesso = validarAcesso;
     }
 
     @PostMapping("/interno/acesso/login")
     public ResponseEntity<ResultadoLogin> login(@RequestBody LoginRequest req) {
         ResultadoLogin r = login.login(req.usuario(), req.senha(), req.ambiente(), req.ip());
-        // observabilidade: NUNCA loga senha; so usuario/ambiente/estado
-        log.info("acesso_login", kv("usuario", req.usuario()), kv("ambiente", req.ambiente()),
+        // observabilidade: NUNCA loga senha; usuario pseudonimizado e IP mascarado (Doc Final de
+        // Requisitos - Logs e Auditoria).
+        log.info("acesso_login", kv("usuario", LogAnonimizador.pseudonimizarUsuario(req.usuario())),
+                kv("ip", LogAnonimizador.mascararIp(req.ip())), kv("ambiente", req.ambiente()),
                 kv("sucesso", r.sucesso()), kv("codErro", String.valueOf(r.codErro())));
         return ResponseEntity.ok(r);
     }
@@ -58,16 +60,10 @@ public class AcessoInternoController {
     @PostMapping("/interno/acesso/senha")
     public ResponseEntity<ResultadoTroca> senha(@RequestBody TrocaSenhaRequest req) {
         ResultadoTroca r = trocarSenha.trocar(req.usuario(), req.senhaAtual(), req.novaSenha(), req.ambiente());
-        log.info("acesso_senha", kv("usuario", req.usuario()), kv("ambiente", req.ambiente()),
-                kv("sucesso", r.sucesso()));
-        return ResponseEntity.ok(r);
-    }
-
-    @PostMapping("/interno/acesso/email-pwd")
-    public ResponseEntity<ResultadoTroca> emailPwd(@RequestBody RecuperacaoRequest req) {
-        ResultadoTroca r = recuperarSenha.recuperar(req.usuario(), req.cpf(), req.ambiente());
-        log.info("acesso_email_pwd", kv("usuario", req.usuario()), kv("ambiente", req.ambiente()),
-                kv("sucesso", r.sucesso()));
+        // TODO(Doc Final de Requisitos - Logs e Auditoria): IP nao logado aqui pois TrocarSenhaUseCase
+        // nao recebe IP (exigiria mudar a assinatura da porta); usuario ja pseudonimizado.
+        log.info("acesso_senha", kv("usuario", LogAnonimizador.pseudonimizarUsuario(req.usuario())),
+                kv("ambiente", req.ambiente()), kv("sucesso", r.sucesso()));
         return ResponseEntity.ok(r);
     }
 
@@ -85,9 +81,6 @@ public class AcessoInternoController {
     }
 
     public record TrocaSenhaRequest(String usuario, String senhaAtual, String novaSenha, String ambiente) {
-    }
-
-    public record RecuperacaoRequest(String usuario, String cpf, String ambiente) {
     }
 
     public record ValidaRequest(String tipo, String valor, String ambiente) {

@@ -9,7 +9,7 @@ import com.prognum.scci.acesso.domain.model.ResultadoLogin;
  * do mesmo tipo é só configuração.
  *
  * Responsabilidade: SÓ verificar a credencial e devolver o resultado (código de estado). O que é
- * COMUM a todos — bloqueio por tentativas, captcha, emissão de sessionKey, log — fica no coordenador
+ * COMUM a todos — bloqueio por tentativas, emissão de sessionKey, log — fica no coordenador
  * ({@code LoginService}). Por isso o {@link ResultadoLogin} devolvido vem com {@code sessionKey=null}:
  * quem emite o token é o coordenador, no sucesso.
  *

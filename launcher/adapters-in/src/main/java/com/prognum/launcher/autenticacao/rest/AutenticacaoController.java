@@ -7,7 +7,9 @@ import com.prognum.launcher.autenticacao.model.ResultadoTroca;
 import com.prognum.launcher.autenticacao.model.Sessao;
 import com.prognum.launcher.autenticacao.port.in.SessaoUseCase;
 import com.prognum.launcher.autenticacao.port.out.AcessoJavaPort;
+import com.prognum.common.crypto.LogAnonimizador;
 import com.prognum.common.crypto.WcopCrypto;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +32,8 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
  * AejsWebController do launcher SCCI (legado) (contrato W_COP: AES no request, XOR/ISO-8859-1 na
  * resposta). So orquestra: decifra -> use case -> cifra. Zero regra aqui.
  */
+@Tag(name = "Autenticacao", description = "Login, troca de senha, validação de CPF/protocolo e logout. "
+        + "Sem MFA/CAPTCHA/recuperação por e-mail (fora do escopo — ver DECISOES-TECNICAS.md).")
 @RestController
 public class AutenticacaoController {
 
@@ -44,18 +48,39 @@ public class AutenticacaoController {
     private final AcessoJavaPort acesso;
     private final SessaoUseCase sessoes;
     private final String contexto;
+    // QtMaxLogin do launcher legado: capacidade HERDADA, desligada por padrao (0 = ilimitado).
+    // Doc Final de Requisitos (Gestao de Sessoes / Escopo Negativo): "limitacao de sessoes por
+    // usuario" esta fora do escopo ATIVO desta entrega -- o parametro fica documentado aqui como
+    // herdado do legado, nao como feature nova; nao ligar sem decisao de negocio explicita.
     private final int maxLoginsSimultaneos;
+    // Doc Final de Requisitos (2.9.3): fora do modo dev, a requisicao deve ser cifrada (W_COP).
+    // Default FALSE preserva o comportamento atual (smoke-test.sh e deploys hoje mandam JSON puro,
+    // sem profile de ambiente formalizado) -- ligar via launcher.wcop.exigir-cifrado=true exige
+    // decisao operacional coordenada com o front antes do rollout.
+    private final boolean exigirCifrado;
 
     public AutenticacaoController(ObjectMapper mapper, WcopCrypto crypto, AcessoJavaPort acesso,
                                   SessaoUseCase sessoes,
                                   @Value("${launcher.legacy.wcop.contexto:CORP_WEB}") String contexto,
-                                  @Value("${launcher.auth.max-logins-simultaneos:0}") int maxLoginsSimultaneos) {
+                                  @Value("${launcher.auth.max-logins-simultaneos:0}") int maxLoginsSimultaneos,
+                                  @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado) {
         this.mapper = mapper;
         this.crypto = crypto;
         this.acesso = acesso;
         this.sessoes = sessoes;
         this.contexto = contexto;
         this.maxLoginsSimultaneos = maxLoginsSimultaneos;   // 0 = ilimitado (QtMaxLogin do launcher)
+        this.exigirCifrado = exigirCifrado;
+    }
+
+    /** Doc Final de Requisitos (2.9.3): rejeita corpo nao-cifrado quando exigirCifrado=true. */
+    private ResponseEntity<byte[]> rejeicaoSeNaoCifrado(boolean cifrado, byte[] body) {
+        if (exigirCifrado && !cifrado && body != null && body.length > 0) {
+            log.info("wcop_nao_cifrado_rejeitado");
+            return resposta(false,
+                    "{\"success\":false,\"message\":\"Requisicao deve ser cifrada (W_COP).\",\"codigo\":\"E006\"}");
+        }
+        return null;
     }
 
     // ---------------------------------------------------------------- LOGIN
@@ -63,6 +88,10 @@ public class AutenticacaoController {
     public ResponseEntity<byte[]> login(HttpServletRequest req, @RequestBody(required = false) byte[] body) {
         String rawAscii = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
         boolean cifrado = crypto.estaCifrado(rawAscii);
+        ResponseEntity<byte[]> rejeicao = rejeicaoSeNaoCifrado(cifrado, body);
+        if (rejeicao != null) {
+            return rejeicao;
+        }
 
         String json = cifrado
                 ? crypto.decifraRequest(rawAscii)
@@ -83,7 +112,8 @@ public class AutenticacaoController {
         try {
             r = acesso.login(usuario, senha, ambiente, req.getRemoteAddr()).orElse(ACESSO_INDISPONIVEL);
         } catch (RuntimeException e) {
-            log.warn("web_login_erro", kv("usuario", usuario), kv("ambiente", ambiente),
+            log.warn("web_login_erro", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                    kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())), kv("ambiente", ambiente),
                     kv("erro", String.valueOf(e.getMessage())));
             return resposta(cifrado, "{\"success\":false,\"message\":\"Falha ao validar o login.\"}");
         }
@@ -91,7 +121,8 @@ public class AutenticacaoController {
         // QtMaxLogin (launcher): limite de acessos simultaneos por usuario (0 = ilimitado).
         if (r.sucesso() && maxLoginsSimultaneos > 0
                 && sessoes.contarSessoesAtivas(usuario, ambiente) >= maxLoginsSimultaneos) {
-            log.info("web_login_max_sessoes", kv("usuario", usuario), kv("limite", maxLoginsSimultaneos));
+            log.info("web_login_max_sessoes", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                    kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())), kv("limite", maxLoginsSimultaneos));
             return resposta(cifrado, "{\"success\":false,\"message\":\"Numero maximo de acessos simultaneos atingido.\",\"codigo\":\"E005\"}");
         }
 
@@ -107,11 +138,14 @@ public class AutenticacaoController {
                 ok.append(",\"userName\":\"").append(escapar(usuarioSessao)).append("\"");
             }
             respJson = ok.append("}").toString();
-            log.info("web_login", kv("usuario", usuarioSessao), kv("ambiente", ambiente),
+            log.info("web_login", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuarioSessao)),
+                    kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())), kv("ambiente", ambiente),
+                    kv("sessaoId", LogAnonimizador.pseudonimizarSessao(r.sessionKey())),
                     kv("codErro", String.valueOf(r.codErro())), kv("cifrado", cifrado));
         } else {
             respJson = jsonFalhaLogin(r.codErro(), r.mensagem());
-            log.info("web_login_negado", kv("usuario", usuario), kv("ambiente", ambiente),
+            log.info("web_login_negado", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                    kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())), kv("ambiente", ambiente),
                     kv("codErro", String.valueOf(r.codErro())));
         }
         return resposta(cifrado, respJson);
@@ -122,6 +156,10 @@ public class AutenticacaoController {
     public ResponseEntity<byte[]> password(HttpServletRequest req, @RequestBody(required = false) byte[] body) {
         String rawAscii = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
         boolean cifrado = crypto.estaCifrado(rawAscii);
+        ResponseEntity<byte[]> rejeicao = rejeicaoSeNaoCifrado(cifrado, body);
+        if (rejeicao != null) {
+            return rejeicao;
+        }
         String json = cifrado ? crypto.decifraRequest(rawAscii)
                 : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8));
         Map<String, String> in = camposDoJson(json);
@@ -135,7 +173,9 @@ public class AutenticacaoController {
         String novaSenha = primeiro(in, "novaSenha", "novasenha", "newPassword", "senhaNova", "newpassword", "password2");
 
         // loga so as CHAVES (nunca os valores das senhas)
-        log.info("w_password", kv("usuario", usuario), kv("ambiente", ambiente),
+        log.info("w_password", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())), kv("ambiente", ambiente),
+                kv("sessaoId", LogAnonimizador.pseudonimizarSessao(sessionKey)),
                 kv("campos", String.join(",", in.keySet())));
 
         ResultadoTroca r;
@@ -143,7 +183,8 @@ public class AutenticacaoController {
             r = acesso.trocarSenha(usuario, senhaAtual, novaSenha, ambiente)
                     .orElse(new ResultadoTroca(false, "Servico de acesso indisponivel. Tente novamente."));
         } catch (RuntimeException e) {
-            log.warn("web_passwd_erro", kv("usuario", usuario), kv("erro", String.valueOf(e.getMessage())));
+            log.warn("web_passwd_erro", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                    kv("erro", String.valueOf(e.getMessage())));
             return resposta(cifrado, "{\"success\":false,\"message\":\"Falha ao trocar a senha.\"}");
         }
         String respJson = r.sucesso()
@@ -152,34 +193,8 @@ public class AutenticacaoController {
         return resposta(cifrado, respJson);
     }
 
-    // ---------------------------------------------------------------- ESQUECI A SENHA
-    // /w/email-pwd = ExecutaEmailPwd do loginbd: gera senha temporaria e envia por e-mail.
-    @PostMapping("/w/email-pwd")
-    public ResponseEntity<byte[]> emailPwd(HttpServletRequest req, @RequestBody(required = false) byte[] body) {
-        String rawAscii = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
-        boolean cifrado = crypto.estaCifrado(rawAscii);
-        String json = cifrado ? crypto.decifraRequest(rawAscii)
-                : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8));
-        Map<String, String> in = camposDoJson(json);
-
-        String usuario = primeiro(in, "userName", "usuario", "user", "login");
-        String cpf = primeiro(in, "userCPF", "cpf", "userCpf");
-        String ambiente = primeiro(in, "ambienteOperacional", "ambiente");
-        log.info("w_email_pwd", kv("usuario", usuario), kv("ambiente", ambiente));
-
-        ResultadoTroca r;
-        try {
-            r = acesso.recuperar(usuario, cpf, ambiente)
-                    .orElse(new ResultadoTroca(false, "Servico de acesso indisponivel. Tente novamente."));
-        } catch (RuntimeException e) {
-            log.warn("web_email_pwd_erro", kv("usuario", usuario), kv("erro", String.valueOf(e.getMessage())));
-            return resposta(cifrado, "{\"success\":false,\"message\":\"Falha ao recuperar a senha.\"}");
-        }
-        String respJson = r.sucesso()
-                ? "{\"success\":\"true\",\"message\":\"" + escapar(r.mensagem()) + "\"}"
-                : "{\"success\":false,\"message\":\"" + escapar(r.mensagem()) + "\"}";
-        return resposta(cifrado, respJson);
-    }
+    // Doc Final de Requisitos (Troca/Recuperação de Senha): recuperação automática por e-mail
+    // removida — fora do escopo inicial. Endpoint /w/email-pwd descontinuado.
 
     // ---------------------------------------------------------------- VALIDA CPF / PROTOCOLO
     // /w/valida-acesso = ValidaCpf/ValidaProtocolo do loginbd (building block do login-por-CPF).
@@ -187,6 +202,10 @@ public class AutenticacaoController {
     public ResponseEntity<byte[]> validaAcesso(HttpServletRequest req, @RequestBody(required = false) byte[] body) {
         String rawAscii = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
         boolean cifrado = crypto.estaCifrado(rawAscii);
+        ResponseEntity<byte[]> rejeicao = rejeicaoSeNaoCifrado(cifrado, body);
+        if (rejeicao != null) {
+            return rejeicao;
+        }
         String json = cifrado ? crypto.decifraRequest(rawAscii)
                 : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8));
         Map<String, String> in = camposDoJson(json);
@@ -211,11 +230,17 @@ public class AutenticacaoController {
     public ResponseEntity<byte[]> logout(HttpServletRequest req, @RequestBody(required = false) byte[] body) {
         String rawAscii = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
         boolean cifrado = crypto.estaCifrado(rawAscii);
+        ResponseEntity<byte[]> rejeicao = rejeicaoSeNaoCifrado(cifrado, body);
+        if (rejeicao != null) {
+            return rejeicao;
+        }
         String json = cifrado ? crypto.decifraRequest(rawAscii)
                 : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8));
         String sessionKey = primeiro(camposDoJson(json), "sessionKey");
         sessoes.encerrar(sessionKey);   // apaga da SCCI_SESSION + Redis
-        log.info("web_logout", kv("sessaoEncerrada", sessionKey != null));
+        log.info("web_logout", kv("sessaoEncerrada", sessionKey != null),
+                kv("sessaoId", LogAnonimizador.pseudonimizarSessao(sessionKey)),
+                kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())));
         return resposta(cifrado, "{\"success\":\"true\"}");
     }
 
@@ -233,12 +258,12 @@ public class AutenticacaoController {
 
     /**
      * Login NEGADO no contrato do front (wcorp.pas: success BOOLEANO false + 'message' + 'codigo').
-     * E004 = troca obrigatoria / senha expirada; E003 = captcha.
+     * E004 = troca obrigatoria / senha expirada.
+     * (Doc Final de Requisitos: E003/captcha removido — fora do escopo inicial.)
      */
     private String jsonFalhaLogin(char codErro, String mensagem) {
         String codigo = switch (codErro) {
             case 'M', 'E' -> "E004";
-            case 'K' -> "E003";
             default -> null;
         };
         StringBuilder sb = new StringBuilder("{\"success\":false,\"message\":\"");

@@ -1,5 +1,6 @@
 package com.prognum.scci.acesso.application;
 
+import com.prognum.common.crypto.LogAnonimizador;
 import com.prognum.scci.acesso.domain.model.ResultadoLogin;
 import com.prognum.scci.acesso.domain.port.in.LoginUseCase;
 import com.prognum.scci.acesso.domain.port.out.Autenticador;
@@ -17,10 +18,14 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
 
 /**
  * COORDENADOR do login. Concentra o que é COMUM a todos os clientes/mecanismos — bloqueio por
- * tentativas, captcha, atraso anti-brute-force, emissão de sessionKey, log — e delega a VERIFICAÇÃO
+ * tentativas, atraso anti-brute-force, emissão de sessionKey, log — e delega a VERIFICAÇÃO
  * da credencial ao {@link Autenticador} (Strategy) do cliente, escolhido pelo {@link MetodoLoginResolver}
  * (config por cliente). Assim cada loginXXX.pas vira uma Strategy fiel e portar um cliente novo do
  * mesmo tipo é só configuração. POJO puro.
+ *
+ * <p><b>Doc Final de Requisitos (Autenticação):</b> CAPTCHA e MFA estão fora do escopo inicial —
+ * removidos deste coordenador. O único mecanismo anti-brute-force é o bloqueio por excesso de
+ * tentativas (código 'X'), que permanece.</p>
  */
 public class LoginService implements LoginUseCase {
 
@@ -34,12 +39,9 @@ public class LoginService implements LoginUseCase {
 
     private final long delayMs;
     private final int maxErros;
-    private final int maxErrosCaptcha;
-    private final boolean captchaHabilitado;
 
     public LoginService(List<Autenticador> autenticadores, MetodoLoginResolver resolver,
-                        ContadorTentativas attempts, long delayMs, int maxErros,
-                        int maxErrosCaptcha, boolean captchaHabilitado) {
+                        ContadorTentativas attempts, long delayMs, int maxErros) {
         for (Autenticador a : autenticadores) {
             porMetodo.put(a.metodo().toUpperCase(), a);
         }
@@ -47,8 +49,6 @@ public class LoginService implements LoginUseCase {
         this.attempts = attempts;
         this.delayMs = delayMs;
         this.maxErros = maxErros;
-        this.maxErrosCaptcha = maxErrosCaptcha;
-        this.captchaHabilitado = captchaHabilitado;
     }
 
     @Override
@@ -63,15 +63,12 @@ public class LoginService implements LoginUseCase {
         ResultadoLogin r = autenticador.autenticar(usuario, senha, ambiente, ip);
         char cod = r.codErro();
 
-        // credencial inválida (F/B) -> conta tentativa + escala captcha/bloqueio (comum a todos)
+        // credencial inválida (F/B) -> conta tentativa + escala bloqueio (comum a todos)
         if (cod == 'F' || cod == 'B') {
             int n = attempts.registerFailure(usuario);
             delay();
             if (n > maxErros) {
                 return new ResultadoLogin(false, 'X', null, "Usuario bloqueado por excesso de tentativas.", null);
-            }
-            if (captchaHabilitado && n > maxErrosCaptcha) {
-                return new ResultadoLogin(false, 'K', null, "Captcha obrigatorio.", null);
             }
             return r;
         }
@@ -82,7 +79,8 @@ public class LoginService implements LoginUseCase {
         if (r.sucesso()) {   // 'T' (ok) ou 'C' (aviso) -> emite a sessão (papel do coordenador)
             // a Strategy PODE já ter emitido o token (payload-mapeado gera o mesmo do INSERT); senão gera aqui
             String token = r.sessionKey() != null ? r.sessionKey() : novaSessionKey();
-            log.info("wcop_login_ok", kv("usuario", usuario), kv("ambiente", ambiente),
+            log.info("wcop_login_ok", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                    kv("ip", LogAnonimizador.mascararIp(ip)), kv("ambiente", ambiente),
                     kv("metodo", autenticador.metodo()), kv("codErro", String.valueOf(cod)));
             return new ResultadoLogin(true, cod, token, r.mensagem(), r.diasRestantes(), r.usuarioEfetivo());
         }

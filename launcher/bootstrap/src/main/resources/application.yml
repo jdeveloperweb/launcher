@@ -11,11 +11,13 @@ spring:
     name: launcher
   servlet:
     multipart:                        # upload de documentos (canal sccidoc / putDoc)
-      # Estes limites sao so o TETO DE TRANSPORTE do reator; a REGRA de tamanho (se houver) e do
-      # programa wdoc REAL, que le a config do launcherenv.ini (o reator NAO reimplementa isso -
-      # so executa o wdoc e monta o ambiente via LauncherEnvReader). Na frente de tudo, o Apache
-      # ja barra em 30MB (LimitRequestBody), igual no /aejs. Por isso deixamos o reator ACIMA de
-      # 30MB: ele nunca rejeita antes do Apache nem antes do wdoc (que e quem deve decidir a regra).
+      # Doc Final de Requisitos (Upload/Download): tamanho maximo de upload e OBRIGATORIO e
+      # parametrizavel -- este e o teto de transporte do reator (sempre aplicado pelo Spring; nao
+      # ha caminho de upload sem limite). A REGRA de tamanho (se houver) e do programa wdoc REAL,
+      # que le a config do launcherenv.ini (o reator NAO reimplementa isso - so executa o wdoc e
+      # monta o ambiente via LauncherEnvReader). Na frente de tudo, o Apache ja barra em 30MB
+      # (LimitRequestBody), igual no /aejs. Por isso deixamos o reator ACIMA de 30MB: ele nunca
+      # rejeita antes do Apache nem antes do wdoc (que e quem deve decidir a regra fina).
       max-file-size: ${UPLOAD_MAX_FILE:50MB}
       max-request-size: ${UPLOAD_MAX_REQUEST:60MB}
   data:
@@ -23,6 +25,13 @@ spring:
       host: ${REDIS_HOST:127.0.0.1}   # redis (docker, host network)
       port: ${REDIS_PORT:6379}
       timeout: 2s
+
+# Doc Final de Requisitos (Autenticacao/Sessao): cache de ambientes (launcherenv.ini), parametrizavel.
+# NAO cacheia credencial/senha de usuario final (essa e sempre lida ao vivo no banco).
+common:
+  environment:
+    cache-habilitado: ${ENV_CACHE_HABILITADO:true}
+    cache-ttl-segundos: ${ENV_CACHE_TTL:300}   # 0 (ou negativo) = sem expiracao por tempo
 
 launcher:
   # scci-core: o monolito modular (dominios em Java). O roteador chama o REST interno dele quando a
@@ -44,27 +53,56 @@ launcher:
       # --- acesso (login/senha/etc -> scci-core). Resiliencia: scci-core fora -> auth LOCAL (fallback).
       "[acesso.Login]": { habilitado: true }               # /w/login -> scci-core (acesso). VALIDADO ao vivo (supervisor).
       # "[acesso.TrocaSenha]": { habilitado: true }        # /w/password
-      # "[acesso.EmailPwd]": { habilitado: true }          # /w/email-pwd
       # "[acesso.ValidaAcesso]": { habilitado: true }      # /w/valida-acesso
+      # (acesso.EmailPwd removido: recuperacao automatica de senha por e-mail fora do escopo inicial)
       # "[acesso]": { habilitado: true }                   # ligaria TODO o dominio acesso -> scci-core
   # (execucao Pascal e SEMPRE via pascal-executor agora; o launcher nao tem mais ponte JNA local)
   sessao:
-    ttl-segundos: 1800              # TTL da sessao no Redis (cache do VALIDA)
+    # Doc Final de Requisitos (Autenticacao/Sessao): default = sessao infinita (comportamento atual).
+    # 0 (ou negativo) = sem expiracao; um valor positivo liga o timeout por inatividade (ex.: 1800 = 30min).
+    ttl-segundos: 0
+  documentos:
+    # Doc Final de Requisitos (Upload/Download): lista parametrica de extensoes permitidas no upload,
+    # validada na BORDA (unico ponto de entrada, independente de qual backend a flag escolher).
+    # Vazio = sem restricao adicional aqui.
+    extensoes-permitidas: pdf,xml,jpg,jpeg,png,gif,bmp,tif,tiff,htm,html,txt,csv,rtf,zip,doc,dot,docx,xls,xlt,xla,xlsx,ppt,pot,pps,pptx,odt,ods,odp
+    chunked:
+      # Doc Final de Requisitos (Upload/Download): endpoint PROPOSTO /sccidoc/upload-chunked/* (upload
+      # em blocos). tamanho-maximo-bytes default = 15GB (> 10GB exigido); calibrar pelo heap disponivel
+      # (ver limite documentado em UploadChunkadoService — a montagem final ainda materializa em
+      # memoria antes de entregar ao pipeline existente).
+      staging-dir: ${UPLOAD_CHUNKED_STAGING_DIR:${java.io.tmpdir}/scci-upload-staging}
+      tamanho-maximo-bytes: ${UPLOAD_CHUNKED_MAX_BYTES:16106127360}
+      tamanho-bloco-maximo-bytes: ${UPLOAD_CHUNKED_BLOCO_MAX_BYTES:10485760}
+      limpeza:
+        max-idade-minutos: ${UPLOAD_CHUNKED_LIMPEZA_MAX_IDADE_MIN:240}   # uploads abandonados > isso -> removidos
+        intervalo-ms: ${UPLOAD_CHUNKED_LIMPEZA_INTERVALO_MS:900000}      # a cada 15min varre e limpa
   legacy:
     wcop:
       contexto: CORP_WEB          # w.ini [Servidor] Contexto (default CORP_WEB)
+  wcop:
+    # Doc Final de Requisitos (2.9.3): "modo dev aceita requisicao nao cifrada" -- fora do modo dev,
+    # deve EXIGIR W_COP. Default FALSE preserva o comportamento atual (deploy/payload/smoke-test.sh
+    # manda JSON puro hoje, e nao ha profile de ambiente formalizado no projeto ainda). Ligar
+    # (true) exige coordenar com o front que TODA chamada a /w/*, /w e /sccidoc (JSON) vai cifrada --
+    # NAO se aplica ao upload multipart /sccidoc (cifragem por header opcional, ver SccidocController).
+    exigir-cifrado: ${WCOP_EXIGIR_CIFRADO:false}
   executor:
     timeout-segundos: 30
     max-concorrentes: 8           # espelha o MAXCONN do launcher
     max-tentativas: 3             # retry so em GET (idempotente)
     retry-delay-ms: 120
   auth:
+    # Doc Final de Requisitos (Autenticacao): CAPTCHA e recuperacao automatica de senha por e-mail
+    # estao fora do escopo inicial -- parametros removidos (max-erros-captcha, captcha-habilitado).
     login-err-delay-ms: 1000
     max-erros: 5
-    max-erros-captcha: 3
-    captcha-habilitado: true
     dias-aviso-expiracao: 5
-    max-logins-simultaneos: 0    # QtMaxLogin do launcher (0 = ilimitado; ex.: 3 limita a 3 sessoes/usuario)
+    # QtMaxLogin do launcher legado: capacidade HERDADA, mantida desligada por padrao (0 = ilimitado).
+    # Doc Final de Requisitos (Gestao de Sessoes / Escopo Negativo): "limitacao de sessoes por
+    # usuario" esta fora do escopo ATIVO desta entrega -- NAO ligar sem decisao de negocio explicita
+    # (ex.: 3 limitaria a 3 sessoes/usuario).
+    max-logins-simultaneos: 0
     # Metodo de login por cliente (trecho-do-ambiente -> METODO). Sem match => BANCO (loginbd, md5crypt).
     # Familia "payload-mapeado" (IdP externo ja autenticou): MAPEADO_ITAU/MAPEADO_C6/MAPEADO_BRB/
     # MAPEADO_CASHMEWEB/MAPEADO_DIRETO/MAPEADO_UNICRED/MAPEADO_AILOS. Descomente e ajuste os trechos reais:

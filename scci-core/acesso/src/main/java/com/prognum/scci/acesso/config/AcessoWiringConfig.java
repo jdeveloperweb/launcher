@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
 
 import com.prognum.scci.acesso.application.AutenticadorBanco;
 import com.prognum.scci.acesso.application.LoginService;
-import com.prognum.scci.acesso.application.RecuperarSenhaService;
 import com.prognum.scci.acesso.application.TrocarSenhaService;
 import com.prognum.scci.acesso.application.ValidacaoAcessoService;
 import com.prognum.scci.acesso.application.mapeado.AutenticadorMapeado;
@@ -23,7 +22,6 @@ import com.prognum.scci.acesso.application.mapeado.ProvisaoItau;
 import com.prognum.scci.acesso.application.mapeado.ProvisaoUnicred;
 import com.prognum.scci.acesso.domain.policy.PasswordPolicy;
 import com.prognum.scci.acesso.domain.port.in.LoginUseCase;
-import com.prognum.scci.acesso.domain.port.in.RecuperarSenhaUseCase;
 import com.prognum.scci.acesso.domain.port.in.TrocarSenhaUseCase;
 import com.prognum.scci.acesso.domain.port.in.ValidarAcessoUseCase;
 import com.prognum.scci.acesso.domain.port.out.Autenticador;
@@ -31,11 +29,9 @@ import com.prognum.scci.acesso.domain.port.out.ContadorTentativas;
 import com.prognum.scci.acesso.domain.port.out.CredenciaisRepository;
 import com.prognum.scci.acesso.domain.port.out.MetodoLoginResolver;
 import com.prognum.scci.acesso.domain.port.out.ProvisionamentoUsuario;
-import com.prognum.scci.acesso.domain.port.out.RecuperacaoSenhaRepository;
 import com.prognum.scci.acesso.domain.port.out.SenhaRepository;
 import com.prognum.scci.acesso.domain.port.out.ValidacaoAcessoRepository;
 import com.prognum.scci.acesso.domain.port.out.VerificadorSenha;
-import com.prognum.scci.notificacao.domain.port.Notificador;
 
 /**
  * Fia os POJOs do contexto acesso (coordenador LoginService + Strategies BANCO/família B + senha/
@@ -106,15 +102,13 @@ public class AcessoWiringConfig {
     }
 
     // ---- Coordenador do login ----
+    // Doc Final de Requisitos (Autenticação): CAPTCHA fora do escopo inicial — sem parâmetro aqui.
     @Bean
     LoginUseCase loginService(List<Autenticador> autenticadores, MetodoLoginResolver resolver,
             ContadorTentativas tentativas,
             @Value("${scci.auth.login-err-delay-ms:1000}") long delayMs,
-            @Value("${scci.auth.max-erros:5}") int maxErros,
-            @Value("${scci.auth.max-erros-captcha:3}") int maxErrosCaptcha,
-            @Value("${scci.auth.captcha-habilitado:true}") boolean captchaHabilitado) {
-        return new LoginService(autenticadores, resolver, tentativas, delayMs, maxErros,
-                maxErrosCaptcha, captchaHabilitado);
+            @Value("${scci.auth.max-erros:5}") int maxErros) {
+        return new LoginService(autenticadores, resolver, tentativas, delayMs, maxErros);
     }
 
     // ---- Política de senha (RN-010..012) ----
@@ -138,11 +132,8 @@ public class AcessoWiringConfig {
         return new TrocarSenhaService(repo, verificador, policy);
     }
 
-    @Bean
-    RecuperarSenhaUseCase recuperarSenhaService(RecuperacaoSenhaRepository repo, VerificadorSenha verificador,
-            Notificador notificador) {
-        return new RecuperarSenhaService(repo, verificador, notificador);
-    }
+    // Doc Final de Requisitos (Troca/Recuperação de Senha): recuperação automática por e-mail
+    // removida — fora do escopo inicial (sem bean de RecuperarSenhaUseCase).
 
     @Bean
     ValidarAcessoUseCase validacaoAcessoService(ValidacaoAcessoRepository repo) {

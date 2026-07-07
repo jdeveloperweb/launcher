@@ -16,7 +16,7 @@ import com.prognum.launcher.autenticacao.port.out.AcessoJavaPort;
 
 /**
  * Cliente do REST interno do <b>scci-core/acesso</b> — o caminho JAVA/remoto dos roteadores de auth.
- * Mapeia cada use case (login/senha/email-pwd/valida) para o endpoint interno, chama o scci-core e
+ * Mapeia cada use case (login/senha/valida) para o endpoint interno, chama o scci-core e
  * converte a resposta JSON de volta nos tipos de domínio do launcher.
  *
  * Resiliência (igual ao {@code ClienteScciCoreDocumentos}): devolve {@link Optional#empty()} quando o
@@ -49,12 +49,8 @@ public class ClienteScciCoreAcesso implements AcessoJavaPort {
                 ClienteScciCoreAcesso::paraResultadoTroca, "senha");
     }
 
-    @Override
-    public Optional<ResultadoTroca> recuperar(String usuario, String cpf, String ambiente) {
-        return chamar("/interno/acesso/email-pwd",
-                Map.of("usuario", nz(usuario), "cpf", nz(cpf), "ambiente", nz(ambiente)),
-                ClienteScciCoreAcesso::paraResultadoTroca, "email-pwd");
-    }
+    // Doc Final de Requisitos (Troca/Recuperação de Senha): recuperação automática por e-mail
+    // removida — fora do escopo inicial (sem chamada a /interno/acesso/email-pwd).
 
     @Override
     public Optional<Boolean> validarCpf(String valor, String ambiente) {

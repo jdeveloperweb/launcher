@@ -1,5 +1,11 @@
 package com.prognum.scci;
 
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -34,9 +40,12 @@ import com.prognum.scci.documentos.domain.port.out.ResolvedorDocumento;
 public class ScciWiringConfig {
 
     // ---- infra tecnica compartilhada (comum, in-process) ----
+    // Doc Final de Requisitos (Autenticacao/Sessao): cache de ambiente parametrizavel (TTL/on-off).
     @Bean
-    LauncherEnvReader launcherEnvReader() {
-        return new LauncherEnvReader();
+    LauncherEnvReader launcherEnvReader(
+            @Value("${common.environment.cache-habilitado:true}") boolean cacheHabilitado,
+            @Value("${common.environment.cache-ttl-segundos:300}") long cacheTtlSegundos) {
+        return new LauncherEnvReader(cacheHabilitado, cacheTtlSegundos);
     }
 
     @Bean
@@ -60,10 +69,18 @@ public class ScciWiringConfig {
         return new BaixarDocumentoEntidadeService(resolvedor, baixar);
     }
 
+    // Doc Final de Requisitos (Upload/Download): lista paramétrica de extensões permitidas
+    // (scci.documentos.extensoes-permitidas, vazia por padrão -> sem restrição adicional aqui; o
+    // default REAL vem do application.yml, que já popula a lista recomendada).
     @Bean
     EnviarDocumento enviarDocumento(AntiMalware antiMalware, ConversorImagemPdf conversor,
-                                    ArmazenadorDocumento armazenador) {
-        return new EnviarDocumentoService(antiMalware, conversor, armazenador);
+                                    ArmazenadorDocumento armazenador,
+                                    @Value("${scci.documentos.extensoes-permitidas:}") String[] extensoesPermitidas) {
+        Set<String> extensoes = Arrays.stream(extensoesPermitidas)
+                .map(e -> e.trim().toLowerCase(Locale.ROOT))
+                .filter(e -> !e.isEmpty())
+                .collect(Collectors.toSet());
+        return new EnviarDocumentoService(antiMalware, conversor, armazenador, extensoes);
     }
 
     @Bean

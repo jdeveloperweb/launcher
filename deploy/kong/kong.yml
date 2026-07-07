@@ -21,7 +21,8 @@ services:
         strip_path: false
         methods: [POST]
         plugins:
-          # Anti-brute-force na borda (alem do bloqueio/captcha do reator): teto por IP no login.
+          # Anti-brute-force na borda (alem do bloqueio por tentativas do reator): teto por IP no login.
+          # (Doc Final de Requisitos: captcha do reator removido -- fora do escopo inicial.)
           - name: rate-limiting
             config: { minute: 20, policy: local, limit_by: ip, hide_client_headers: true }
       - name: r-password
@@ -32,10 +33,8 @@ services:
         paths: [/w/logout]
         strip_path: false
         methods: [POST]
-      - name: r-emailpwd
-        paths: [/w/email-pwd]
-        strip_path: false
-        methods: [POST]
+      # r-emailpwd removida: recuperacao automatica de senha por e-mail descontinuada
+      # (Doc Final de Requisitos -- fora do escopo inicial). /w/email-pwd nao existe mais no launcher.
       - name: r-valida-acesso
         paths: [/w/valida-acesso]
         strip_path: false

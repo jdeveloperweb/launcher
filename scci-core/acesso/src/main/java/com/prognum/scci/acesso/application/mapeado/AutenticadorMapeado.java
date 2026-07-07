@@ -14,7 +14,7 @@ import com.prognum.scci.acesso.domain.port.out.Autenticador;
  * Concentra o COMUM a todos: gerar o token da sessão, delegar o provisionamento à {@link EstrategiaProvisao}
  * do cliente e montar o {@link ResultadoLogin}. Erro de provisionamento (usuário sem acesso, perfil
  * inexistente…) vira código 'F' com a mensagem do legado — o coordenador {@code LoginService} então
- * aplica o comum (tentativas/captcha). O token emitido aqui é preservado pelo coordenador. POJO puro.
+ * aplica o comum (tentativas). O token emitido aqui é preservado pelo coordenador. POJO puro.
  */
 public class AutenticadorMapeado implements Autenticador {
 
