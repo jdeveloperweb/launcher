@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.client.RestClient;
 
 import java.util.List;
 
@@ -44,7 +45,7 @@ class ClienteLogEventoTest {
     @Test
     void auditaSincrono_mesmoComPascalExecutorFora() {
         // porta 1 = recusa/inalcancavel -> o POST assincrono ao pascal-executor vai falhar
-        ClienteLogEvento cliente = new ClienteLogEvento("http://localhost:1");
+        ClienteLogEvento cliente = new ClienteLogEvento(RestClient.builder(), "http://localhost:1");
 
         cliente.registrar("/u10/cliente/scat1", "login", "supervisor", "10.20.30.40", "CORP_WEB", "SESS-123");
 
@@ -55,7 +56,7 @@ class ClienteLogEventoTest {
 
     @Test
     void naoVazaUsuarioNemSessaoEmClaro() {
-        ClienteLogEvento cliente = new ClienteLogEvento("http://localhost:1");
+        ClienteLogEvento cliente = new ClienteLogEvento(RestClient.builder(), "http://localhost:1");
         cliente.registrar("/u10/cliente/scat1", "logout", "supervisor", "10.20.30.40", "CORP_WEB", "SESS-123");
 
         ILoggingEvent audit = auditoria(appender.list);
@@ -67,7 +68,7 @@ class ClienteLogEventoTest {
 
     @Test
     void semSessionKey_naoQuebra() {
-        ClienteLogEvento cliente = new ClienteLogEvento("http://localhost:1");
+        ClienteLogEvento cliente = new ClienteLogEvento(RestClient.builder(), "http://localhost:1");
         // loginerr nao tem sessao ainda -> sessionKey null nao pode quebrar a auditoria
         cliente.registrar("/u10/cliente/scat1", "loginerr", "fulano", "1.2.3.4", "CORP_WEB", null);
         assertTrue(auditoria(appender.list) != null, "auditoria deve sair mesmo sem sessionKey");

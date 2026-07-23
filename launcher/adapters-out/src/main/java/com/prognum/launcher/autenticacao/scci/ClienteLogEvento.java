@@ -44,8 +44,11 @@ public class ClienteLogEvento implements RegistroEventoAcesso {
         return t;
     });
 
-    public ClienteLogEvento(@Value("${launcher.pascal-executor.url:http://localhost:8091}") String baseUrl) {
-        this.rest = RestClient.builder().baseUrl(baseUrl).build();
+    public ClienteLogEvento(RestClient.Builder builder,
+                            @Value("${launcher.pascal-executor.url:http://localhost:8091}") String baseUrl) {
+        // builder GERENCIADO (instrumentado). Obs.: o POST abaixo roda no pool async 'log-evento', FORA
+        // do contexto do trace da requisicao — auditoria best-effort, nao entra na cascata do RTT.
+        this.rest = builder.baseUrl(baseUrl).build();
     }
 
     @Override

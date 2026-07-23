@@ -30,8 +30,10 @@ public class ClienteScciCoreAcesso implements AcessoJavaPort {
 
     private final RestClient rest;
 
-    public ClienteScciCoreAcesso(@Value("${launcher.scci-core.url:http://localhost:8090}") String baseUrl) {
-        this.rest = RestClient.builder().baseUrl(baseUrl).build();
+    public ClienteScciCoreAcesso(RestClient.Builder builder,
+                                 @Value("${launcher.scci-core.url:http://localhost:8090}") String baseUrl) {
+        // builder GERENCIADO (instrumentado) — propaga o traceparent p/ ligar o trace launcher -> scci-core
+        this.rest = builder.baseUrl(baseUrl).build();
     }
 
     @Override

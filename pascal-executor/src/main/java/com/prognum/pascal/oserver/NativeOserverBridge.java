@@ -84,10 +84,15 @@ final class NativeOserverBridge {
     /**
      * Executa o programa, envia {@code request} pelo fd bidirecional e devolve a resposta crua
      * (blocos do oserver). Lanca IOException em falha de spawn ou timeout sem dados.
+     *
+     * <p>Se {@code fasesNanos} (comprimento &gt;= 2) for passado, preenche a decomposicao de latencia
+     * em nanos: [0] = setup/spawn (socketpair + posix_spawn) e [1] = roundtrip (write + read ate EOF,
+     * que ~ equivale ao tempo de RESPOSTA do programa Pascal). Pode ser {@code null} p/ ignorar.</p>
      */
     static byte[] exchange(String bin, Map<String, String> env, String cwd, String ip,
-                           byte[] request, long timeoutMs) throws IOException {
+                           byte[] request, long timeoutMs, long[] fasesNanos) throws IOException {
         CLib c = CLib.INSTANCE;
+        long t0 = System.nanoTime();
 
         int[] sv = new int[2];
         if (c.socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0) {
@@ -133,6 +138,7 @@ final class NativeOserverBridge {
         tv.setLong(0, timeoutMs / 1000);            // tv_sec
         tv.setLong(8, (timeoutMs % 1000) * 1000);   // tv_usec (resto em microssegundos)
         c.setsockopt(parent, SOL_SOCKET, SO_RCVTIMEO, tv, 16);
+        long tSetup = System.nanoTime();   // fim do setup (socketpair + posix_spawn); dai pra frente e I/O
 
         try {
             writeAll(c, parent, request);
@@ -152,6 +158,10 @@ final class NativeOserverBridge {
                     }
                     break;                   // timeout com resposta parcial
                 }
+            }
+            if (fasesNanos != null && fasesNanos.length >= 2) {
+                fasesNanos[0] = tSetup - t0;                 // setup/spawn (socketpair + posix_spawn)
+                fasesNanos[1] = System.nanoTime() - tSetup;  // roundtrip (~ tempo de resposta do Pascal)
             }
             return out.toByteArray();
         } finally {

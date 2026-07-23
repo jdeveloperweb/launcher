@@ -10,6 +10,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.Inflater;
 
 import static net.logstash.logback.argument.StructuredArguments.kv;
@@ -49,6 +54,8 @@ public class ProgramExecutor implements ExecutorPrograma {
 
     private final LauncherEnvReader env;
     private final ObjectMapper mapper;
+    private final ObservationRegistry observationRegistry;
+    private final MeterRegistry meterRegistry;
     private final long timeoutMs;
     private final java.util.concurrent.Semaphore limite;
     private final int maxTentativas;
@@ -56,12 +63,16 @@ public class ProgramExecutor implements ExecutorPrograma {
 
     public ProgramExecutor(LauncherEnvReader env,
                            ObjectMapper mapper,
+                           ObservationRegistry observationRegistry,
+                           MeterRegistry meterRegistry,
                            @Value("${executor.timeout-ms:30000}") long timeoutMs,
                            @Value("${executor.max-concorrentes:8}") int maxConcorrentes,
                            @Value("${executor.max-tentativas:3}") int maxTentativas,
                            @Value("${executor.retry-delay-ms:120}") long retryDelayMs) {
         this.env = env;
         this.mapper = mapper;
+        this.observationRegistry = observationRegistry;
+        this.meterRegistry = meterRegistry;
         this.timeoutMs = timeoutMs;
         this.limite = new java.util.concurrent.Semaphore(Math.max(1, maxConcorrentes), true);
         this.maxTentativas = Math.max(1, maxTentativas);
@@ -168,9 +179,33 @@ public class ProgramExecutor implements ExecutorPrograma {
             File dir = (home != null && new File(home).isDirectory()) ? new File(home) : new File(ambiente);
             String cwd = dir.isDirectory() ? dir.getAbsolutePath() : null;
 
+            // Span + timers da EXECUCAO NATIVA — isola o tempo do Pascal do overhead HTTP/Java:
+            //   pascal.exec       span (X-Ray) + timer, tags programa/metodo; atributos spawn.us/roundtrip.us
+            //   pascal.spawn      timer (P50/P99) do setup (socketpair + posix_spawn)
+            //   pascal.roundtrip  timer (P50/P99) do write+read ate EOF (~ tempo de resposta do Pascal)
+            long[] fases = new long[2];
+            Observation obs = Observation.createNotStarted("pascal.exec", observationRegistry)
+                    .lowCardinalityKeyValue("programa", programName)
+                    .lowCardinalityKeyValue("metodo", metodo)
+                    .start();
             long ini = System.nanoTime();
-            byte[] out = NativeOserverBridge.exchange(bin, progEnv, cwd, ip, reqBytes, timeoutMs);
+            byte[] out;
+            try {
+                out = NativeOserverBridge.exchange(bin, progEnv, cwd, ip, reqBytes, timeoutMs, fases);
+                obs.highCardinalityKeyValue("spawn.us", Long.toString(fases[0] / 1000));
+                obs.highCardinalityKeyValue("roundtrip.us", Long.toString(fases[1] / 1000));
+                obs.highCardinalityKeyValue("resp.bytes", Integer.toString(out.length));
+            } catch (Exception e) {
+                obs.error(e);
+                throw e;
+            } finally {
+                obs.stop();
+            }
             long ms = (System.nanoTime() - ini) / 1_000_000;
+            meterRegistry.timer("pascal.spawn", "programa", programName, "metodo", metodo)
+                    .record(fases[0], TimeUnit.NANOSECONDS);
+            meterRegistry.timer("pascal.roundtrip", "programa", programName, "metodo", metodo)
+                    .record(fases[1], TimeUnit.NANOSECONDS);
 
             ResultadoExecucao r = parseBlocos(out);
             if (r.erro()) {

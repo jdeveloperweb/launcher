@@ -30,8 +30,11 @@ public class ClientePascalExecutor implements ExecutorPrograma {
     private final RestClient rest;
 
     public ClientePascalExecutor(
+            RestClient.Builder builder,
             @Value("${launcher.pascal-executor.url:http://localhost:8091}") String baseUrl) {
-        this.rest = RestClient.builder().baseUrl(baseUrl).build();
+        // builder GERENCIADO (instrumentado pelo Micrometer) — injeta o traceparent p/ ligar o trace
+        // ponta a ponta (launcher -> pascal-executor). RestClient.builder() estatico NAO propaga.
+        this.rest = builder.baseUrl(baseUrl).build();
     }
 
     @Override

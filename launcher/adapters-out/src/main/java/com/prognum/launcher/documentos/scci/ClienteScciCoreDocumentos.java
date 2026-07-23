@@ -36,10 +36,11 @@ public class ClienteScciCoreDocumentos implements DocumentosJavaPort {
     private final RestClient rest;
     private final ObjectMapper mapper;
 
-    public ClienteScciCoreDocumentos(ObjectMapper mapper,
+    public ClienteScciCoreDocumentos(RestClient.Builder builder, ObjectMapper mapper,
                                      @Value("${launcher.scci-core.url:http://localhost:8090}") String baseUrl) {
         this.mapper = mapper;
-        this.rest = RestClient.builder().baseUrl(baseUrl).build();
+        // builder GERENCIADO (instrumentado) — propaga o traceparent p/ ligar o trace launcher -> scci-core
+        this.rest = builder.baseUrl(baseUrl).build();
     }
 
     @Override
