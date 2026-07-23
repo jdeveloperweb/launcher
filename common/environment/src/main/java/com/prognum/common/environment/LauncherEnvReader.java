@@ -110,6 +110,94 @@ public class LauncherEnvReader {
         return env;
     }
 
+    /**
+     * Comandos da secao [LOG] do launcherenv.ini (LOGIN/LOGOFF/LOGINERR/LOGPASSWD) — o launcher roda o
+     * programa configurado (ex.: {@code sccilog -z LOGON $USER}) em cada evento de acesso. Mapa VAZIO =
+     * sem log de evento (secao/arquivo ausente): e OPCIONAL por cliente (config-driven).
+     */
+    public Map<String, String> logEventos(String ambientePath) {
+        Map<String, String> logs = new LinkedHashMap<>();
+        Path ini = Path.of(ambientePath, "launcherenv.ini");
+        List<String> linhas;
+        try {
+            linhas = Files.readAllLines(ini, StandardCharsets.ISO_8859_1);
+        } catch (IOException e) {
+            return logs;   // sem arquivo -> sem log de evento
+        }
+        String secao = "";
+        for (String bruta : linhas) {
+            String l = bruta.trim();
+            if (l.isEmpty() || l.startsWith("#") || l.startsWith(";")) {
+                continue;
+            }
+            if (l.startsWith("[") && l.endsWith("]")) {
+                secao = l.substring(1, l.length() - 1).trim().toUpperCase();
+                continue;
+            }
+            int eq = l.indexOf('=');
+            if (eq > 0 && "LOG".equals(secao)) {
+                logs.put(l.substring(0, eq).trim().toUpperCase(), l.substring(eq + 1).trim());
+            }
+        }
+        return logs;
+    }
+
+    /** Politica de senha POR AMBIENTE (secao [USERS] do launcherenv.ini). Chaves ausentes = 0 = sem exigencia. */
+    public PoliticaSenhaIni politicaSenha(String ambientePath) {
+        Map<String, String> u = secao(ambientePath, "USERS");
+        return new PoliticaSenhaIni(
+                inteiro(u, "USERMINCARACPASS"), inteiro(u, "CARMINALFAPASS"), inteiro(u, "CARMINALFAMAISPASS"),
+                inteiro(u, "CARMINNUMPASS"), inteiro(u, "CARMINESPPASS"),
+                inteiro(u, "USERMAXREPPASS"), inteiro(u, "USERMAXSEQPASS"));
+    }
+
+    /** Limite de sessoes simultaneas por usuario (ACESSOSSIMULTANEOS do [ENVIRONMENT]). 0 = ausente/ilimitado. */
+    public int acessosSimultaneos(String ambientePath) {
+        return inteiro(secao(ambientePath, "ENVIRONMENT"), "ACESSOSSIMULTANEOS");
+    }
+
+    /** Le uma secao crua do launcherenv.ini (chaves em MAIUSCULO). Vazio se o arquivo nao existir. */
+    private Map<String, String> secao(String ambientePath, String secaoAlvo) {
+        Map<String, String> vals = new LinkedHashMap<>();
+        Path ini = Path.of(ambientePath, "launcherenv.ini");
+        List<String> linhas;
+        try {
+            linhas = Files.readAllLines(ini, StandardCharsets.ISO_8859_1);
+        } catch (IOException e) {
+            return vals;
+        }
+        String sec = "";
+        for (String bruta : linhas) {
+            String l = bruta.trim();
+            if (l.isEmpty() || l.startsWith("#") || l.startsWith(";")) {
+                continue;
+            }
+            if (l.startsWith("[") && l.endsWith("]")) {
+                sec = l.substring(1, l.length() - 1).trim().toUpperCase();
+                continue;
+            }
+            int eq = l.indexOf('=');
+            if (eq > 0 && secaoAlvo.equals(sec)) {
+                vals.put(l.substring(0, eq).trim().toUpperCase(), l.substring(eq + 1).trim());
+            }
+        }
+        return vals;
+    }
+
+    private static int inteiro(Map<String, String> m, String chave) {
+        try {
+            String v = m.get(chave);
+            return (v == null || v.isBlank()) ? 0 : Integer.parseInt(v.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** Expande $VAR/${VAR} num valor usando o mapa de ambiente — publico p/ reuso (ex.: comandos [LOG]). */
+    public static String expandirVariaveis(String valor, Map<String, String> env) {
+        return expandir(valor, env);
+    }
+
     /** Expande $VAR e ${VAR} usando o env ja montado (ou o do SO). */
     private static String expandir(String valor, Map<String, String> env) {
         Matcher m = Pattern.compile("\\$\\{?([A-Za-z_][A-Za-z0-9_]*)\\}?").matcher(valor);
@@ -165,7 +253,8 @@ public class LauncherEnvReader {
                 orDefault(users.get("USERLASTPASS"), "DT_ULTIMA_TROCA_SENHA"),
                 orDefault(users.get("USERMAXPASS"), "NU_MAX_DIAS_TROCA_SENHA"),
                 orDefault(users.get("USERMINPASS"), "NU_MIN_DIAS_TROCA_SENHA"),
-                orDefault(users.get("USERMUSTCHANGE"), "IN_TROCA_SENHA_PROXIMO_LOGIN"));
+                orDefault(users.get("USERMUSTCHANGE"), "IN_TROCA_SENHA_PROXIMO_LOGIN"),
+                orDefault(users.get("USERACTIVE"), ""));   // ausente = sem coluna de inativacao
     }
 
     private static String orDefault(String v, String def) {

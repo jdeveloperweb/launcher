@@ -4,6 +4,7 @@ import com.prognum.scci.acesso.domain.model.HistoricoSenhas;
 import com.prognum.scci.acesso.domain.model.ResultadoTroca;
 import com.prognum.scci.acesso.domain.policy.PasswordPolicy;
 import com.prognum.scci.acesso.domain.port.in.TrocarSenhaUseCase;
+import com.prognum.scci.acesso.domain.port.out.PoliticaSenhaResolver;
 import com.prognum.scci.acesso.domain.port.out.SenhaRepository;
 import com.prognum.scci.acesso.domain.port.out.VerificadorSenha;
 import org.slf4j.Logger;
@@ -27,12 +28,12 @@ public class TrocarSenhaService implements TrocarSenhaUseCase {
 
     private final SenhaRepository repo;
     private final VerificadorSenha passwords;
-    private final PasswordPolicy policy;
+    private final PoliticaSenhaResolver politicas;
 
-    public TrocarSenhaService(SenhaRepository repo, VerificadorSenha passwords, PasswordPolicy policy) {
+    public TrocarSenhaService(SenhaRepository repo, VerificadorSenha passwords, PoliticaSenhaResolver politicas) {
         this.repo = repo;
         this.passwords = passwords;
-        this.policy = policy;
+        this.politicas = politicas;
     }
 
     @Override
@@ -52,8 +53,8 @@ public class TrocarSenhaService implements TrocarSenhaUseCase {
         if (!passwords.matches(senhaAtual, s.atual())) {
             return new ResultadoTroca(false, "Senha atual incorreta.");
         }
-        // 2) politica
-        PasswordPolicy.Resultado pr = policy.validar(novaSenha);
+        // 2) politica POR AMBIENTE (do launcherenv.ini; sem chaves = permissiva, igual ao legado)
+        PasswordPolicy.Resultado pr = politicas.resolver(ambiente).validar(novaSenha);
         if (!pr.ok()) {
             return new ResultadoTroca(false, pr.mensagem());
         }

@@ -86,7 +86,7 @@ final class NativeOserverBridge {
      * (blocos do oserver). Lanca IOException em falha de spawn ou timeout sem dados.
      */
     static byte[] exchange(String bin, Map<String, String> env, String cwd, String ip,
-                           byte[] request, long timeoutSegundos) throws IOException {
+                           byte[] request, long timeoutMs) throws IOException {
         CLib c = CLib.INSTANCE;
 
         int[] sv = new int[2];
@@ -128,10 +128,10 @@ final class NativeOserverBridge {
             throw new IOException("posix_spawn rc=" + rc);
         }
 
-        // timeout de recepcao (struct timeval: tv_sec, tv_usec — 8+8 bytes no x86_64)
+        // timeout de recepcao em MILISSEGUNDOS (struct timeval: tv_sec, tv_usec — 8+8 bytes no x86_64)
         Memory tv = new Memory(16);
-        tv.setLong(0, timeoutSegundos);
-        tv.setLong(8, 0);
+        tv.setLong(0, timeoutMs / 1000);            // tv_sec
+        tv.setLong(8, (timeoutMs % 1000) * 1000);   // tv_usec (resto em microssegundos)
         c.setsockopt(parent, SOL_SOCKET, SO_RCVTIMEO, tv, 16);
 
         try {
@@ -148,7 +148,7 @@ final class NativeOserverBridge {
                     break;                   // EOF: programa fechou o socket
                 } else {
                     if (out.size() == 0) {
-                        throw new IOException("Tempo excedido (" + timeoutSegundos + "s) sem resposta");
+                        throw new IOException("Tempo excedido (" + timeoutMs + "ms) sem resposta");
                     }
                     break;                   // timeout com resposta parcial
                 }

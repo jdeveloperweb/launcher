@@ -6,7 +6,7 @@
 #
 #  O processor `transform` usa a DSL OTTL (OpenTelemetry Transformation Language) — é onde você
 #  "desenha" as métricas em RUNTIME, declarativamente. Editar aqui + recarregar o Collector muda a
-#  telemetria SEM redeploy do app. Rodar: ver deploy-hex/observability/subir-collector.sh
+#  telemetria SEM redeploy do app. Rodar: ver deploy/observability/subir-collector.sh
 # =====================================================================
 receivers:
   otlp:
@@ -43,28 +43,28 @@ exporters:
   debug:
     verbosity: normal
 
-  # ================== AWS (PRONTO — habilitar ao ter a credencial) ==================
-  # Requer no container otel-hex:  -e AWS_REGION=<regiao> -e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS_KEY=...
-  # (ou IAM Roles Anywhere) + egress HTTPS/443 para *.amazonaws.com. Depois descomente abaixo
-  # e adicione os exporters nas pipelines (linhas marcadas).  IAM minimo:
-  #   logs:PutLogEvents/CreateLogGroup/CreateLogStream  (CloudWatch EMF)  +  xray:PutTraceSegments/PutTelemetryRecords
-  # awsemf:                        # CloudWatch (metricas via Embedded Metric Format)
-  #   region: ${env:AWS_REGION}
-  #   namespace: LauncherHex
-  #   log_group_name: /launcher-hex/metrics
-  # awsxray:                       # X-Ray (traces -> Service Map)
-  #   region: ${env:AWS_REGION}
+  # ================== AWS (ATIVO — requer credencial no container `otel`) ==================
+  # O container precisa de:  -e AWS_REGION=<regiao> -e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS_KEY=...
+  # (ou IAM Roles Anywhere) + egress HTTPS/443 p/ *.amazonaws.com (validado na desenv: sa-east-1 OK).
+  # IAM minimo: logs:CreateLogGroup/CreateLogStream/PutLogEvents/DescribeLogStreams/PutRetentionPolicy
+  #             (CloudWatch EMF)  +  xray:PutTraceSegments/PutTelemetryRecords
+  awsemf:                          # CloudWatch (metricas via Embedded Metric Format)
+    region: ${env:AWS_REGION}
+    namespace: Launcher
+    log_group_name: /launcher/metrics
+  awsxray:                         # X-Ray (traces -> Service Map)
+    region: ${env:AWS_REGION}
 
 service:
   pipelines:
     metrics:
       receivers: [otlp]
       processors: [transform, batch]
-      exporters: [prometheus, debug]      # AWS: acrescente  awsemf
+      exporters: [prometheus, debug, awsemf]   # awsemf -> CloudWatch (EMF)
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug]                  # AWS: acrescente  awsxray
+      exporters: [debug, awsxray]              # awsxray -> X-Ray (Service Map)
   telemetry:
     logs:
       level: info

@@ -12,9 +12,9 @@ legacy/launcher-test/
 deploy/jdk-cache/
 deploy/jdk-tmp/
 deploy/dist/
-deploy-hex/jdk-cache/
-deploy-hex/jdk-tmp/
-deploy-hex/dist/
+deploy/jdk-cache/
+deploy/jdk-tmp/
+deploy/dist/
 
 # ===== Binarios do legado (as FONTES .pas/.dpr/.dfm/.inc ficam; compilados nao) =====
 *.dll

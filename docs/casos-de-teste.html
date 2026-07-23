@@ -1,0 +1,1092 @@
+<title>Plano de Casos de Teste — Migração SCCI Launcher</title>
+<style>
+  :root {
+    --bg: #f4f6f7; --surface: #ffffff; --surface-2: #eef2f4; --surface-3: #e5eaed;
+    --ink: #16202a; --ink-soft: #556370; --ink-faint: #8492a0; --border: #d9e1e6;
+    --accent: #0e6b83; --accent-ink: #0a556a; --accent-soft: #e0eef2; --on-accent: #ffffff;
+    --pos: #2f7d54; --pos-soft: #e5f2ea; --neg: #c23b3b; --neg-soft: #fae9e9;
+    --edge: #a9660f; --edge-soft: #f6ecd9; --java: #0f7d70; --java-soft: #dff1ee;
+    --pascal: #856527; --pascal-soft: #f1ebda; --warn-soft: #fbf1dc; --warn-ink: #8a5a12;
+    --shadow: 0 1px 2px rgba(16,32,42,.04), 0 6px 18px rgba(16,32,42,.05);
+    --font-sans: "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: "Cascadia Code", "JetBrains Mono", "SF Mono", ui-monospace, Consolas, "Liberation Mono", monospace;
+    --maxw: 1180px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1218; --surface: #141b23; --surface-2: #1b242e; --surface-3: #222d38;
+      --ink: #e6edf2; --ink-soft: #9dabb8; --ink-faint: #6a7a88; --border: #283340;
+      --accent: #38b0cb; --accent-ink: #5cc6de; --accent-soft: #113039; --on-accent: #06232b;
+      --pos: #5bbd86; --pos-soft: #12291f; --neg: #e07d7d; --neg-soft: #2f1819;
+      --edge: #d69a4a; --edge-soft: #2c2211; --java: #4dc0b0; --java-soft: #0f2b25;
+      --pascal: #c2a468; --pascal-soft: #292110; --warn-soft: #2c2412; --warn-ink: #d9ab5e;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.32);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f7; --surface: #ffffff; --surface-2: #eef2f4; --surface-3: #e5eaed;
+    --ink: #16202a; --ink-soft: #556370; --ink-faint: #8492a0; --border: #d9e1e6;
+    --accent: #0e6b83; --accent-ink: #0a556a; --accent-soft: #e0eef2; --on-accent: #ffffff;
+    --pos: #2f7d54; --pos-soft: #e5f2ea; --neg: #c23b3b; --neg-soft: #fae9e9;
+    --edge: #a9660f; --edge-soft: #f6ecd9; --java: #0f7d70; --java-soft: #dff1ee;
+    --pascal: #856527; --pascal-soft: #f1ebda; --warn-soft: #fbf1dc; --warn-ink: #8a5a12;
+    --shadow: 0 1px 2px rgba(16,32,42,.04), 0 6px 18px rgba(16,32,42,.05);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1218; --surface: #141b23; --surface-2: #1b242e; --surface-3: #222d38;
+    --ink: #e6edf2; --ink-soft: #9dabb8; --ink-faint: #6a7a88; --border: #283340;
+    --accent: #38b0cb; --accent-ink: #5cc6de; --accent-soft: #113039; --on-accent: #06232b;
+    --pos: #5bbd86; --pos-soft: #12291f; --neg: #e07d7d; --neg-soft: #2f1819;
+    --edge: #d69a4a; --edge-soft: #2c2211; --java: #4dc0b0; --java-soft: #0f2b25;
+    --pascal: #c2a468; --pascal-soft: #292110; --warn-soft: #2c2412; --warn-ink: #d9ab5e;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 22px rgba(0,0,0,.32);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans);
+    font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent-ink); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, .mono { font-family: var(--font-mono); }
+
+  header.top { background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+    border-bottom: 1px solid var(--border); }
+  .top-inner { max-width: var(--maxw); margin: 0 auto; padding: 34px 24px 26px; }
+  .eyebrow { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--accent-ink); margin: 0 0 10px; }
+  h1 { font-size: 2rem; line-height: 1.15; margin: 0 0 8px; font-weight: 680;
+    letter-spacing: -.01em; text-wrap: balance; max-width: 24ch; }
+  .lede { color: var(--ink-soft); max-width: 68ch; margin: 0 0 18px; font-size: 1.02rem; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+  .meta .m { display: inline-flex; align-items: baseline; gap: 6px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; font-size: .8rem; color: var(--ink-soft); }
+  .meta .m b { color: var(--ink); font-weight: 600; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 26px 24px 64px;
+    display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 34px; align-items: start; }
+  @media (max-width: 940px) { .wrap { grid-template-columns: 1fr; gap: 22px; } }
+
+  nav.toc { position: sticky; top: 16px; font-size: .88rem; }
+  @media (max-width: 940px) { nav.toc { position: static; } }
+  nav.toc .toc-h { font-family: var(--font-mono); font-size: .68rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--ink-faint); margin: 0 0 10px; padding-left: 2px; }
+  nav.toc ol { list-style: none; margin: 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  nav.toc a { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    color: var(--ink-soft); padding: 7px 10px; border-radius: 8px; border-left: 2px solid transparent; }
+  nav.toc a:hover { background: var(--surface-2); color: var(--ink); text-decoration: none; }
+  nav.toc a .n { font-family: var(--font-mono); font-size: .72rem; color: var(--ink-faint);
+    background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-variant-numeric: tabular-nums; }
+
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+  @media (max-width: 620px) { .summary { grid-template-columns: repeat(2, 1fr); } }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; box-shadow: var(--shadow); }
+  .stat .k { font-family: var(--font-mono); font-size: .68rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-faint); }
+  .stat .v { font-size: 1.9rem; font-weight: 680; letter-spacing: -.02em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .stat .split { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; font-size: .8rem; font-variant-numeric: tabular-nums; }
+  .stat .split span { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-soft); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.pos { background: var(--pos); } .dot.neg { background: var(--neg); } .dot.edge { background: var(--edge); }
+
+  .scopebox { background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn-ink) 30%, transparent);
+    border-radius: 12px; padding: 16px 18px; margin-bottom: 24px; }
+  .scopebox h4 { margin: 0 0 8px; font-size: .95rem; color: var(--warn-ink); display: flex; align-items: center; gap: 8px; }
+  .scopebox ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px;
+    font-size: .87rem; color: var(--ink-soft); }
+  .scopebox b { color: var(--ink); }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 24px;
+    padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+  .controls .grp { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+  .controls .grp + .grp { margin-left: 8px; padding-left: 14px; border-left: 1px solid var(--border); }
+  @media (max-width: 720px) { .controls .grp + .grp { margin-left: 0; padding-left: 0; border-left: none; flex-basis: 100%; } }
+  .controls .lbl { font-family: var(--font-mono); font-size: .7rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-faint); }
+  .fbtn { font: inherit; font-size: .82rem; cursor: pointer; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--ink-soft); }
+  .fbtn:hover { color: var(--ink); border-color: var(--ink-faint); }
+  .fbtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .fbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  section.domain { margin-bottom: 42px; scroll-margin-top: 16px; }
+  .domain-head { border-bottom: 2px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+  .domain-head .eyebrow { margin-bottom: 6px; }
+  .domain-head h2 { font-size: 1.5rem; margin: 0 0 6px; font-weight: 660; letter-spacing: -.01em; }
+  .domain-head p { margin: 0; color: var(--ink-soft); max-width: 74ch; font-size: .95rem; }
+
+  .us-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 20px 8px; margin-bottom: 18px; box-shadow: var(--shadow); }
+  .us-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .us-id { font-family: var(--font-mono); font-size: .74rem; font-weight: 600; color: var(--on-accent);
+    background: var(--accent); border-radius: 6px; padding: 2px 8px; letter-spacing: .02em; }
+  .us-req { font-family: var(--font-mono); font-size: .7rem; color: var(--ink-soft);
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; }
+  .us-ep { font-family: var(--font-mono); font-size: .74rem; color: var(--ink-soft);
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; margin-left: auto; }
+  .us-card h3 { font-size: 1.16rem; margin: 6px 0 12px; font-weight: 640; letter-spacing: -.005em; }
+  .story { border-left: 3px solid var(--accent); background: var(--accent-soft);
+    padding: 11px 15px; border-radius: 0 10px 10px 0; color: var(--ink); font-size: .93rem; margin-bottom: 14px; }
+  .story b { color: var(--accent-ink); font-weight: 650; }
+  .aceite { margin: 0 0 16px; }
+  .aceite .lbl { font-family: var(--font-mono); font-size: .68rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-faint); display: block; margin-bottom: 6px; }
+  .aceite ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .aceite li { position: relative; padding-left: 22px; font-size: .9rem; color: var(--ink-soft); }
+  .aceite li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--pos); font-weight: 700; }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 16px; }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: .875rem; }
+  thead th { text-align: left; font-family: var(--font-mono); font-size: .68rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 600; padding: 9px 12px;
+    background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--ink); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface-2); }
+  td.ct-id { font-family: var(--font-mono); font-size: .78rem; color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  td.esperado { color: var(--ink-soft); }
+  td .mono { font-size: .82em; }
+
+  .chip { display: inline-block; font-size: .72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    white-space: nowrap; border: 1px solid transparent; }
+  .chip.t-pos { background: var(--pos-soft); color: var(--pos); border-color: color-mix(in srgb, var(--pos) 24%, transparent); }
+  .chip.t-neg { background: var(--neg-soft); color: var(--neg); border-color: color-mix(in srgb, var(--neg) 24%, transparent); }
+  .chip.t-edge { background: var(--edge-soft); color: var(--edge); border-color: color-mix(in srgb, var(--edge) 24%, transparent); }
+  .chip.p-java { background: var(--java-soft); color: var(--java); border-color: color-mix(in srgb, var(--java) 24%, transparent); }
+  .chip.p-pascal { background: var(--pascal-soft); color: var(--pascal); border-color: color-mix(in srgb, var(--pascal) 24%, transparent); }
+  .chip.p-edge { background: var(--surface-3); color: var(--ink-soft); border-color: var(--border); }
+
+  .lchip { display: inline-flex; align-items: center; gap: 5px; font-size: .72rem; font-weight: 600;
+    padding: 2px 8px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--ink-soft); white-space: nowrap; }
+  .ld { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .ld.e2e { background: #7c6cf0; } .ld.api { background: #3b82c4; } .ld.int { background: #2fa39a; }
+  .ld.carga { background: #d0862a; } .ld.infra { background: #8a95a2; }
+
+  .legend { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; font-size: .8rem; color: var(--ink-soft); }
+  .legend .g { display: inline-flex; align-items: center; gap: 6px; }
+
+  footer { max-width: var(--maxw); margin: 0 auto; padding: 26px 24px 50px; color: var(--ink-faint);
+    font-size: .82rem; border-top: 1px solid var(--border); }
+  footer code { color: var(--ink-soft); }
+</style>
+
+<header class="top">
+  <div class="top-inner">
+    <p class="eyebrow">Plano de Testes · Estratégia Strangler Fig · Rev. 2</p>
+    <h1>Casos de Teste — Migração SCCI Launcher</h1>
+    <p class="lede">Cobertura funcional e não-funcional da plataforma migrada do daemon Pascal para a arquitetura Java
+      hexagonal. Apenas requisitos <b>dentro do escopo</b> desta entrega — cada história (US) traz o requisito de origem,
+      critérios de aceite e casos rastreados ao endpoint, com a <b>camada de teste</b> (Playwright / integração / carga / infra).</p>
+    <div class="meta">
+      <span class="m"><b>6</b> domínios</span>
+      <span class="m"><b>33</b> histórias</span>
+      <span class="m"><b>100</b> casos</span>
+      <span class="m">Playwright cobre <b>43</b></span>
+      <span class="m">Ambiente <b>dev / scat de suporte</b></span>
+      <span class="m">Rev. <b>2026-07</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="toc" aria-label="Índice">
+    <p class="toc-h">Domínios</p>
+    <ol>
+      <li><a href="#acesso">Acesso <span class="n">21</span></a></li>
+      <li><a href="#sessao">Sessão <span class="n">17</span></a></li>
+      <li><a href="#documentos">Documentos <span class="n">33</span></a></li>
+      <li><a href="#execucao">Execução &amp; Roteamento <span class="n">18</span></a></li>
+      <li><a href="#desempenho">Desempenho &amp; Escala <span class="n">6</span></a></li>
+      <li><a href="#transporte">Transporte &amp; Borda <span class="n">5</span></a></li>
+    </ol>
+    <p class="toc-h">Tipo</p>
+    <div class="legend">
+      <span class="g"><span class="chip t-pos">positivo</span> caminho feliz</span>
+      <span class="g"><span class="chip t-neg">negativo</span> falha esperada</span>
+      <span class="g"><span class="chip t-edge">borda</span> limite/exceção</span>
+    </div>
+    <p class="toc-h" style="margin-top:16px;">Camada</p>
+    <div class="legend">
+      <span class="g"><span class="lchip"><span class="ld e2e"></span>E2E</span> Playwright (browser)</span>
+      <span class="g"><span class="lchip"><span class="ld api"></span>API</span> Playwright (HTTP)</span>
+      <span class="g"><span class="lchip"><span class="ld int"></span>Integração</span> JUnit/Spring</span>
+      <span class="g"><span class="lchip"><span class="ld carga"></span>Carga</span> k6 / bench A/B</span>
+      <span class="g"><span class="lchip"><span class="ld infra"></span>Infra</span> manual/script</span>
+    </div>
+  </nav>
+
+  <main>
+    <div class="summary">
+      <div class="stat"><div class="k">Histórias (US)</div><div class="v">33</div></div>
+      <div class="stat"><div class="k">Casos de teste</div><div class="v">100</div></div>
+      <div class="stat"><div class="k">Por tipo</div>
+        <div class="split">
+          <span><span class="dot pos"></span>42 pos</span>
+          <span><span class="dot neg"></span>25 neg</span>
+          <span><span class="dot edge"></span>33 bor</span>
+        </div>
+      </div>
+      <div class="stat"><div class="k">Por camada</div>
+        <div class="split">
+          <span><span class="ld e2e"></span>15</span><span><span class="ld api"></span>28</span>
+          <span><span class="ld int"></span>41</span><span><span class="ld carga"></span>7</span><span><span class="ld infra"></span>9</span>
+        </div>
+      </div>
+    </div>
+
+    <aside class="scopebox">
+      <h4>▲ Fronteira de escopo desta entrega</h4>
+      <ul>
+        <li><b>Removidos do plano (capacidades reais, mas fora dos requisitos):</b> login família B / SSO por IdP externo,
+          rate-limit de tentativas de login e validação de CPF/protocolo. Existem no sistema, mas não constam do documento de
+          requisitos — <b>formalizar como requisito</b> antes de testar formalmente.</li>
+        <li><b>Escopo negativo confirmado (não testados, corretamente):</b> MFA/CAPTCHA e recuperação automática de senha por
+          e-mail — removidos do código, não apenas desligados.</li>
+        <li><b>Conflito documento × arquitetura a resolver:</b> a seção 5 lista "Clusterização/Load Balancing" como fora de escopo,
+          mas a arquitetura já entrega NLB + N réplicas stateless. Testes de escala tratados como <b>desempenho (3.1)</b>;
+          atualizar o documento de requisitos.</li>
+      </ul>
+    </aside>
+
+    <div class="controls" role="group" aria-label="Filtros">
+      <div class="grp"><span class="lbl">Tipo</span>
+        <button class="fbtn" data-filter-tipo="todos" aria-pressed="true">Todos</button>
+        <button class="fbtn" data-filter-tipo="positivo" aria-pressed="false">Positivo</button>
+        <button class="fbtn" data-filter-tipo="negativo" aria-pressed="false">Negativo</button>
+        <button class="fbtn" data-filter-tipo="borda" aria-pressed="false">Borda</button>
+      </div>
+      <div class="grp"><span class="lbl">Camada</span>
+        <button class="fbtn" data-filter-camada="todas" aria-pressed="true">Todas</button>
+        <button class="fbtn" data-filter-camada="e2e" aria-pressed="false">E2E</button>
+        <button class="fbtn" data-filter-camada="api" aria-pressed="false">API</button>
+        <button class="fbtn" data-filter-camada="int" aria-pressed="false">Integração</button>
+        <button class="fbtn" data-filter-camada="carga" aria-pressed="false">Carga</button>
+        <button class="fbtn" data-filter-camada="infra" aria-pressed="false">Infra</button>
+      </div>
+    </div>
+
+    <!-- ============ ACESSO ============ -->
+    <section class="domain" id="acesso">
+      <div class="domain-head">
+        <p class="eyebrow">Domínio 01 · Req. 2.1 / 2.3 / 2.4</p>
+        <h2>Acesso — Autenticação</h2>
+        <p>Login por usuário/senha (sem MFA/CAPTCHA), consulta de perfis/permissões ao legado e troca de senha com política e
+          histórico. Migrado ao <span class="mono">scci-core/acesso</span>; o edge só orquestra e aplica o contrato W_COP.</p>
+      </div>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-AC-01</span><span class="us-req">Req 2.1</span><span class="chip p-java">Java</span>
+          <span class="us-ep mono">POST /w/login</span></div>
+        <h3>Login por usuário e senha</h3>
+        <div class="story"><b>Como</b> operador do SCCI, <b>quero</b> autenticar com usuário e senha,
+          <b>para</b> iniciar uma sessão autorizada no ambiente.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Credencial válida → <span class="mono">200</span> com <span class="mono">success:"true"</span>, <span class="mono">sessionKey</span> e <span class="mono">contexto</span>.</li>
+            <li>Credencial inválida → <span class="mono">success:false</span>, mensagem genérica, sem sessão.</li>
+            <li>A mensagem não revela se falhou o usuário ou a senha.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="e2e"><td class="ct-id">CT-AC-01-01</td><td>Credencial válida</td><td>Login pela tela com usuário/senha corretos</td><td class="esperado">Entra no sistema; <span class="mono">sessionKey</span> emitido</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="negativo" data-camada="e2e"><td class="ct-id">CT-AC-01-02</td><td>Senha incorreta</td><td>Tela de login, senha errada</td><td class="esperado">Mensagem "usuário ou senha inválidos"; permanece na tela</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-AC-01-03</td><td>Usuário inexistente</td><td>POST usuário que não existe</td><td class="esperado">Mesma mensagem genérica de CT-02 (não vaza o campo)</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="borda" data-camada="api"><td class="ct-id">CT-AC-01-04</td><td>Campo obrigatório ausente</td><td>POST sem <span class="mono">password</span></td><td class="esperado"><span class="mono">success:false</span>, falha controlada</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="borda" data-camada="api"><td class="ct-id">CT-AC-01-05</td><td>Grafia do usuário</td><td>Login com maiúsc./minúsc. divergente da base</td><td class="esperado">Sessão usa a grafia real; <span class="mono">userName</span> corrigido na resposta</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-AC-10</span><span class="us-req">Req 2.3</span><span class="chip p-pascal">Pascal</span>
+          <span class="us-ep mono">consulta de permissões ao legado</span></div>
+        <h3>Perfis e permissões (consulta ao legado)</h3>
+        <div class="story"><b>Como</b> plataforma de borda, <b>quero</b> consultar perfis/permissões no legado sem lógica própria,
+          <b>para</b> preservar a regra de autorização existente.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>A decisão de permissão vem do Pascal; o launcher não decide localmente.</li>
+            <li>Ação permitida executa; ação negada é bloqueada conforme o legado.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="e2e"><td class="ct-id">CT-AC-10-01</td><td>Permissão concedida</td><td>Usuário com perfil que permite a ação</td><td class="esperado">Ação disponível/executada</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="negativo" data-camada="e2e"><td class="ct-id">CT-AC-10-02</td><td>Permissão negada</td><td>Usuário sem perfil para a ação</td><td class="esperado">Ação bloqueada conforme retorno do legado</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-AC-10-03</td><td>Sem lógica local</td><td>Inspecionar o fluxo: launcher só repassa</td><td class="esperado">Nenhuma regra de permissão implementada no edge</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-AC-04</span><span class="us-req">Req 2.4</span><span class="chip p-java">Java</span>
+          <span class="us-ep mono">POST /w/password</span></div>
+        <h3>Troca de senha (política + histórico)</h3>
+        <div class="story"><b>Como</b> operador, <b>quero</b> trocar minha senha respeitando a política,
+          <b>para</b> manter a conta em conformidade.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Nova senha: mín. 8, com letra, maiúscula, dígito e especial; sem exceder repetidos/sequenciais.</li>
+            <li>Não pode repetir o histórico; a senha atual deve conferir; falha explica o motivo.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="e2e"><td class="ct-id">CT-AC-04-01</td><td>Troca válida</td><td>Senha atual + nova conforme política</td><td class="esperado"><span class="mono">success:"true"</span>; login passa com a nova</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-AC-04-02</td><td>Nova senha fraca</td><td>Nova senha curta / sem composição</td><td class="esperado"><span class="mono">success:false</span> com o critério violado</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-AC-04-03</td><td>Repete histórico</td><td>Nova senha = senha usada antes</td><td class="esperado"><span class="mono">success:false</span> "esta senha já foi usada"</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-AC-04-04</td><td>Senha atual errada</td><td>Senha atual incorreta + nova válida</td><td class="esperado"><span class="mono">success:false</span>; senha não muda</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-AC-04-05</td><td>Repetidos/sequenciais</td><td>Nova senha acima do limite de repetição/sequência</td><td class="esperado"><span class="mono">success:false</span> (política aplicada)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-AC-05</span><span class="us-req">Req 2.4</span><span class="chip p-java">Java</span>
+          <span class="us-ep mono">POST /w/login</span></div>
+        <h3>Troca obrigatória e expiração de senha</h3>
+        <div class="story"><b>Como</b> sistema, <b>quero</b> forçar a troca quando a senha expira,
+          <b>para</b> manter a higiene das credenciais.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Senha expirada / troca obrigatória → login retorna <span class="mono">codigo:"E004"</span>.</li>
+            <li>Dentro de <span class="mono">dias-aviso-expiracao</span> (5), login funciona com aviso.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-AC-05-01</td><td>Senha expirada</td><td>Login de usuário com senha vencida</td><td class="esperado"><span class="mono">codigo:"E004"</span> (troca obrigatória)</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="borda" data-camada="api"><td class="ct-id">CT-AC-05-02</td><td>Janela de aviso</td><td>Login a ≤5 dias da expiração</td><td class="esperado">Login OK, com sinalização de expiração próxima</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-AC-07</span><span class="us-req">Req 2.1</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">POST /w/logout</span></div>
+        <h3>Logout</h3>
+        <div class="story"><b>Como</b> operador, <b>quero</b> encerrar minha sessão,
+          <b>para</b> garantir a segurança ao sair do sistema.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Logout remove a sessão de <span class="mono">SCCI_SESSION</span> e do Redis.</li>
+            <li>Requests seguintes com a mesma <span class="mono">sessionKey</span> falham como sessão expirada.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="e2e"><td class="ct-id">CT-AC-07-01</td><td>Logout de sessão ativa</td><td>Sair pela UI; sessão válida</td><td class="esperado">Volta ao login; sessão some do Redis + banco</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="negativo" data-camada="e2e"><td class="ct-id">CT-AC-07-02</td><td>Uso após logout</td><td>Reusar a sessionKey já encerrada</td><td class="esperado"><span class="mono">codigo:"E004"</span> sessão expirada</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-AC-08</span><span class="us-req">Req 3.x resiliência</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">POST /w/login</span></div>
+        <h3>Resiliência: serviço de acesso indisponível</h3>
+        <div class="story"><b>Como</b> usuário, <b>quero</b> uma mensagem clara se o serviço de acesso cair,
+          <b>para</b> não ficar sem saber — e sem fallback inseguro.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Com <span class="mono">scci-core/acesso</span> fora, o edge retorna "serviço de acesso indisponível".</li>
+            <li>Não há autenticação local no edge; nenhuma sessão é criada.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="negativo" data-camada="infra"><td class="ct-id">CT-AC-08-01</td><td>scci-core fora</td><td>Derrubar :8090, tentar login</td><td class="esperado">"serviço de acesso indisponível"; sem sessão</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld infra"></span>Infra</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-AC-09</span><span class="us-req">Req 2.9.3</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">POST /w/login (W_COP)</span></div>
+        <h3>Contrato W_COP no login</h3>
+        <div class="story"><b>Como</b> front, <b>quero</b> o mesmo contrato cripto do legado (AES no request, XOR na resposta),
+          <b>para</b> não quebrar a comunicação existente.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Request cifrado → resposta cifrada, decodificável igual ao legado.</li>
+            <li>Dev aceita JSON puro; com <span class="mono">exigir-cifrado=true</span>, não-cifrado → <span class="mono">E006</span>.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-AC-09-01</td><td>Login cifrado</td><td>POST corpo W_COP (AES)</td><td class="esperado">Resposta cifrada (XOR) idêntica ao legado</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-AC-09-02</td><td>Puro com exigência</td><td><span class="mono">exigir-cifrado=true</span> + JSON puro</td><td class="esperado"><span class="mono">codigo:"E006"</span></td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="borda" data-camada="api"><td class="ct-id">CT-AC-09-03</td><td>Puro em dev</td><td>Dev (<span class="mono">exigir-cifrado=false</span>) + JSON puro</td><td class="esperado">Aceito e processado</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+    </section>
+
+    <!-- ============ SESSÃO ============ -->
+    <section class="domain" id="sessao">
+      <div class="domain-head">
+        <p class="eyebrow">Domínio 02 · Req. 2.2 / 2.8 / cache 4·10</p>
+        <h2>Sessão &amp; Cache de Ambiente</h2>
+        <p>Registro, validação e expiração de sessão no Redis compartilhado (<span class="mono">sess:&lt;key&gt;</span> =
+          usuário + <span class="mono">SEP(0x01)</span> + ambiente) e na <span class="mono">SCCI_SESSION</span>; timeout parametrizável
+          (default infinito) e cache do <span class="mono">launcherenv.ini</span> — sem cachear credencial.</p>
+      </div>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-SE-01</span><span class="us-req">Req 2.2</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">Redis + SCCI_SESSION</span></div>
+        <h3>Registro de sessão no login</h3>
+        <div class="story"><b>Como</b> plataforma, <b>quero</b> registrar a sessão ao autenticar,
+          <b>para</b> autorizar os requests seguintes.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Login OK grava <span class="mono">sess:&lt;key&gt;</span> (com TTL) e a linha em <span class="mono">SCCI_SESSION</span>.</li>
+            <li>Separador exatamente <span class="mono">0x01</span> (SOH) entre usuário e ambiente.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-SE-01-01</td><td>Chave criada</td><td>Login válido; inspecionar Redis</td><td class="esperado"><span class="mono">sess:&lt;key&gt;</span> presente com TTL</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-SE-01-02</td><td>Separador SEP</td><td>Ler o valor bruto no Redis</td><td class="esperado">Byte <span class="mono">0x01</span> entre usuário e ambiente</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-SE-01-03</td><td>Persistência no banco</td><td>Consultar SCCI_SESSION após login</td><td class="esperado">Registro da sessão presente</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-SE-02</span><span class="us-req">Req 2.2</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">POST /w · POST /sccidoc</span></div>
+        <h3>Validação de sessão por request</h3>
+        <div class="story"><b>Como</b> plataforma, <b>quero</b> revalidar a sessão a cada request,
+          <b>para</b> impedir uso indevido ou sessão forjada.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Todo <span class="mono">/w</span> e <span class="mono">/sccidoc</span> revalida <span class="mono">sessionKey + usuário + ambiente</span>.</li>
+            <li>Sessão inválida/expirada → <span class="mono">E004</span> antes de executar.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="api"><td class="ct-id">CT-SE-02-01</td><td>Sessão válida</td><td>/w com sessionKey ativa</td><td class="esperado">Executa; log <span class="mono">sessaoValida:true</span></td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-SE-02-02</td><td>Sessão inexistente</td><td>/w com sessionKey aleatória</td><td class="esperado"><span class="mono">codigo:"E004"</span>; não executa</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-SE-02-03</td><td>Divergência de contexto</td><td>sessionKey válida, usuário/ambiente diferente</td><td class="esperado">Rejeitada (sessão não confere)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-SE-03</span><span class="us-req">Req 2.2</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">launcher.sessao.ttl-segundos</span></div>
+        <h3>Expiração por TTL / inatividade (default infinito)</h3>
+        <div class="story"><b>Como</b> operação, <b>quero</b> controlar a expiração da sessão de forma parametrizável,
+          <b>para</b> equilibrar segurança e continuidade — sem um padrão imposto.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li><span class="mono">ttl-segundos=0</span> = sessão infinita (default/legado).</li>
+            <li>Valor positivo = timeout por inatividade, renovado a cada uso.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-SE-03-01</td><td>Sessão infinita</td><td>ttl=0; sessão ociosa por longo período</td><td class="esperado">Continua válida</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-SE-03-02</td><td>Timeout por inatividade</td><td>ttl=N; sem uso por &gt; N segundos</td><td class="esperado">Expira; próximo request → E004</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-SE-03-03</td><td>Renovação por uso</td><td>ttl=N; usar antes de expirar</td><td class="esperado">TTL renovado; segue válida</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-SE-04</span><span class="us-req">Req 2.2 integração</span><span class="chip p-edge">Integração</span>
+          <span class="us-ep mono">Redis compartilhado</span></div>
+        <h3>Interoperabilidade de sessão (legado ↔ Java)</h3>
+        <div class="story"><b>Como</b> plataforma em migração, <b>quero</b> que legado e Java leiam a mesma sessão,
+          <b>para</b> o roteamento gradual sem relogin.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Sessão criada por um lado é reconhecida pelo outro (contrato SEP idêntico).</li>
+            <li>O byte separador é literalmente <span class="mono">0x01</span> — sem escapes.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-SE-04-01</td><td>Sessão cruzada</td><td>Criar no Java, validar via caminho legado</td><td class="esperado">Reconhecida sem novo login</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-SE-04-02</td><td>Formato do separador</td><td>Comparar bytes gravados por Java e legado</td><td class="esperado">Idênticos (0x01)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-SE-05</span><span class="us-req">Req 2.2</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">POST /w/logout</span></div>
+        <h3>Encerramento de sessão</h3>
+        <div class="story"><b>Como</b> usuário, <b>quero</b> que o logout apague minha sessão dos dois repositórios,
+          <b>para</b> não deixar resíduo autorizável.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Logout remove a chave do Redis e a linha da <span class="mono">SCCI_SESSION</span>.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-SE-05-01</td><td>Limpeza dupla</td><td>Logout; inspecionar Redis e banco</td><td class="esperado">Chave e registro ausentes em ambos</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-SE-06</span><span class="us-req">Req 2.8</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">launcher.auth.max-logins-simultaneos</span></div>
+        <h3>Limite de sessões simultâneas (herdado, desligado)</h3>
+        <div class="story"><b>Como</b> negócio, <b>quero</b> poder limitar sessões por usuário no futuro,
+          <b>para</b> uma política eventual — hoje mantida desligada (escopo negativo, seção 5).</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li><span class="mono">max-logins-simultaneos=0</span> = ilimitado (default ativo).</li>
+            <li>Se ligado (&gt;0), login além do limite → <span class="mono">E005</span>. Não ligar sem decisão de negócio.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="api"><td class="ct-id">CT-SE-06-01</td><td>Default ilimitado</td><td>Vários logins do mesmo usuário, limite=0</td><td class="esperado">Todos aceitos</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="int"><td class="ct-id">CT-SE-06-02</td><td>Limite ativo</td><td>limite=3; efetuar o 4º login</td><td class="esperado"><span class="mono">codigo:"E005"</span> máximo atingido</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-SE-07</span><span class="us-req">Req 4/10 cache</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">common.environment.cache-*</span></div>
+        <h3>Cache de ambiente (launcherenv) — TTL e invalidação</h3>
+        <div class="story"><b>Como</b> plataforma, <b>quero</b> cachear a config de ambiente com TTL,
+          <b>para</b> aliviar leituras repetidas — sem jamais cachear credencial de usuário.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Cache de ambiente reduz leituras do <span class="mono">launcherenv.ini</span> dentro do TTL.</li>
+            <li>Expirado o TTL, relê a config; credencial/senha de usuário <b>nunca</b> é cacheada.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-SE-07-01</td><td>Cache hit</td><td>2 requests no mesmo ambiente dentro do TTL</td><td class="esperado">Config lida do disco só 1×</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-SE-07-02</td><td>Expiração do TTL</td><td>Aguardar &gt; cache-ttl e repetir</td><td class="esperado">Relê a config do disco</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-SE-07-03</td><td>Credencial nunca cacheada</td><td>Login duas vezes; observar leitura de senha</td><td class="esperado">Senha sempre lida ao vivo no banco</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+    </section>
+
+    <!-- ============ DOCUMENTOS ============ -->
+    <section class="domain" id="documentos">
+      <div class="domain-head">
+        <p class="eyebrow">Domínio 03 · Req. 2.6 / 2.9</p>
+        <h2>Documentos — Canal SCCIDOC</h2>
+        <p>Download e upload pelo canal <span class="mono">/sccidoc</span>. Leitura por ID migrada ao
+          <span class="mono">scci-core/documentos</span> (FileSystem/BLOB) sob flag; upload multipart e chunkado com allow-list na borda;
+          W_COP e auditoria/anonimização. O S3 (legado) permanece no <span class="mono">wdoc</span> Pascal.</p>
+      </div>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-DO-01</span><span class="us-req">Req 2.9.2</span><span class="chip p-java">Java</span>
+          <span class="us-ep mono">POST /sccidoc · GetDocumento</span></div>
+        <h3>Download de documento por ID</h3>
+        <div class="story"><b>Como</b> operador, <b>quero</b> baixar um documento pelo identificador,
+          <b>para</b> visualizá-lo na esteira.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>FileSystem: caminho por <span class="mono">EncodeInvBase64ForFilenames(id)</span>; BLOB: lido do banco.</li>
+            <li>Retorno binário com <span class="mono">Content-Type</span> por extensão e <span class="mono">Content-Disposition</span>; ID inexistente → erro tratado.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="e2e"><td class="ct-id">CT-DO-01-01</td><td>Doc em FileSystem</td><td>Abrir doc gravado em disco (tp=1)</td><td class="esperado">Arquivo correto + mime da extensão</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="positivo" data-camada="api"><td class="ct-id">CT-DO-01-02</td><td>Doc em BLOB</td><td>GetDocumento de id gravado no banco</td><td class="esperado">Arquivo correto do BLOB</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-DO-01-03</td><td>ID inexistente</td><td>GetDocumento de id inválido</td><td class="esperado">Erro tratado (sem 500 cru)</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-DO-01-04</td><td>Caminho FS</td><td>Comparar caminho calculado vs. legado (mesmo id)</td><td class="esperado">Idêntico (base64 invertido, /→_, subpastas e0/e1/e2)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-DO-02</span><span class="us-req">Req 2.9.5</span><span class="chip p-java">Java</span>
+          <span class="us-ep mono">GET /sccidoc/{prog}/{metodo}</span></div>
+        <h3>Download por navegação direta (browser)</h3>
+        <div class="story"><b>Como</b> usuário, <b>quero</b> abrir um documento por link direto,
+          <b>para</b> visualizá-lo no navegador sem passar pelo canal cifrado.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Auth por cookie (<span class="mono">sessionKey/userName/ambiente</span>), sem W_COP.</li>
+            <li>Falha de arquivo → página HTML simples (não JSON).</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="e2e"><td class="ct-id">CT-DO-02-01</td><td>GET válido</td><td>Abrir link com cookies de sessão</td><td class="esperado">Arquivo inline no navegador</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="negativo" data-camada="e2e"><td class="ct-id">CT-DO-02-02</td><td>Sessão expirada</td><td>GET com sessionKey inválida</td><td class="esperado"><span class="mono">codigo:"E004"</span></td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="borda" data-camada="e2e"><td class="ct-id">CT-DO-02-03</td><td>Arquivo ausente</td><td>GET de doc inexistente</td><td class="esperado">Página HTML "documento indisponível" (404)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-DO-03</span><span class="us-req">Req 2.9.2</span><span class="chip p-pascal">Pascal</span>
+          <span class="us-ep mono">POST /sccidoc (multipart)</span></div>
+        <h3>Upload de documento (putDoc)</h3>
+        <div class="story"><b>Como</b> operador, <b>quero</b> enviar um ou mais arquivos,
+          <b>para</b> anexá-los à operação.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Um comando por arquivo; sessão validada; respostas por-arquivo juntadas.</li>
+            <li>Sem arquivo → "nenhum arquivo enviado".</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="e2e"><td class="ct-id">CT-DO-03-01</td><td>Upload simples</td><td>1 PDF válido pela UI</td><td class="esperado"><span class="mono">success</span>; doc gravado</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="positivo" data-camada="api"><td class="ct-id">CT-DO-03-02</td><td>Múltiplos arquivos</td><td>2+ arquivos no mesmo POST</td><td class="esperado">Respostas juntadas (dados[] agregado)</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-DO-03-03</td><td>Sem arquivo</td><td>POST multipart sem parte de arquivo</td><td class="esperado"><span class="mono">success:false</span> "nenhum arquivo enviado"</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-DO-03-04</td><td>Sessão expirada</td><td>Upload com sessionKey inválida</td><td class="esperado"><span class="mono">codigo:"E004"</span></td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-DO-04</span><span class="us-req">Req 2.6</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">launcher.documentos.extensoes-permitidas</span></div>
+        <h3>Allow-list de extensões (parametrizável)</h3>
+        <div class="story"><b>Como</b> segurança, <b>quero</b> restringir os tipos de arquivo aceitos por configuração,
+          <b>para</b> impedir upload perigoso — na borda, antes do backend.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Extensão fora da lista → rejeitada na borda, independente de Pascal/Java.</li>
+            <li>Lista vazia = sem restrição; comparação case-insensitive.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="api"><td class="ct-id">CT-DO-04-01</td><td>Extensão permitida</td><td>Upload <span class="mono">.pdf</span> (na lista)</td><td class="esperado">Aceito, segue ao backend</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="e2e"><td class="ct-id">CT-DO-04-02</td><td>Extensão proibida</td><td>Upload <span class="mono">.exe</span> pela UI</td><td class="esperado"><span class="mono">success:false</span> "extensão não permitida"</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-DO-04-03</td><td>Lista vazia</td><td>extensoes-permitidas em branco + qualquer arquivo</td><td class="esperado">Sem restrição adicional na borda</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-DO-04-04</td><td>Caixa mista</td><td>Upload <span class="mono">.PDF</span> / <span class="mono">.Pdf</span></td><td class="esperado">Normalizado; aceito como pdf</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-DO-05</span><span class="us-req">Req 2.6</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">spring.servlet.multipart.max-file-size</span></div>
+        <h3>Limite de tamanho de upload (parametrizado)</h3>
+        <div class="story"><b>Como</b> operação, <b>quero</b> um teto de tamanho de upload,
+          <b>para</b> proteger memória e disco do reator.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Acima do limite → JSON estruturado (não a whitelabel). Apache barra em 30MB antes.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="borda" data-camada="api"><td class="ct-id">CT-DO-05-01</td><td>No limite</td><td>Arquivo logo abaixo do <span class="mono">max-file-size</span></td><td class="esperado">Aceito</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-DO-05-02</td><td>Acima do limite</td><td>Arquivo maior que o teto</td><td class="esperado"><span class="mono">success:false</span> "arquivo excede o tamanho máximo"</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-DO-06</span><span class="us-req">Req 2.6 / 2.9.7</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">POST /sccidoc/upload-chunked/*</span></div>
+        <h3>Upload chunkado + limpeza de temporários</h3>
+        <div class="story"><b>Como</b> operador, <b>quero</b> enviar arquivos grandes em blocos com limpeza confiável,
+          <b>para</b> não estourar limites nem deixar lixo em falhas.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Blocos em staging; montagem final reusa o roteador (herda allow-list).</li>
+            <li>Bloco/total acima do limite → rejeitado; temporários limpos <b>inclusive em falha/parada abrupta</b> (2.9.7).</li>
+            <li>Débito conhecido: o limite real hoje é o <b>heap</b> (materialização em <span class="mono">byte[]</span> na conclusão).</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="api"><td class="ct-id">CT-DO-06-01</td><td>Montagem por blocos</td><td>Enviar N blocos + finalizar</td><td class="esperado">Arquivo remontado e entregue ao pipeline</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-DO-06-02</td><td>Bloco grande demais</td><td>Bloco &gt; tamanho-bloco-maximo</td><td class="esperado">Rejeitado</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-DO-06-03</td><td>Total acima do teto</td><td>Soma dos blocos &gt; tamanho-maximo</td><td class="esperado">Rejeitado</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-DO-06-04</td><td>Limpeza por ociosidade</td><td>Iniciar e não finalizar; aguardar limpeza</td><td class="esperado">Staging removido após max-idade-minutos</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-DO-06-05</td><td>Limpeza em falha/parada</td><td>Abortar upload no meio (erro/kill do processo)</td><td class="esperado">Temporários do upload não permanecem órfãos (2.9.7)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="carga"><td class="ct-id">CT-DO-06-06</td><td>Limite real de heap</td><td>Upload próximo de 10GB+ (débito registrado)</td><td class="esperado">Comportamento de heap documentado; sem OOM silencioso</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld carga"></span>Carga</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-DO-07</span><span class="us-req">Req 2.9.4</span><span class="chip p-java">Java</span>
+          <span class="us-ep mono">roteamento.flags[documentos.*]</span></div>
+        <h3>Roteamento por feature-flag (Java × Pascal)</h3>
+        <div class="story"><b>Como</b> plataforma, <b>quero</b> escolher o backend por flag,
+          <b>para</b> migrar métodos gradualmente (Strangler).</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li><span class="mono">documentos.GetDocumento</span> on → Java; método não migrado → Pascal.</li>
+            <li>Com scci-core fora, o roteador cai no Pascal automaticamente.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-DO-07-01</td><td>Flag on → Java</td><td>GetDocumento com flag habilitada</td><td class="esperado">Servido pelo scci-core</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-DO-07-02</td><td>Método não migrado</td><td>Outro método de documento</td><td class="esperado">Executado pelo <span class="mono">wdoc</span> Pascal</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-DO-07-03</td><td>Fallback</td><td>Flag on, scci-core fora</td><td class="esperado">Cai no Pascal automaticamente</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-DO-08</span><span class="us-req">Req 2.7 / 2.9.6</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">logs sccidoc_* · LogAnonimizador</span></div>
+        <h3>Auditoria e anonimização de logs</h3>
+        <div class="story"><b>Como</b> auditoria, <b>quero</b> registrar o documento servido/enviado com o usuário pseudonimizado,
+          <b>para</b> rastreabilidade sem expor dado pessoal nem conteúdo.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Logs registram extensão, tamanho, nome e flag de download — nunca o conteúdo.</li>
+            <li>Identificador do usuário aparece <b>pseudonimizado</b>; IP mascarado e sessão pseudonimizada.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-DO-08-01</td><td>Metadados no log</td><td>Baixar/enviar doc; inspecionar app.log</td><td class="esperado">Extensão, tamanho, nome presentes</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-DO-08-02</td><td>Sem vazamento</td><td>Grep do conteúdo no log</td><td class="esperado">Conteúdo do arquivo ausente</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-DO-08-03</td><td>Usuário pseudonimizado</td><td>Logs de login e upload</td><td class="esperado">Usuário aparece como <span class="mono">u_&lt;hash&gt;</span>, não em claro</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-DO-08-04</td><td>IP/sessão mascarados</td><td>Inspecionar campos <span class="mono">ip</span> e <span class="mono">sessaoId</span></td><td class="esperado">IP mascarado; sessão pseudonimizada (<span class="mono">s_&lt;hash&gt;</span>)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-DO-09</span><span class="us-req">Req 2.9.3</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">POST /sccidoc (W_COP)</span></div>
+        <h3>W_COP no canal de documentos</h3>
+        <div class="story"><b>Como</b> front, <b>quero</b> o contrato W_COP também no canal SCCIDOC,
+          <b>para</b> proteger os parâmetros — sem cifrar o binário do arquivo.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>JSON <span class="mono">/sccidoc</span> cifrado → resposta cifrada; upload cifra params via header <span class="mono">application-data</span>.</li>
+            <li>O corpo binário do arquivo <b>nunca</b> é cifrado (contrato).</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-DO-09-01</td><td>/sccidoc cifrado</td><td>getDoc com corpo W_COP</td><td class="esperado">Resposta cifrada compatível</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-DO-09-02</td><td>Upload com header cifrado</td><td>Multipart + <span class="mono">application-data</span> cifrado</td><td class="esperado">Params decifrados; sessão validada</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-DO-09-03</td><td>Binário nunca cifrado</td><td>Inspecionar bytes do arquivo entregue</td><td class="esperado">Arquivo servido RAW (não passa por XOR)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+    </section>
+
+    <!-- ============ EXECUÇÃO ============ -->
+    <section class="domain" id="execucao">
+      <div class="domain-head">
+        <p class="eyebrow">Domínio 04 · Req. 2.9 roteamento</p>
+        <h2>Execução &amp; Roteamento</h2>
+        <p>Despacho dos programas <span class="mono">w</span> — o launcher é Java puro e executa sempre via
+          <span class="mono">pascal-executor</span> (REST interno, ponte oserver). Cobre o roteamento Strangler por flag, o contrato
+          W_COP no <span class="mono">/w</span>, retry/timeout e a observabilidade.</p>
+      </div>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-EX-01</span><span class="us-req">Req 2.9</span><span class="chip p-pascal">Pascal</span>
+          <span class="us-ep mono">POST /w → pascal-executor</span></div>
+        <h3>Despacho de programa w</h3>
+        <div class="story"><b>Como</b> front, <b>quero</b> executar um programa w (tela/menu/domínios),
+          <b>para</b> renderizar a aplicação.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li><span class="mono">/w</span> executa o binário via pascal-executor e retorna JSON.</li>
+            <li>Programa inexistente ou sessão inválida → erro tratado.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="e2e"><td class="ct-id">CT-EX-01-01</td><td>Menu</td><td>Navegar ao menu principal pela UI</td><td class="esperado">Menu renderizado (wmenu/menu)</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="positivo" data-camada="e2e"><td class="ct-id">CT-EX-01-02</td><td>Tela</td><td>Abrir uma tela de pretendente</td><td class="esperado">Tela carregada (wtela/tela)</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld e2e"></span>E2E</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-EX-01-03</td><td>Programa inexistente</td><td>/w programName inválido</td><td class="esperado">Erro tratado (sem 500 cru)</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-EX-01-04</td><td>Sessão inválida</td><td>/w com sessionKey expirada</td><td class="esperado"><span class="mono">codigo:"E004"</span>; não executa</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-EX-02</span><span class="us-req">Arquitetura</span><span class="chip p-edge">Arquitetura</span>
+          <span class="us-ep mono">launcher (Java puro) → :8091</span></div>
+        <h3>Execução sempre remota (sem JNA no launcher)</h3>
+        <div class="story"><b>Como</b> arquitetura, <b>quero</b> o launcher sem código nativo,
+          <b>para</b> que escale como app Java pura e a âncora legada fique isolada.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Toda execução Pascal vai ao <span class="mono">pascal-executor</span> (:8091); launcher não carrega JNA.</li>
+            <li>Com o executor fora, erro claro; o edge não trava.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-EX-02-01</td><td>Roteamento remoto</td><td>Executar w; observar span/log</td><td class="esperado">Chamada REST ao :8091 registrada</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="negativo" data-camada="infra"><td class="ct-id">CT-EX-02-02</td><td>Executor fora</td><td>Derrubar :8091, executar w</td><td class="esperado">Erro claro; edge responde outros endpoints</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld infra"></span>Infra</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-EX-03</span><span class="us-req">Req 2.9 Strangler</span><span class="chip p-java">Java</span>
+          <span class="us-ep mono">roteamento.flags[*]</span></div>
+        <h3>Roteamento Strangler por flag</h3>
+        <div class="story"><b>Como</b> plataforma em migração, <b>quero</b> alternar Java × Pascal por flag,
+          <b>para</b> mover domínios sem redeploy do front.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Flag do método on → scci-core (Java); sem flag → Pascal.</li>
+            <li>Resiliência: scci-core fora → Pascal onde houver fallback definido.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-EX-03-01</td><td>Flag on → Java</td><td><span class="mono">acesso.Login</span> habilitada; login</td><td class="esperado">Roteado ao scci-core</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-EX-03-02</td><td>Sem flag → Pascal</td><td>Método sem entrada de flag</td><td class="esperado">Executado pelo Pascal</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-EX-03-03</td><td>Chave com ponto</td><td>Flag <span class="mono">[dominio.Metodo]</span> no YAML</td><td class="esperado">Bind correto (notação de colchetes)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-EX-04</span><span class="us-req">Req 2.9.3</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">POST /w (W_COP)</span></div>
+        <h3>Contrato W_COP no dispatch</h3>
+        <div class="story"><b>Como</b> front, <b>quero</b> o mesmo contrato cripto no <span class="mono">/w</span>,
+          <b>para</b> manter compatibilidade com o cliente atual.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Request cifrado → resposta cifrada; dev aceita puro; <span class="mono">exigir-cifrado=true</span> rejeita com <span class="mono">E006</span>.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-EX-04-01</td><td>/w cifrado</td><td>Dispatch com corpo W_COP</td><td class="esperado">Resposta cifrada compatível</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="api"><td class="ct-id">CT-EX-04-02</td><td>/w puro em dev</td><td>JSON puro, exigir-cifrado=false</td><td class="esperado">Aceito</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+            <tr data-tipo="negativo" data-camada="api"><td class="ct-id">CT-EX-04-03</td><td>Puro com exigência</td><td>JSON puro, exigir-cifrado=true</td><td class="esperado"><span class="mono">codigo:"E006"</span></td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld api"></span>API</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-EX-05</span><span class="us-req">Req resiliência</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">executor.max-tentativas / timeout-segundos</span></div>
+        <h3>Retry idempotente e timeout</h3>
+        <div class="story"><b>Como</b> plataforma, <b>quero</b> retry só em operações idempotentes e um timeout,
+          <b>para</b> resiliência sem risco de efeito duplicado.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>GET refaz até <span class="mono">max-tentativas</span> (3); POST não repete; acima de <span class="mono">timeout-segundos</span> (30) → erro de timeout.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-EX-05-01</td><td>Retry em GET</td><td>Falha transitória num GET idempotente</td><td class="esperado">Retentativa e sucesso (≤3)</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="int"><td class="ct-id">CT-EX-05-02</td><td>POST não repete</td><td>Falha transitória num POST</td><td class="esperado">Sem retry (evita duplicidade)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="negativo" data-camada="int"><td class="ct-id">CT-EX-05-03</td><td>Timeout</td><td>Execução que ultrapassa 30s</td><td class="esperado">Erro de timeout tratado</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-EX-06</span><span class="us-req">Req 2.7</span><span class="chip p-edge">Integração</span>
+          <span class="us-ep mono">OTLP → Collector → X-Ray / CloudWatch</span></div>
+        <h3>Observabilidade (traços e métricas)</h3>
+        <div class="story"><b>Como</b> operação, <b>quero</b> traços e métricas de cada request,
+          <b>para</b> diagnosticar latência ponta a ponta — algo que o legado não oferecia.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Cada request gera <span class="mono">traceId/spanId</span> e <span class="mono">duracaoMs</span> no log.</li>
+            <li>O span propaga borda → pascal-executor/scci-core; métricas <span class="mono">http.server.requests</span> exportadas.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="int"><td class="ct-id">CT-EX-06-01</td><td>Trace no log</td><td>Executar request; inspecionar app.log</td><td class="esperado"><span class="mono">traceId</span>, <span class="mono">spanId</span>, <span class="mono">duracaoMs</span> presentes</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld int"></span>Integração</span></td></tr>
+            <tr data-tipo="borda" data-camada="infra"><td class="ct-id">CT-EX-06-02</td><td>Propagação de span</td><td>Request que chama o pascal-executor</td><td class="esperado">Mesmo trace atravessa os serviços (Service Map)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld infra"></span>Infra</span></td></tr>
+            <tr data-tipo="positivo" data-camada="infra"><td class="ct-id">CT-EX-06-03</td><td>Métrica exportada</td><td>Coletar <span class="mono">/actuator/metrics/http.server.requests</span></td><td class="esperado">Contagem/latência exportadas via OTLP</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld infra"></span>Infra</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+    </section>
+
+    <!-- ============ DESEMPENHO ============ -->
+    <section class="domain" id="desempenho">
+      <div class="domain-head">
+        <p class="eyebrow">Domínio 05 · Req. 3.1 (não-funcional)</p>
+        <h2>Desempenho &amp; Escalabilidade</h2>
+        <p>Requisito explícito: o desempenho <b>não pode ser inferior</b> ao launcher atual, com testes de carga e gráficos
+          comparativos. Medido pela borda (A/B <span class="mono">/aejs</span> × <span class="mono">/aejs-l</span>), segmentando por
+          caminho (Java migrado × Pascal via executor). Base: o harness <span class="mono">deploy/bench/bench-ab.sh</span>.</p>
+      </div>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-PF-01</span><span class="us-req">Req 3.1</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">A/B /aejs × /aejs-l</span></div>
+        <h3>Paridade de latência com o legado</h3>
+        <div class="story"><b>Como</b> responsável técnico, <b>quero</b> comparar a latência do novo com o legado,
+          <b>para</b> comprovar que a migração não regrediu a experiência.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Nos domínios migrados (login/GetDocumento), p50/p95 do novo ≤ legado (dentro da margem acordada).</li>
+            <li>Nos ainda-Pascal, o overhead do hop pascal-executor é medido e documentado.</li>
+            <li>Gráfico comparativo p50/p95/p99 por operação, com warmup e intercalado.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="carga"><td class="ct-id">CT-PF-01-01</td><td>Login: novo ≤ legado</td><td>A/B login, N amostras intercaladas + warmup</td><td class="esperado">p50/p95 do Java ≤ legado + margem</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld carga"></span>Carga</span></td></tr>
+            <tr data-tipo="borda" data-camada="carga"><td class="ct-id">CT-PF-01-02</td><td>Overhead do hop</td><td>A/B dispatch (Pascal via executor)</td><td class="esperado">Delta do hop quantificado (poucos ms) e documentado</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld carga"></span>Carga</span></td></tr>
+            <tr data-tipo="positivo" data-camada="carga"><td class="ct-id">CT-PF-01-03</td><td>Evidência gráfica</td><td>Gerar CSV + gráfico p50/p95/p99</td><td class="esperado">Gráfico comparativo por operação entregue</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld carga"></span>Carga</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-PF-02</span><span class="us-req">Req 3.1</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">carga sob concorrência (k6)</span></div>
+        <h3>Throughput e estabilidade sob carga</h3>
+        <div class="story"><b>Como</b> operação, <b>quero</b> conhecer a vazão e o comportamento sob concorrência,
+          <b>para</b> dimensionar réplicas e garantir estabilidade.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Throughput sustentado sem erros na faixa de concorrência alvo.</li>
+            <li>Sem degradação anômala de latência nem vazamento em teste de soak.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="carga"><td class="ct-id">CT-PF-02-01</td><td>Vazão sustentada</td><td>k6 com VUs na concorrência alvo</td><td class="esperado">Req/s estável, erro ~0%</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld carga"></span>Carga</span></td></tr>
+            <tr data-tipo="borda" data-camada="carga"><td class="ct-id">CT-PF-02-02</td><td>Concorrência crescente</td><td>Rampa de VUs</td><td class="esperado">Latência cresce previsivelmente; sem colapso</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld carga"></span>Carga</span></td></tr>
+            <tr data-tipo="borda" data-camada="carga"><td class="ct-id">CT-PF-02-03</td><td>Soak</td><td>Carga moderada por período prolongado</td><td class="esperado">Sem vazamento de memória/conexão</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld carga"></span>Carga</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+    </section>
+
+    <!-- ============ TRANSPORTE ============ -->
+    <section class="domain" id="transporte">
+      <div class="domain-head">
+        <p class="eyebrow">Domínio 06 · Req. 3.4 / 3.8 (não-funcional)</p>
+        <h2>Transporte &amp; Segurança de Borda</h2>
+        <p>TLS 1.2+ terminado no Kong (borda), que faz o papel de reverse proxy/roteamento à frente do launcher; o tráfego
+          interno <span class="mono">launcher ↔ pascal-executor</span> é texto puro em rede confiável, por decisão documentada.
+          Ponto em aberto no documento de requisitos — a fechar.</p>
+      </div>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-TR-01</span><span class="us-req">Req 3.8</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">Kong (TLS)</span></div>
+        <h3>TLS 1.2+ terminado no Kong</h3>
+        <div class="story"><b>Como</b> segurança, <b>quero</b> TLS 1.2+ na borda,
+          <b>para</b> proteger o tráfego externo conforme a política.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>Handshake TLS 1.2/1.3 aceito; protocolos anteriores recusados.</li>
+            <li>Tráfego interno launcher↔pascal-executor é texto puro (rede confiável, documentado).</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="infra"><td class="ct-id">CT-TR-01-01</td><td>TLS moderno aceito</td><td>Handshake TLS 1.2 e 1.3 no Kong</td><td class="esperado">Conexão estabelecida</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld infra"></span>Infra</span></td></tr>
+            <tr data-tipo="negativo" data-camada="infra"><td class="ct-id">CT-TR-01-02</td><td>Protocolo antigo</td><td>Tentar TLS 1.0/1.1</td><td class="esperado">Handshake recusado</td><td><span class="chip t-neg">negativo</span></td><td><span class="lchip"><span class="ld infra"></span>Infra</span></td></tr>
+            <tr data-tipo="borda" data-camada="infra"><td class="ct-id">CT-TR-01-03</td><td>Tráfego interno</td><td>Inspecionar launcher↔:8091</td><td class="esperado">Texto puro em rede confiável (por decisão)</td><td><span class="chip t-edge">borda</span></td><td><span class="lchip"><span class="ld infra"></span>Infra</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+
+      <article class="us-card">
+        <div class="us-top"><span class="us-id">US-TR-02</span><span class="us-req">Req 3.4</span><span class="chip p-edge">Borda</span>
+          <span class="us-ep mono">Apache → Kong → launcher</span></div>
+        <h3>Kong como reverse proxy / roteamento</h3>
+        <div class="story"><b>Como</b> operação, <b>quero</b> o Kong roteando à frente do launcher,
+          <b>para</b> centralizar TLS/roteamento sem tocar no Apache do <span class="mono">/aejs</span>.</div>
+        <div class="aceite"><span class="lbl">Critérios de aceite</span>
+          <ul>
+            <li>A rota do novo (<span class="mono">/aejs-l</span>) chega ao launcher; o Kong responde saudável.</li>
+          </ul>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>ID</th><th>Cenário</th><th>Passos &amp; dados</th><th>Esperado</th><th>Tipo</th><th>Camada</th></tr></thead>
+          <tbody>
+            <tr data-tipo="positivo" data-camada="infra"><td class="ct-id">CT-TR-02-01</td><td>Rota chega ao launcher</td><td>Request pela borda ao <span class="mono">/aejs-l</span></td><td class="esperado">Atendido pelo launcher (:8083)</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld infra"></span>Infra</span></td></tr>
+            <tr data-tipo="positivo" data-camada="infra"><td class="ct-id">CT-TR-02-02</td><td>Saúde do Kong</td><td>Checar status/roteamento do Kong</td><td class="esperado">Kong saudável; rota configurada</td><td><span class="chip t-pos">positivo</span></td><td><span class="lchip"><span class="ld infra"></span>Infra</span></td></tr>
+          </tbody>
+        </table></div>
+      </article>
+    </section>
+  </main>
+</div>
+
+<footer>
+  Plano de casos de teste (Rev. 2) — migração <b>SCCI Launcher</b> (Pascal → Java hexagonal). Apenas requisitos dentro do escopo
+  desta entrega; capacidades fora dos requisitos e conflitos documento×arquitetura estão na "Fronteira de escopo" no topo.
+  Camadas: <b>Playwright</b> (E2E + API) automatiza 43 casos; <b>integração</b> (JUnit) 41; <b>carga</b> (k6/bench) 7; <b>infra</b> 9.
+  Ambiente sugerido: <code>dev</code> com ambiente de suporte/scat — nunca produção.
+</footer>
+
+<script>
+  (function () {
+    var rows = Array.prototype.slice.call(document.querySelectorAll('tr[data-tipo]'));
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.us-card'));
+    var tipoBtns = Array.prototype.slice.call(document.querySelectorAll('[data-filter-tipo]'));
+    var camadaBtns = Array.prototype.slice.call(document.querySelectorAll('[data-filter-camada]'));
+    var state = { tipo: 'todos', camada: 'todas' };
+    function apply() {
+      tipoBtns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.filterTipo === state.tipo)); });
+      camadaBtns.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.filterCamada === state.camada)); });
+      rows.forEach(function (tr) {
+        var okT = state.tipo === 'todos' || tr.dataset.tipo === state.tipo;
+        var okC = state.camada === 'todas' || tr.dataset.camada === state.camada;
+        tr.hidden = !(okT && okC);
+      });
+      cards.forEach(function (card) {
+        var rs = card.querySelectorAll('tr[data-tipo]');
+        var anyVisible = Array.prototype.some.call(rs, function (r) { return !r.hidden; });
+        card.hidden = rs.length > 0 && !anyVisible;
+      });
+    }
+    tipoBtns.forEach(function (b) { b.addEventListener('click', function () { state.tipo = b.dataset.filterTipo; apply(); }); });
+    camadaBtns.forEach(function (b) { b.addEventListener('click', function () { state.camada = b.dataset.filterCamada; apply(); }); });
+  })();
+</script>

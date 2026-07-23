@@ -12,5 +12,6 @@ public record CredenciaisUsuario(
         LocalDate ultimaTroca,
         Integer maxDias,
         Integer minDias,
-        String mustChange) {
+        String mustChange,
+        boolean ativo) {
 }

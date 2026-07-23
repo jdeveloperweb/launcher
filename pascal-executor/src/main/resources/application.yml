@@ -19,7 +19,7 @@ common:
 
 # Execucao dos programas "w" (espelha o launcher.executor.* do launcher legado)
 executor:
-  timeout-segundos: 30
+  timeout-ms: 30000            # timeout de recepcao do oserver, em MILISSEGUNDOS (30s); aceita sub-segundo (ex.: 1500)
   max-concorrentes: 8
   max-tentativas: 3
   retry-delay-ms: 120

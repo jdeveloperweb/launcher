@@ -13,6 +13,7 @@ import com.prognum.common.crypto.LogAnonimizador;
 import com.prognum.scci.acesso.domain.model.ResultadoLogin;
 import com.prognum.scci.acesso.domain.model.ResultadoTroca;
 import com.prognum.scci.acesso.domain.port.in.LoginUseCase;
+import com.prognum.scci.acesso.domain.port.in.RecuperarSenhaUseCase;
 import com.prognum.scci.acesso.domain.port.in.TrocarSenhaUseCase;
 import com.prognum.scci.acesso.domain.port.in.ValidarAcessoUseCase;
 
@@ -24,11 +25,9 @@ import com.prognum.scci.acesso.domain.port.in.ValidarAcessoUseCase;
  * <ul>
  *   <li>POST {@code /interno/acesso/login}         — login (BANCO/família B) coordenado;</li>
  *   <li>POST {@code /interno/acesso/senha}         — troca de senha (/w/password);</li>
- *   <li>POST {@code /interno/acesso/valida-acesso} — ValidaCpf/ValidaProtocolo (/w/valida-acesso).</li>
+ *   <li>POST {@code /interno/acesso/valida-acesso} — ValidaCpf/ValidaProtocolo (/w/valida-acesso);</li>
+ *   <li>POST {@code /interno/acesso/email-pwd}     — recuperação de senha por e-mail (/w/email-pwd).</li>
  * </ul>
- *
- * <p><b>Doc Final de Requisitos (Troca/Recuperação de Senha):</b> recuperação automática por e-mail
- * removida — fora do escopo inicial (endpoint {@code /interno/acesso/email-pwd} descontinuado).</p>
  */
 @RestController
 public class AcessoInternoController {
@@ -37,12 +36,14 @@ public class AcessoInternoController {
 
     private final LoginUseCase login;
     private final TrocarSenhaUseCase trocarSenha;
+    private final RecuperarSenhaUseCase recuperarSenha;
     private final ValidarAcessoUseCase validarAcesso;
 
     public AcessoInternoController(LoginUseCase login, TrocarSenhaUseCase trocarSenha,
-                                   ValidarAcessoUseCase validarAcesso) {
+                                   RecuperarSenhaUseCase recuperarSenha, ValidarAcessoUseCase validarAcesso) {
         this.login = login;
         this.trocarSenha = trocarSenha;
+        this.recuperarSenha = recuperarSenha;
         this.validarAcesso = validarAcesso;
     }
 
@@ -67,6 +68,14 @@ public class AcessoInternoController {
         return ResponseEntity.ok(r);
     }
 
+    @PostMapping("/interno/acesso/email-pwd")
+    public ResponseEntity<ResultadoTroca> emailPwd(@RequestBody RecuperacaoRequest req) {
+        ResultadoTroca r = recuperarSenha.recuperar(req.usuario(), req.cpf(), req.ambiente());
+        log.info("acesso_email_pwd", kv("usuario", LogAnonimizador.pseudonimizarUsuario(req.usuario())),
+                kv("ambiente", req.ambiente()), kv("sucesso", r.sucesso()));
+        return ResponseEntity.ok(r);
+    }
+
     @PostMapping("/interno/acesso/valida-acesso")
     public ResponseEntity<ValidaResponse> validaAcesso(@RequestBody ValidaRequest req) {
         boolean valido = "protocolo".equalsIgnoreCase(req.tipo())
@@ -81,6 +90,9 @@ public class AcessoInternoController {
     }
 
     public record TrocaSenhaRequest(String usuario, String senhaAtual, String novaSenha, String ambiente) {
+    }
+
+    public record RecuperacaoRequest(String usuario, String cpf, String ambiente) {
     }
 
     public record ValidaRequest(String tipo, String valor, String ambiente) {

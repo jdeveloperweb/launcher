@@ -7,6 +7,8 @@ import com.prognum.launcher.autenticacao.model.ResultadoTroca;
 import com.prognum.launcher.autenticacao.model.Sessao;
 import com.prognum.launcher.autenticacao.port.in.SessaoUseCase;
 import com.prognum.launcher.autenticacao.port.out.AcessoJavaPort;
+import com.prognum.launcher.autenticacao.port.out.RegistroEventoAcesso;
+import com.prognum.common.environment.LauncherEnvReader;
 import com.prognum.common.crypto.LogAnonimizador;
 import com.prognum.common.crypto.WcopCrypto;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -58,9 +60,13 @@ public class AutenticacaoController {
     // sem profile de ambiente formalizado) -- ligar via launcher.wcop.exigir-cifrado=true exige
     // decisao operacional coordenada com o front antes do rollout.
     private final boolean exigirCifrado;
+    // Log de eventos de acesso (secao [LOG] do launcherenv, ex.: sccilog) — best-effort/assincrono.
+    private final RegistroEventoAcesso eventos;
+    // Leitura do launcherenv.ini por-ambiente (ex.: ACESSOSSIMULTANEOS).
+    private final LauncherEnvReader env;
 
     public AutenticacaoController(ObjectMapper mapper, WcopCrypto crypto, AcessoJavaPort acesso,
-                                  SessaoUseCase sessoes,
+                                  SessaoUseCase sessoes, RegistroEventoAcesso eventos, LauncherEnvReader env,
                                   @Value("${launcher.legacy.wcop.contexto:CORP_WEB}") String contexto,
                                   @Value("${launcher.auth.max-logins-simultaneos:0}") int maxLoginsSimultaneos,
                                   @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado) {
@@ -68,6 +74,8 @@ public class AutenticacaoController {
         this.crypto = crypto;
         this.acesso = acesso;
         this.sessoes = sessoes;
+        this.eventos = eventos;
+        this.env = env;
         this.contexto = contexto;
         this.maxLoginsSimultaneos = maxLoginsSimultaneos;   // 0 = ilimitado (QtMaxLogin do launcher)
         this.exigirCifrado = exigirCifrado;
@@ -118,11 +126,16 @@ public class AutenticacaoController {
             return resposta(cifrado, "{\"success\":false,\"message\":\"Falha ao validar o login.\"}");
         }
 
-        // QtMaxLogin (launcher): limite de acessos simultaneos por usuario (0 = ilimitado).
-        if (r.sucesso() && maxLoginsSimultaneos > 0
-                && sessoes.contarSessoesAtivas(usuario, ambiente) >= maxLoginsSimultaneos) {
+        // Limite de acessos simultaneos por usuario: ACESSOSSIMULTANEOS do launcherenv (POR-AMBIENTE);
+        // sem a chave -> cai no global (launcher.auth.max-logins-simultaneos, 0 = ilimitado).
+        int limiteSessoes = env.acessosSimultaneos(ambiente);
+        if (limiteSessoes <= 0) {
+            limiteSessoes = maxLoginsSimultaneos;
+        }
+        if (r.sucesso() && limiteSessoes > 0
+                && sessoes.contarSessoesAtivas(usuario, ambiente) >= limiteSessoes) {
             log.info("web_login_max_sessoes", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
-                    kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())), kv("limite", maxLoginsSimultaneos));
+                    kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())), kv("limite", limiteSessoes));
             return resposta(cifrado, "{\"success\":false,\"message\":\"Numero maximo de acessos simultaneos atingido.\",\"codigo\":\"E005\"}");
         }
 
@@ -142,11 +155,13 @@ public class AutenticacaoController {
                     kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())), kv("ambiente", ambiente),
                     kv("sessaoId", LogAnonimizador.pseudonimizarSessao(r.sessionKey())),
                     kv("codErro", String.valueOf(r.codErro())), kv("cifrado", cifrado));
+            eventos.registrar(ambiente, "login", usuarioSessao, req.getRemoteAddr(), contexto, r.sessionKey());
         } else {
             respJson = jsonFalhaLogin(r.codErro(), r.mensagem());
             log.info("web_login_negado", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
                     kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())), kv("ambiente", ambiente),
                     kv("codErro", String.valueOf(r.codErro())));
+            eventos.registrar(ambiente, "loginerr", usuario, req.getRemoteAddr(), contexto, null);
         }
         return resposta(cifrado, respJson);
     }
@@ -187,14 +202,49 @@ public class AutenticacaoController {
                     kv("erro", String.valueOf(e.getMessage())));
             return resposta(cifrado, "{\"success\":false,\"message\":\"Falha ao trocar a senha.\"}");
         }
+        if (r.sucesso()) {
+            eventos.registrar(ambiente, "passwd", usuario, req.getRemoteAddr(), contexto, null);
+        }
         String respJson = r.sucesso()
                 ? "{\"success\":\"true\",\"message\":\"" + escapar(r.mensagem()) + "\"}"
                 : "{\"success\":false,\"message\":\"" + escapar(r.mensagem()) + "\"}";
         return resposta(cifrado, respJson);
     }
 
-    // Doc Final de Requisitos (Troca/Recuperação de Senha): recuperação automática por e-mail
-    // removida — fora do escopo inicial. Endpoint /w/email-pwd descontinuado.
+    // -------------------------------------------------- ESQUECI MINHA SENHA (recuperação por e-mail)
+    // Porte do ExecutaEmailPwd do loginbd.pas: gera senha temporária, grava forçando troca e envia por e-mail.
+    @PostMapping("/w/email-pwd")
+    public ResponseEntity<byte[]> emailPwd(HttpServletRequest req, @RequestBody(required = false) byte[] body) {
+        String rawAscii = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
+        boolean cifrado = crypto.estaCifrado(rawAscii);
+        ResponseEntity<byte[]> rejeicao = rejeicaoSeNaoCifrado(cifrado, body);
+        if (rejeicao != null) {
+            return rejeicao;
+        }
+        String json = cifrado ? crypto.decifraRequest(rawAscii)
+                : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8));
+        Map<String, String> in = camposDoJson(json);
+        String usuario = primeiro(in, "userName", "usuario", "user", "login");
+        String cpf = primeiro(in, "cpf", "CPF", "documento");
+        String ambiente = primeiro(in, "ambienteOperacional", "ambiente");
+
+        ResultadoTroca r;
+        try {
+            r = acesso.recuperar(usuario, cpf, ambiente)
+                    .orElse(new ResultadoTroca(false, "Servico de acesso indisponivel. Tente novamente."));
+        } catch (RuntimeException e) {
+            log.warn("web_email_pwd_erro", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                    kv("erro", String.valueOf(e.getMessage())));
+            return resposta(cifrado, "{\"success\":false,\"message\":\"Falha ao recuperar a senha.\"}");
+        }
+        log.info("web_email_pwd", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())), kv("ambiente", ambiente),
+                kv("sucesso", r.sucesso()));
+        String respJson = r.sucesso()
+                ? "{\"success\":\"true\",\"message\":\"" + escapar(r.mensagem()) + "\"}"
+                : "{\"success\":false,\"message\":\"" + escapar(r.mensagem()) + "\"}";
+        return resposta(cifrado, respJson);
+    }
 
     // ---------------------------------------------------------------- VALIDA CPF / PROTOCOLO
     // /w/valida-acesso = ValidaCpf/ValidaProtocolo do loginbd (building block do login-por-CPF).
@@ -226,7 +276,9 @@ public class AutenticacaoController {
     }
 
     // ---------------------------------------------------------------- LOGOUT
-    @PostMapping("/w/logout")
+    // legado: o front (ExtJS, o MESMO do /aejs Pascal) chama "w/logoff" ao clicar em Sair.
+    // "logout" era nome proprio meu -> dava 404 e a SAIDA nunca registrava. Aceita ambos por seguranca.
+    @PostMapping({"/w/logoff", "/w/logout"})
     public ResponseEntity<byte[]> logout(HttpServletRequest req, @RequestBody(required = false) byte[] body) {
         String rawAscii = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
         boolean cifrado = crypto.estaCifrado(rawAscii);
@@ -237,10 +289,13 @@ public class AutenticacaoController {
         String json = cifrado ? crypto.decifraRequest(rawAscii)
                 : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8));
         String sessionKey = primeiro(camposDoJson(json), "sessionKey");
+        Optional<Sessao> s = sessoes.consultar(sessionKey);   // captura usuario/ambiente ANTES de encerrar (p/ o log de evento)
         sessoes.encerrar(sessionKey);   // apaga da SCCI_SESSION + Redis
         log.info("web_logout", kv("sessaoEncerrada", sessionKey != null),
                 kv("sessaoId", LogAnonimizador.pseudonimizarSessao(sessionKey)),
                 kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())));
+        s.ifPresent(ses -> eventos.registrar(ses.ambienteOperacional(), "logout", ses.usuario(),
+                req.getRemoteAddr(), contexto, sessionKey));
         return resposta(cifrado, "{\"success\":\"true\"}");
     }
 

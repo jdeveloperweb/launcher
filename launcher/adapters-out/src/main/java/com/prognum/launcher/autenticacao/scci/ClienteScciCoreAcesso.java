@@ -49,8 +49,12 @@ public class ClienteScciCoreAcesso implements AcessoJavaPort {
                 ClienteScciCoreAcesso::paraResultadoTroca, "senha");
     }
 
-    // Doc Final de Requisitos (Troca/Recuperação de Senha): recuperação automática por e-mail
-    // removida — fora do escopo inicial (sem chamada a /interno/acesso/email-pwd).
+    @Override
+    public Optional<ResultadoTroca> recuperar(String usuario, String cpf, String ambiente) {
+        return chamar("/interno/acesso/email-pwd",
+                Map.of("usuario", nz(usuario), "cpf", nz(cpf), "ambiente", nz(ambiente)),
+                ClienteScciCoreAcesso::paraResultadoTroca, "email-pwd");
+    }
 
     @Override
     public Optional<Boolean> validarCpf(String valor, String ambiente) {

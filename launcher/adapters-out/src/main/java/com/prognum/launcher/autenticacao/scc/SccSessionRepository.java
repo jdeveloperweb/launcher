@@ -107,4 +107,25 @@ public class SccSessionRepository implements SessaoPersistente {
                     kv("erro", String.valueOf(e.getMessage())));
         }
     }
+
+    @Override
+    public java.util.List<com.prognum.launcher.autenticacao.port.out.SessaoAtiva> listar(String ambiente) {
+        SccDbConfig c = env.ler(ambiente);
+        String sql = "SELECT SESSION_KEY, NO_USUARIO, NU_IP_ACESSO, DT_HORA_SOLICITACAO FROM SCCI_SESSION";
+        java.util.List<com.prognum.launcher.autenticacao.port.out.SessaoAtiva> out = new java.util.ArrayList<>();
+        try (Connection conn = connections.abrir(c);
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Timestamp t = rs.getTimestamp("DT_HORA_SOLICITACAO");
+                out.add(new com.prognum.launcher.autenticacao.port.out.SessaoAtiva(
+                        rs.getString("SESSION_KEY"), rs.getString("NO_USUARIO"), rs.getString("NU_IP_ACESSO"),
+                        t == null ? null : t.toInstant().toString()));
+            }
+        } catch (Exception e) {
+            log.warn("scci_session_listar_falha", kv("ambiente", ambiente),
+                    kv("erro", String.valueOf(e.getMessage())));
+        }
+        return out;
+    }
 }

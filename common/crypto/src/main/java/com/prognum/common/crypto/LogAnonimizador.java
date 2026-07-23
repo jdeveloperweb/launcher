@@ -21,10 +21,25 @@ public final class LogAnonimizador {
     private LogAnonimizador() {
     }
 
+    /**
+     * Liga/desliga a pseudonimização do USUÁRIO nos logs. Default {@code true} (anonimizado, req 2.7).
+     * Ambiente interno/ops pode desligar (ver o usuário real na chamada) via
+     * {@code launcher.log.anonimizar-usuario=false} — aplicado no boot. Só afeta o usuário; IP e
+     * sessão continuam mascarados/pseudonimizados.
+     */
+    private static volatile boolean anonimizarUsuario = true;
+
+    public static void setAnonimizarUsuario(boolean valor) {
+        anonimizarUsuario = valor;
+    }
+
     /** Hash SHA-256 truncado (12 hex chars, prefixo "u_") — mesmo usuário -> mesmo valor sempre. */
     public static String pseudonimizarUsuario(String usuario) {
         if (usuario == null || usuario.isBlank()) {
             return "";
+        }
+        if (!anonimizarUsuario) {
+            return usuario.trim();   // ops interno: usuário REAL no log (flag desligada)
         }
         byte[] hash = sha256(usuario.trim().toLowerCase(Locale.ROOT));
         return "u_" + HexFormat.of().formatHex(hash).substring(0, 12);

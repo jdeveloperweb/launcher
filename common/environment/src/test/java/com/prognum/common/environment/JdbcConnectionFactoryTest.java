@@ -11,7 +11,7 @@ class JdbcConnectionFactoryTest {
     private final JdbcConnectionFactory f = new JdbcConnectionFactory();
 
     private static SccDbConfig cfg(String driver, String host, String db) {
-        return new SccDbConfig(driver, host, db, null, null, null, null, null, null, null, null, null, null);
+        return new SccDbConfig(driver, host, db, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -21,9 +21,32 @@ class JdbcConnectionFactoryTest {
     }
 
     @Test
-    void oracle() {
-        assertThat(f.montarUrl(cfg("ORACLE", "dbhost", "ORCL")))
-                .isEqualTo("jdbc:oracle:thin:@dbhost:1521:ORCL");
+    void oracle_alias_tns() {
+        // launcherenv.ini real (caixa/scat104377): DB=11g, sem DB_HOSTNAME -> alias resolvido pelo
+        // tnsnames.ora (mesmo modelo do OCI do legado). NAO pode virar host:1521:SID.
+        assertThat(f.montarUrl(cfg("ORACLE", "", "11g")))
+                .isEqualTo("jdbc:oracle:thin:@11g");
+    }
+
+    @Test
+    void oracle_host_explicito_usa_service_name() {
+        // com DB_HOSTNAME -> EZConnect com SERVICE_NAME (//host:porta/servico), nao :SID.
+        assertThat(f.montarUrl(cfg("ORACLE", "dbhost", "oracle11gsp")))
+                .isEqualTo("jdbc:oracle:thin:@//dbhost:1521/oracle11gsp");
+    }
+
+    @Test
+    void oracle_porta_configuravel_no_hostname() {
+        assertThat(f.montarUrl(cfg("ORACLE", "dbhost:1600", "oracle11gsp")))
+                .isEqualTo("jdbc:oracle:thin:@//dbhost:1600/oracle11gsp");
+    }
+
+    @Test
+    void oracle_descriptor_completo_passa_direto() {
+        String desc = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=oracle11sp)(PORT=1521))"
+                + "(CONNECT_DATA=(SERVICE_NAME=oracle11gsp)))";
+        assertThat(f.montarUrl(cfg("ORACLE", "", desc)))
+                .isEqualTo("jdbc:oracle:thin:@" + desc);
     }
 
     @Test

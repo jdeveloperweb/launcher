@@ -61,6 +61,11 @@ launcher:
     # Doc Final de Requisitos (Autenticacao/Sessao): default = sessao infinita (comportamento atual).
     # 0 (ou negativo) = sem expiracao; um valor positivo liga o timeout por inatividade (ex.: 1800 = 30min).
     ttl-segundos: 0
+  log:
+    # Req 2.7: pseudonimiza o USUARIO nos logs (u_<hash>). true (default) preserva o comportamento de
+    # producao; em ambiente interno/ops pode-se desligar (usuario REAL na chamada). IP e sessao seguem
+    # sempre mascarados/pseudonimizados. Alteravel pelo configurador (restart do launcher).
+    anonimizar-usuario: ${LOG_ANONIMIZAR_USUARIO:true}
   documentos:
     # Doc Final de Requisitos (Upload/Download): lista parametrica de extensoes permitidas no upload,
     # validada na BORDA (unico ponto de entrada, independente de qual backend a flag escolher).

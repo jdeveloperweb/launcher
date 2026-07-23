@@ -20,7 +20,7 @@ import com.prognum.scci.acesso.application.mapeado.ProvisaoCashmeweb;
 import com.prognum.scci.acesso.application.mapeado.ProvisaoDireto;
 import com.prognum.scci.acesso.application.mapeado.ProvisaoItau;
 import com.prognum.scci.acesso.application.mapeado.ProvisaoUnicred;
-import com.prognum.scci.acesso.domain.policy.PasswordPolicy;
+import com.prognum.scci.acesso.domain.port.out.PoliticaSenhaResolver;
 import com.prognum.scci.acesso.domain.port.in.LoginUseCase;
 import com.prognum.scci.acesso.domain.port.in.TrocarSenhaUseCase;
 import com.prognum.scci.acesso.domain.port.in.ValidarAcessoUseCase;
@@ -32,6 +32,10 @@ import com.prognum.scci.acesso.domain.port.out.ProvisionamentoUsuario;
 import com.prognum.scci.acesso.domain.port.out.SenhaRepository;
 import com.prognum.scci.acesso.domain.port.out.ValidacaoAcessoRepository;
 import com.prognum.scci.acesso.domain.port.out.VerificadorSenha;
+import com.prognum.scci.acesso.domain.port.out.RecuperacaoSenhaRepository;
+import com.prognum.scci.acesso.domain.port.in.RecuperarSenhaUseCase;
+import com.prognum.scci.acesso.application.RecuperarSenhaService;
+import com.prognum.scci.notificacao.domain.port.Notificador;
 
 /**
  * Fia os POJOs do contexto acesso (coordenador LoginService + Strategies BANCO/família B + senha/
@@ -111,29 +115,24 @@ public class AcessoWiringConfig {
         return new LoginService(autenticadores, resolver, tentativas, delayMs, maxErros);
     }
 
-    // ---- Política de senha (RN-010..012) ----
-    @Bean
-    PasswordPolicy passwordPolicy(
-            @Value("${scci.auth.policy.min-caracteres:8}") int minCarac,
-            @Value("${scci.auth.policy.requer-composicao:true}") boolean requerComposicao,
-            @Value("${scci.auth.policy.min-letras:1}") int minLetras,
-            @Value("${scci.auth.policy.min-maiusculas:1}") int minMaiusc,
-            @Value("${scci.auth.policy.min-digitos:1}") int minDigitos,
-            @Value("${scci.auth.policy.min-especiais:1}") int minEspeciais,
-            @Value("${scci.auth.policy.max-repetidos:3}") int maxRep,
-            @Value("${scci.auth.policy.max-sequenciais:3}") int maxSeq) {
-        return new PasswordPolicy(minCarac, requerComposicao, minLetras, minMaiusc,
-                minDigitos, minEspeciais, maxRep, maxSeq);
-    }
+    // ---- Politica de senha POR AMBIENTE (lida do launcherenv.ini; sem chaves = permissiva) ----
+    // O SccPoliticaSenhaResolver e @Component (adapters.out) e entra por injecao no trocarSenhaService.
+    // (parametrizacao por cliente, fiel ao loginbd: CARMIN*/USERMINCARACPASS/USERMAX*PASS).
 
     // ---- Troca / recuperação / valida ----
     @Bean
-    TrocarSenhaUseCase trocarSenhaService(SenhaRepository repo, VerificadorSenha verificador, PasswordPolicy policy) {
-        return new TrocarSenhaService(repo, verificador, policy);
+    TrocarSenhaUseCase trocarSenhaService(SenhaRepository repo, VerificadorSenha verificador,
+            PoliticaSenhaResolver politicas) {
+        return new TrocarSenhaService(repo, verificador, politicas);
     }
 
-    // Doc Final de Requisitos (Troca/Recuperação de Senha): recuperação automática por e-mail
-    // removida — fora do escopo inicial (sem bean de RecuperarSenhaUseCase).
+    // Recuperação de senha ("esqueci minha senha", ExecutaEmailPwd do loginbd): gera senha temporária,
+    // grava forçando troca no próximo login e entrega por e-mail via o contexto notificacao.
+    @Bean
+    RecuperarSenhaUseCase recuperarSenhaService(RecuperacaoSenhaRepository repo, VerificadorSenha verificador,
+            Notificador notificador) {
+        return new RecuperarSenhaService(repo, verificador, notificador);
+    }
 
     @Bean
     ValidarAcessoUseCase validacaoAcessoService(ValidacaoAcessoRepository repo) {

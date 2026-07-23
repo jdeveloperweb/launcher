@@ -2,7 +2,7 @@ package com.prognum.common.environment;
 
 /**
  * Configuracao de conexao + colunas de um ambiente (secao [USERS] do launcherenv.ini).
- * Copia fiel do launcher SCCI (legado). 13 campos, na ordem do LauncherEnvReader.
+ * Copia fiel do launcher SCCI (legado). 14 campos, na ordem do LauncherEnvReader.
  */
 public record SccDbConfig(
         String driver,            // DRIVERNAME: POSTGRES | INTERBASE(Firebird) | ORACLE | MSSQL
@@ -17,6 +17,7 @@ public record SccDbConfig(
         String campoUltimaTroca,  // USERLASTPASS
         String campoMaxDias,      // USERMAXPASS
         String campoMinDias,      // USERMINPASS
-        String campoMustChange    // USERMUSTCHANGE
+        String campoMustChange,   // USERMUSTCHANGE
+        String campoAtivo         // USERACTIVE (vazio = sem coluna de inativacao -> nao bloqueia)
 ) {
 }

@@ -1,0 +1,15 @@
+{
+  "name": "scci-e2e-evidencias",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "E2E de evidencias (Playwright) comparando launcher Pascal (/aejs) x Java (/aejs-l)",
+  "scripts": {
+    "explore": "node explore.js",
+    "run": "node run.js",
+    "report": "node gerar-relatorio.js"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}

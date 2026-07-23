@@ -32,6 +32,10 @@ scci:
     # Doc Final de Requisitos (Autenticacao/Sessao): default = sessao infinita (comportamento atual).
     # 0 (ou negativo) = sem expiracao; DEVE espelhar launcher.sessao.ttl-segundos (Redis compartilhado).
     ttl-segundos: 0
+  log:
+    # Req 2.7: pseudonimiza o USUARIO nos logs (u_<hash>). Espelha launcher.log.anonimizar-usuario.
+    # Desligar (false) mostra o usuario REAL nos logs do scci-core (ops interno). Togglavel pelo configurador.
+    anonimizar-usuario: ${LOG_ANONIMIZAR_USUARIO:true}
   documentos:
     # Doc Final de Requisitos (Upload/Download): lista parametrica de extensoes permitidas no upload
     # (allow-list, aplicada ANTES do anti-malware/conversao). Vazio = sem restricao adicional aqui.

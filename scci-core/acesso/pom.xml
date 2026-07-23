@@ -4,10 +4,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <!-- Contexto ACESSO (Identidade & Acesso): login BANCO + família B, senha.
+  <!-- Contexto ACESSO (Identidade & Acesso): login BANCO + família B, senha, recuperacao por e-mail.
        Layering interno por pacote: dominio / aplicacao / adaptadores.
-       Doc Final de Requisitos: recuperacao automatica de senha por e-mail removida (fora do escopo
-       inicial), por isso a dependencia de scci-core-notificacao foi retirada abaixo. -->
+       Recuperacao de senha ("esqueci minha senha", ExecutaEmailPwd do loginbd) reintroduzida a pedido:
+       entrega o e-mail via o contexto scci-core-notificacao. -->
   <parent>
     <groupId>com.prognum</groupId>
     <artifactId>launcher-parent</artifactId>
@@ -27,6 +27,11 @@
     <dependency>
       <groupId>com.prognum</groupId>
       <artifactId>scci-core-sessao</artifactId>
+    </dependency>
+    <!-- Recuperacao de senha ("esqueci minha senha") entrega o e-mail via o contexto notificacao. -->
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>scci-core-notificacao</artifactId>
     </dependency>
     <dependency>
       <groupId>com.prognum</groupId>

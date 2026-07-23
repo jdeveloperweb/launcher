@@ -18,4 +18,7 @@ public interface SessaoPersistente {
 
     /** Quantas sessoes ativas o usuario tem (para o limite QtMaxLogin do launcher). */
     int contarAtivas(String usuario, String ambiente);
+
+    /** Observabilidade: TODAS as sessoes ativas do ambiente (usuario/ip/desde) — painel de conectados. */
+    java.util.List<SessaoAtiva> listar(String ambiente);
 }

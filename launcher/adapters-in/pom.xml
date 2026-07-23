@@ -20,6 +20,11 @@
       <groupId>com.prognum</groupId>
       <artifactId>common-crypto</artifactId>
     </dependency>
+    <!-- Reload em runtime do launcherenv.ini (AdminAmbienteController) usa o LauncherEnvReader. -->
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>common-environment</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.prognum</groupId>
       <artifactId>launcher-application</artifactId>

@@ -34,12 +34,14 @@ public class SccCredenciaisRepository implements CredenciaisRepository {
     @Override
     public Optional<CredenciaisUsuario> buscar(String usuario, String ambiente) {
         SccDbConfig c = env.ler(ambiente);
+        boolean temAtivo = c.campoAtivo() != null && !c.campoAtivo().isBlank();
         String sql = "SELECT " + c.campoSenha() + " AS SENHA, "
                 + c.campoDtValidade() + " AS DTVALID, "
                 + c.campoUltimaTroca() + " AS ULTTROCA, "
                 + c.campoMaxDias() + " AS MAXDIAS, "
                 + c.campoMinDias() + " AS MINDIAS, "
-                + c.campoMustChange() + " AS MUSTCHANGE "
+                + c.campoMustChange() + " AS MUSTCHANGE"
+                + (temAtivo ? ", " + c.campoAtivo() + " AS ATIVO " : " ")
                 + "FROM " + c.tabela() + " WHERE " + c.campoUsuario() + " = ?";
         try (Connection conn = connections.abrir(c);
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -48,18 +50,34 @@ public class SccCredenciaisRepository implements CredenciaisRepository {
                 if (!rs.next()) {
                     return Optional.empty();
                 }
+                boolean ativo = !temAtivo || interpretaAtivo(rs.getString("ATIVO"));
                 return Optional.of(new CredenciaisUsuario(
                         rs.getString("SENHA"),
                         toDate(rs.getTimestamp("DTVALID")),
                         toDate(rs.getTimestamp("ULTTROCA")),
                         toInt(rs, "MAXDIAS"),
                         toInt(rs, "MINDIAS"),
-                        rs.getString("MUSTCHANGE")));
+                        rs.getString("MUSTCHANGE"),
+                        ativo));
             }
         } catch (Exception e) {
             throw new IllegalStateException("falha ao consultar usuario no ambiente "
                     + c.host() + "/" + c.database(), e);
         }
+    }
+
+    /**
+     * Interpreta o valor da coluna USERACTIVE. Conservador: SO os marcadores explicitos de inativo
+     * ({@code N/F/I/0/NAO/INATIVO/DESATIVADO}) bloqueiam; ausencia/nulo/qualquer outro valor = ativo,
+     * para nao travar login por dado inesperado (fiel ao legado, que so nega o que sabe ser inativo).
+     */
+    static boolean interpretaAtivo(String valor) {
+        if (valor == null || valor.isBlank()) {
+            return true;
+        }
+        String v = valor.trim().toUpperCase();
+        return !(v.equals("N") || v.equals("F") || v.equals("I") || v.equals("0")
+                || v.equals("NAO") || v.equals("INATIVO") || v.equals("DESATIVADO"));
     }
 
     private static LocalDate toDate(Timestamp t) {

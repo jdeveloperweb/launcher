@@ -49,20 +49,20 @@ public class ProgramExecutor implements ExecutorPrograma {
 
     private final LauncherEnvReader env;
     private final ObjectMapper mapper;
-    private final long timeoutSegundos;
+    private final long timeoutMs;
     private final java.util.concurrent.Semaphore limite;
     private final int maxTentativas;
     private final long retryDelayMs;
 
     public ProgramExecutor(LauncherEnvReader env,
                            ObjectMapper mapper,
-                           @Value("${executor.timeout-segundos:30}") long timeoutSegundos,
+                           @Value("${executor.timeout-ms:30000}") long timeoutMs,
                            @Value("${executor.max-concorrentes:8}") int maxConcorrentes,
                            @Value("${executor.max-tentativas:3}") int maxTentativas,
                            @Value("${executor.retry-delay-ms:120}") long retryDelayMs) {
         this.env = env;
         this.mapper = mapper;
-        this.timeoutSegundos = timeoutSegundos;
+        this.timeoutMs = timeoutMs;
         this.limite = new java.util.concurrent.Semaphore(Math.max(1, maxConcorrentes), true);
         this.maxTentativas = Math.max(1, maxTentativas);
         this.retryDelayMs = Math.max(0, retryDelayMs);
@@ -169,7 +169,7 @@ public class ProgramExecutor implements ExecutorPrograma {
             String cwd = dir.isDirectory() ? dir.getAbsolutePath() : null;
 
             long ini = System.nanoTime();
-            byte[] out = NativeOserverBridge.exchange(bin, progEnv, cwd, ip, reqBytes, timeoutSegundos);
+            byte[] out = NativeOserverBridge.exchange(bin, progEnv, cwd, ip, reqBytes, timeoutMs);
             long ms = (System.nanoTime() - ini) / 1_000_000;
 
             ResultadoExecucao r = parseBlocos(out);

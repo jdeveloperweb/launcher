@@ -47,6 +47,12 @@ public class AutenticadorBanco implements Autenticador {
             return falha();
         }
 
+        // conta inativa (USERACTIVE do loginbd.pas): senha bateu, mas a conta esta desativada -> bloqueia
+        // antes de qualquer estado de senha (nao faz sentido pedir troca a um usuario inativo)
+        if (!u.ativo()) {
+            return new ResultadoLogin(false, 'I', null, "Usuario inativo. Procure o administrador.", null);
+        }
+
         // credencial OK -> estados (TestaUsuario do loginbd.pas)
         LocalDate hoje = LocalDate.now();
         if (u.dtValidade() != null && u.dtValidade().isBefore(hoje)) {
