@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: pascal-executor
+    name: launcher        # rename: ex-"pascal-executor" (executor Pascal / oserver)
   servlet:
     multipart:
       max-file-size: 60MB       # uploads (corpoBinario em base64 no JSON) — teto de transporte
@@ -20,6 +20,8 @@ common:
 # Execucao dos programas "w" (espelha o launcher.executor.* do launcher legado)
 executor:
   timeout-ms: 30000            # timeout de recepcao do oserver, em MILISSEGUNDOS (30s); aceita sub-segundo (ex.: 1500)
+  transporte: ${EXECUTOR_TRANSPORTE:jna}   # jna (v1 atual) | uds (v2 UDS+shim, Java puro, VT-friendly). Nao toca no Pascal.
+  shim-path: ${EXECUTOR_SHIM:/u/scci/binfpc/oserver-shim}   # executavel do shim (so no transporte "uds")
   max-concorrentes: 8
   max-tentativas: 3
   retry-delay-ms: 120
@@ -41,7 +43,7 @@ management:
         url: ${OTLP_METRICS_URL:http://127.0.0.1:4318/v1/metrics}
         step: 10s
         resource-attributes:
-          service.name: pascal-executor
+          service.name: launcher
     tracing:
       endpoint: ${OTLP_TRACES_URL:http://127.0.0.1:4318/v1/traces}
   tracing:
@@ -49,4 +51,4 @@ management:
       probability: ${TRACE_SAMPLING:1.0}   # 100% em teste; reduzir em producao
   metrics:
     tags:
-      application: pascal-executor
+      application: launcher

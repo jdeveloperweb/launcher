@@ -39,6 +39,10 @@ final class NativeOserverBridge {
     private static final int SHUT_WR = 1;
     private static final int SOL_SOCKET = 1;
     private static final int SO_RCVTIMEO = 20;
+    private static final int SO_SNDTIMEO = 21;
+    private static final int SOCK_CLOEXEC = 0x80000;   // atomico no socketpair (elimina a race de heranca de fd)
+    private static final int EINTR = 4;                // interrompido por sinal -> reler
+    private static final int EAGAIN = 11;              // == EWOULDBLOCK no Linux -> timeout do SO_*TIMEO
     private static final int SIGKILL = 9;
     private static final int WNOHANG = 1;
     private static final int FD_OSERVER = 6;   // fd bidirecional que o InitFD usa
@@ -95,15 +99,19 @@ final class NativeOserverBridge {
         long t0 = System.nanoTime();
 
         int[] sv = new int[2];
-        if (c.socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0) {
+        // SOCK_CLOEXEC marca AMBOS os fds como close-on-exec ATOMICAMENTE (fix seçao 8 do TDD): elimina a
+        // race em que um spawn concorrente de OUTRA thread herdava a ponta do socket (o EOF nunca chegava e a
+        // chamada penduraava ate o timeout). Antes o fcntl(CLOEXEC) vinha DEPOIS do socketpair (janela aberta).
+        if (c.socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv) != 0) {
             throw new IOException("socketpair falhou");
         }
         int parent = sv[0];
         int child = sv[1];
 
-        c.fcntl(parent, F_SETFD, FD_CLOEXEC);
-        if (child != FD_OSERVER) {
-            c.fcntl(child, F_SETFD, FD_CLOEXEC);
+        // O adddup2(child -> fd 6) limpa o CLOEXEC no fd 6 do filho. Unica excecao: se o kernel devolveu
+        // child == 6, dup2(6,6) e no-op e NAO limpa o flag -> limpa na mao p/ o programa manter o fd 6.
+        if (child == FD_OSERVER) {
+            c.fcntl(child, F_SETFD, 0);
         }
 
         Memory fa = new Memory(128);   // posix_spawn_file_actions_t (~80 bytes no glibc); folga de sobra
@@ -138,6 +146,7 @@ final class NativeOserverBridge {
         tv.setLong(0, timeoutMs / 1000);            // tv_sec
         tv.setLong(8, (timeoutMs % 1000) * 1000);   // tv_usec (resto em microssegundos)
         c.setsockopt(parent, SOL_SOCKET, SO_RCVTIMEO, tv, 16);
+        c.setsockopt(parent, SOL_SOCKET, SO_SNDTIMEO, tv, 16);   // fix seçao 8: timeout tambem na ESCRITA
         long tSetup = System.nanoTime();   // fim do setup (socketpair + posix_spawn); dai pra frente e I/O
 
         try {
@@ -152,11 +161,18 @@ final class NativeOserverBridge {
                     out.write(buf, 0, (int) n);
                 } else if (n == 0) {
                     break;                   // EOF: programa fechou o socket
-                } else {
-                    if (out.size() == 0) {
-                        throw new IOException("Tempo excedido (" + timeoutMs + "ms) sem resposta");
+                } else {   // n < 0: erro/timeout. Verifica o errno (fix seçao 8) — antes TUDO virava "timeout".
+                    int errno = Native.getLastError();
+                    if (errno == EINTR) {
+                        continue;            // interrompido por sinal -> tenta ler de novo
                     }
-                    break;                   // timeout com resposta parcial
+                    // EAGAIN/EWOULDBLOCK = timeout do SO_RCVTIMEO; qualquer outro (ex.: ECONNRESET) = erro real.
+                    // Em AMBOS os casos, resposta PARCIAL e ERRO — nunca retornar payload truncado (corrupcao silenciosa).
+                    String causa = (errno == EAGAIN)
+                            ? "Tempo excedido (" + timeoutMs + "ms)"
+                            : "Erro de leitura (errno=" + errno + ")";
+                    throw new IOException(causa + (out.size() > 0
+                            ? " apos " + out.size() + " bytes parciais" : " sem resposta"));
                 }
             }
             if (fasesNanos != null && fasesNanos.length >= 2) {

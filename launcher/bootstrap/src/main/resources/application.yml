@@ -8,7 +8,7 @@ server:
 
 spring:
   application:
-    name: launcher
+    name: gateway-scci        # rename: ex-"launcher" (borda/orquestrador)
   servlet:
     multipart:                        # upload de documentos (canal sccidoc / putDoc)
       # Doc Final de Requisitos (Upload/Download): tamanho maximo de upload e OBRIGATORIO e
@@ -139,7 +139,7 @@ management:
         url: ${OTLP_METRICS_URL:http://127.0.0.1:4318/v1/metrics}   # ADOT/OTel Collector
         step: 10s
         resource-attributes:
-          service.name: launcher
+          service.name: gateway-scci
     tracing:
       endpoint: ${OTLP_TRACES_URL:http://127.0.0.1:4318/v1/traces}  # spans -> Collector -> X-Ray
   tracing:
@@ -147,4 +147,4 @@ management:
       probability: ${TRACE_SAMPLING:1.0}   # 100% em teste; reduzir em producao
   metrics:
     tags:
-      application: launcher
+      application: gateway-scci

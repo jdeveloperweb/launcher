@@ -57,6 +57,8 @@ public class ProgramExecutor implements ExecutorPrograma {
     private final ObservationRegistry observationRegistry;
     private final MeterRegistry meterRegistry;
     private final long timeoutMs;
+    private final String transporte;   // "jna" (v1, atual) | "uds" (v2, UDS+shim) — troca de transporte SEM tocar no Pascal
+    private final String shimPath;     // caminho do executavel shim (usado so no transporte "uds")
     private final java.util.concurrent.Semaphore limite;
     private final int maxTentativas;
     private final long retryDelayMs;
@@ -66,6 +68,8 @@ public class ProgramExecutor implements ExecutorPrograma {
                            ObservationRegistry observationRegistry,
                            MeterRegistry meterRegistry,
                            @Value("${executor.timeout-ms:30000}") long timeoutMs,
+                           @Value("${executor.transporte:jna}") String transporte,
+                           @Value("${executor.shim-path:/u/scci/binfpc/oserver-shim}") String shimPath,
                            @Value("${executor.max-concorrentes:8}") int maxConcorrentes,
                            @Value("${executor.max-tentativas:3}") int maxTentativas,
                            @Value("${executor.retry-delay-ms:120}") long retryDelayMs) {
@@ -74,6 +78,8 @@ public class ProgramExecutor implements ExecutorPrograma {
         this.observationRegistry = observationRegistry;
         this.meterRegistry = meterRegistry;
         this.timeoutMs = timeoutMs;
+        this.transporte = transporte == null ? "jna" : transporte.trim().toLowerCase();
+        this.shimPath = shimPath;
         this.limite = new java.util.concurrent.Semaphore(Math.max(1, maxConcorrentes), true);
         this.maxTentativas = Math.max(1, maxTentativas);
         this.retryDelayMs = Math.max(0, retryDelayMs);
@@ -187,11 +193,16 @@ public class ProgramExecutor implements ExecutorPrograma {
             Observation obs = Observation.createNotStarted("pascal.exec", observationRegistry)
                     .lowCardinalityKeyValue("programa", programName)
                     .lowCardinalityKeyValue("metodo", metodo)
+                    .lowCardinalityKeyValue("transporte", transporte)   // jna | uds — compara os dois no X-Ray/CloudWatch
                     .start();
             long ini = System.nanoTime();
             byte[] out;
             try {
-                out = NativeOserverBridge.exchange(bin, progEnv, cwd, ip, reqBytes, timeoutMs, fases);
+                // seletor de transporte (mesmo protocolo oserver, mesmo FD 6): "uds" = v2 Java puro
+                // (UDS+shim, sem JNA, VT-friendly); "jna" = v1 atual. Nenhum toca no programa Pascal.
+                out = "uds".equals(transporte)
+                        ? UdsShimBridge.exchange(shimPath, bin, progEnv, cwd, ip, reqBytes, timeoutMs, fases)
+                        : NativeOserverBridge.exchange(bin, progEnv, cwd, ip, reqBytes, timeoutMs, fases);
                 obs.highCardinalityKeyValue("spawn.us", Long.toString(fases[0] / 1000));
                 obs.highCardinalityKeyValue("roundtrip.us", Long.toString(fases[1] / 1000));
                 obs.highCardinalityKeyValue("resp.bytes", Integer.toString(out.length));
