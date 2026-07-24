@@ -44,6 +44,13 @@
       <artifactId>logstash-logback-encoder</artifactId>
     </dependency>
 
+    <!-- launcher-sdk: modo HIBRIDO (scci.sdk.habilitado=true) roda Pascal DIRETO via UDS+shim.
+         Presente no artefato mas DORMENTE por padrao (flag off = modo PURO, stateless). -->
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>launcher-sdk</artifactId>
+    </dependency>
+
     <!-- contextos do monólito (serão preenchidos nas fases de migração) -->
     <dependency>
       <groupId>com.prognum</groupId>
