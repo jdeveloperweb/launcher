@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.prognum</groupId>
+    <artifactId>launcher-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>gateway-scci-bootstrap</artifactId>
+  <name>gateway-scci-bootstrap</name>
+  <description>Composition root: Spring Boot main, configuracao, perfis (sim/real) e empacotamento do jar executavel.</description>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>common-crypto</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>common-environment</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>gateway-scci-adapters-in</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>gateway-scci-adapters-out</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <!-- Metricas via OTLP (push) para o ADOT/OTel Collector — observabilidade. -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-otlp</artifactId>
+    </dependency>
+    <!-- Tracing (spans) via OTLP -> Collector -> X-Ray (Service Map). -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-tracing-bridge-otel</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-exporter-otlp</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+    </dependency>
+
+    <!-- Doc Final de Requisitos (TODOs): especificacao OpenAPI navegavel dos endpoints (sccidoc,
+         autenticacao, upload chunked); antes so existia Javadoc, sem especificacao consultavel. -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>2.6.0</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>gateway-scci</finalName>
+    <plugins>
+      <!-- So o modulo bootstrap gera o jar executavel (repackage). -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <mainClass>com.prognum.gateway.bootstrap.LauncherApplication</mainClass>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

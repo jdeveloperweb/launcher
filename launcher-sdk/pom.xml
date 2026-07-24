@@ -6,10 +6,10 @@
 
   <!--
     launcher-sdk/ : a capacidade REUTILIZAVEL "rodar programa Pascal" (protocolo oserver + transporte),
-    extraida do pascal-executor. Consumida por ele HOJE e, no modo HIBRIDO, pelo scci-core (embed direto).
+    extraida do launcher. Consumida por ele HOJE e, no modo HIBRIDO, pelo scci-core (embed direto).
     Dois transportes selecionaveis por executor.transporte: JNA (v1) e UDS+shim (v2, Java puro, VT-friendly).
     E BIBLIOTECA, nao app: usa spring-context p/ @Component/@Value, SEM spring-boot-starter-web.
-    (Pacotes seguem com.prognum.pascal.* nesta fase; rename de pacote adiado.)
+    (Pacotes seguem com.prognum.launcher.* nesta fase; rename de pacote adiado.)
   -->
   <parent>
     <groupId>com.prognum</groupId>

@@ -34,9 +34,9 @@
   <modules>
     <module>common</module>
     <module>launcher-sdk</module>
-    <module>launcher</module>
+    <module>gateway-scci</module>
     <module>scci-core</module>
-    <module>pascal-executor</module>
+    <module>launcher</module>
   </modules>
 
   <properties>
@@ -52,22 +52,22 @@
       <!-- Modulos internos do reactor: versao unica gerenciada aqui. -->
       <dependency>
         <groupId>com.prognum</groupId>
-        <artifactId>launcher-domain</artifactId>
+        <artifactId>gateway-scci-domain</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>com.prognum</groupId>
-        <artifactId>launcher-application</artifactId>
+        <artifactId>gateway-scci-application</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>com.prognum</groupId>
-        <artifactId>launcher-adapters-in</artifactId>
+        <artifactId>gateway-scci-adapters-in</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>com.prognum</groupId>
-        <artifactId>launcher-adapters-out</artifactId>
+        <artifactId>gateway-scci-adapters-out</artifactId>
         <version>${project.version}</version>
       </dependency>
 

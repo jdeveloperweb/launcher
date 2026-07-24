@@ -4,13 +4,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
-import com.prognum.pascal.oserver.ProgramExecutor;
+import com.prognum.launcher.oserver.ProgramExecutor;
 
 /**
  * Modo HÍBRIDO do scci-core. Quando {@code scci.sdk.habilitado=true}, embute o {@code launcher-sdk}
  * (registra o {@link ProgramExecutor}) para rodar programas Pascal DIRETO, in-process, via o transporte
  * v2 UDS+shim (Java puro, VT-friendly — sem JNA/pinning/chdir global). O código de domínio que precisar
- * do legado injeta a porta {@code com.prognum.pascal.port.ExecutorPrograma}.
+ * do legado injeta a porta {@code com.prognum.launcher.port.ExecutorPrograma}.
  *
  * <p>Default (flag ausente/false) = modo PURO: o {@code ProgramExecutor} NÃO é registrado; nenhum código
  * Pascal roda — o scci-core segue stateless e escalável. O MESMO artefato serve os dois modos; a

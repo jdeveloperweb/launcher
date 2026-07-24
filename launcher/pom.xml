@@ -5,10 +5,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <!--
-    launcher/ : o EDGE (gateway) da plataforma SCCI. Aplicacao FINA — transporte W_COP, roteamento
-    por feature-flag (Strangler), execucao de programas Pascal (ponte oserver) e o gate de sessao.
-    A regra de negocio dos dominios em Java vive no scci-core; o launcher so orquestra e chama.
-    Layering hexagonal em modulos: domain / application / adapters-in / adapters-out / bootstrap.
+    launcher/ : a ANCORA LEGADA da plataforma. Deployable proprio, CO-LOCALIZADO com os
+    binarios Pascal (wmenu/wtela/wdoc/...) + os ambiente/ + o oserver. Faz a ponte JNA (socketpair +
+    posix_spawn no fd 6) e fala o protocolo de blocos do oserver. O launcher (edge, Java puro) o chama
+    por REST interno quando a flag executor.remoto aponta REMOTO. E o unico modulo que carrega nativo/JNA;
+    conforme os dominios migram p/ o scci-core, o tráfego dele encolhe ate o decommission.
   -->
   <parent>
     <groupId>com.prognum</groupId>
@@ -18,15 +19,61 @@
   </parent>
 
   <artifactId>launcher</artifactId>
-  <packaging>pom</packaging>
   <name>launcher</name>
-  <description>Edge/gateway da plataforma SCCI (hexagonal: domain/application/adapters/bootstrap)</description>
+  <description>Ancora legada: executa os programas Pascal (ponte oserver/JNA), servico interno</description>
 
-  <modules>
-    <module>domain</module>
-    <module>application</module>
-    <module>adapters-in</module>
-    <module>adapters-out</module>
-    <module>bootstrap</module>
-  </modules>
+  <dependencies>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+    <!-- Leitor do launcherenv.ini (ambiente por request) -->
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>common-environment</artifactId>
+    </dependency>
+    <!-- SDK de execucao Pascal (oserver): transporte JNA/UDS+shim + models + porta ExecutorPrograma -->
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>launcher-sdk</artifactId>
+    </dependency>
+    <!-- Log estruturado (kv) -->
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+    </dependency>
+    <!-- Doc Final de Requisitos (Monitoramento/Logging): tracing OTLP, antes so existia no
+         launcher; sem isso, os spans do launcher nao aparecem no Collector/X-Ray Service Map. -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-otlp</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-tracing-bridge-otel</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-exporter-otlp</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>launcher</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
 </project>

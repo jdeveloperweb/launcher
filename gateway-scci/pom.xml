@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    launcher/ : o EDGE (gateway) da plataforma SCCI. Aplicacao FINA — transporte W_COP, roteamento
+    por feature-flag (Strangler), execucao de programas Pascal (ponte oserver) e o gate de sessao.
+    A regra de negocio dos dominios em Java vive no scci-core; o launcher so orquestra e chama.
+    Layering hexagonal em modulos: domain / application / adapters-in / adapters-out / bootstrap.
+  -->
+  <parent>
+    <groupId>com.prognum</groupId>
+    <artifactId>launcher-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>gateway-scci</artifactId>
+  <packaging>pom</packaging>
+  <name>launcher</name>
+  <description>Edge/gateway da plataforma SCCI (hexagonal: domain/application/adapters/bootstrap)</description>
+
+  <modules>
+    <module>domain</module>
+    <module>application</module>
+    <module>adapters-in</module>
+    <module>adapters-out</module>
+    <module>bootstrap</module>
+  </modules>
+</project>
