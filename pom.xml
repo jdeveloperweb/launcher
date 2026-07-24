@@ -33,6 +33,7 @@
   -->
   <modules>
     <module>common</module>
+    <module>launcher-sdk</module>
     <module>launcher</module>
     <module>scci-core</module>
     <module>pascal-executor</module>
@@ -84,6 +85,13 @@
       <dependency>
         <groupId>com.prognum</groupId>
         <artifactId>common-contract</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <!-- launcher-sdk : capacidade "rodar Pascal" (oserver) reutilizavel (executor + scci-core hibrido) -->
+      <dependency>
+        <groupId>com.prognum</groupId>
+        <artifactId>launcher-sdk</artifactId>
         <version>${project.version}</version>
       </dependency>
 

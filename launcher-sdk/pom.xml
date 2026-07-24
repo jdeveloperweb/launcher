@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!--
+    launcher-sdk/ : a capacidade REUTILIZAVEL "rodar programa Pascal" (protocolo oserver + transporte),
+    extraida do pascal-executor. Consumida por ele HOJE e, no modo HIBRIDO, pelo scci-core (embed direto).
+    Dois transportes selecionaveis por executor.transporte: JNA (v1) e UDS+shim (v2, Java puro, VT-friendly).
+    E BIBLIOTECA, nao app: usa spring-context p/ @Component/@Value, SEM spring-boot-starter-web.
+    (Pacotes seguem com.prognum.pascal.* nesta fase; rename de pacote adiado.)
+  -->
+  <parent>
+    <groupId>com.prognum</groupId>
+    <artifactId>launcher-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>launcher-sdk</artifactId>
+  <name>launcher-sdk</name>
+  <description>SDK de execucao de programas Pascal (oserver): transporte JNA / UDS+shim, reutilizavel</description>
+
+  <dependencies>
+    <!-- Leitor do launcherenv.ini (ambiente por request) -->
+    <dependency>
+      <groupId>com.prognum</groupId>
+      <artifactId>common-environment</artifactId>
+    </dependency>
+    <!-- JNA: socketpair + posix_spawn nativos (transporte v1) -->
+    <dependency>
+      <groupId>net.java.dev.jna</groupId>
+      <artifactId>jna</artifactId>
+      <version>5.14.0</version>
+    </dependency>
+    <!-- JSON -> XML PMEMORY (ObjectMapper) -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <!-- Metricas/observacao (Timer, Observation) — os registros vem do app consumidor -->
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-observation</artifactId>
+    </dependency>
+    <!-- @Component / @Value (biblioteca; o placeholder e resolvido pelo app Spring Boot consumidor) -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-context</artifactId>
+    </dependency>
+    <!-- Logging (Logger/LoggerFactory) -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <!-- Log estruturado (kv) -->
+    <dependency>
+      <groupId>net.logstash.logback</groupId>
+      <artifactId>logstash-logback-encoder</artifactId>
+    </dependency>
+  </dependencies>
+</project>

@@ -36,11 +36,10 @@
       <groupId>com.prognum</groupId>
       <artifactId>common-environment</artifactId>
     </dependency>
-    <!-- JNA: socketpair + posix_spawn nativos (ponte do oserver) -->
+    <!-- SDK de execucao Pascal (oserver): transporte JNA/UDS+shim + models + porta ExecutorPrograma -->
     <dependency>
-      <groupId>net.java.dev.jna</groupId>
-      <artifactId>jna</artifactId>
-      <version>5.14.0</version>
+      <groupId>com.prognum</groupId>
+      <artifactId>launcher-sdk</artifactId>
     </dependency>
     <!-- Log estruturado (kv) -->
     <dependency>
