@@ -2,6 +2,9 @@ server:
   port: 8090          # REST interno do scci-core (o launcher chama; NAO exposto ao front)
 
 spring:
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS:false}   # puro: VT ok (cuidado Oracle JDBC). Hibrido: seguro so c/ executor.transporte=uds. Off por padrao.
   application:
     name: scci-core
   data:

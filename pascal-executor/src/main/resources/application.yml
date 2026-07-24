@@ -2,6 +2,9 @@ server:
   port: 8091          # REST interno do pascal-executor (o launcher chama; NAO exposto ao front)
 
 spring:
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS:false}   # VT so e SEGURO no transporte uds; VT+JNA = pinning. Off por padrao.
   application:
     name: launcher        # rename: ex-"pascal-executor" (executor Pascal / oserver)
   servlet:
