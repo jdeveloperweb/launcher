@@ -5,8 +5,6 @@ import java.util.Base64;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import com.prognum.gateway.execucao.model.ComandoExecucao;
@@ -14,26 +12,22 @@ import com.prognum.gateway.execucao.model.ResultadoExecucao;
 import com.prognum.gateway.execucao.port.out.ExecutorPrograma;
 
 /**
- * Adapter de saída da EXECUÇÃO de programas Pascal — chama o serviço <b>pascal-executor</b> (a âncora
- * legada, co-localizada com os binários). Manda o {@link ComandoExecucao} (binário em base64) p/
- * {@code POST /interno/executar} e reconstrói o {@link ResultadoExecucao}.
+ * Adapter de saída da EXECUÇÃO de programas — cliente HTTP do contrato {@code POST /interno/executar}.
+ * Manda o {@link ComandoExecucao} (binário em base64) e reconstrói o {@link ResultadoExecucao}.
  *
- * É o ÚNICO caminho de execução Pascal do launcher: o edge é <b>Java puro</b>, sem JNA/nativo — a ponte
- * oserver (socketpair + posix_spawn + fd 6) vive só no pascal-executor. Se ele estiver fora, devolve um
- * erro gracioso (sem 500), igual ao contrato de resposta de programa.
+ * <p>Reutilizável nos TRÊS trilhos do Strangler (só muda a URL base): <b>pascal</b> (executor/launcher),
+ * <b>hibrido</b> (scci-core com SDK) e <b>puro</b> (scci-core Java). É instanciado no
+ * {@code WiringConfig} — um bean por trilho. Se o destino estiver fora, devolve erro gracioso (sem 500),
+ * igual ao contrato de resposta de programa.</p>
  */
-@Component
 public class ClientePascalExecutor implements ExecutorPrograma {
 
     private static final Logger log = LoggerFactory.getLogger(ClientePascalExecutor.class);
 
     private final RestClient rest;
 
-    public ClientePascalExecutor(
-            RestClient.Builder builder,
-            @Value("${launcher.pascal-executor.url:http://localhost:8091}") String baseUrl) {
-        // builder GERENCIADO (instrumentado pelo Micrometer) — injeta o traceparent p/ ligar o trace
-        // ponta a ponta (launcher -> pascal-executor). RestClient.builder() estatico NAO propaga.
+    public ClientePascalExecutor(RestClient.Builder builder, String baseUrl) {
+        // builder GERENCIADO (instrumentado pelo Micrometer) — injeta o traceparent p/ ligar o trace ponta a ponta.
         this.rest = builder.baseUrl(baseUrl).build();
     }
 

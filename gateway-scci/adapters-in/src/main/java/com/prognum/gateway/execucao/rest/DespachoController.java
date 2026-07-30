@@ -9,6 +9,7 @@ import com.prognum.common.crypto.WcopCrypto;
 import com.prognum.gateway.execucao.model.ComandoExecucao;
 import com.prognum.gateway.execucao.model.ResultadoExecucao;
 import com.prognum.gateway.execucao.port.in.DespachoUseCase;
+import com.prognum.gateway.execucao.port.out.RotaExecucaoRegistry;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -43,16 +44,18 @@ public class DespachoController {
     private final WcopCrypto crypto;
     private final SessaoUseCase sessoes;
     private final DespachoUseCase despacho;
+    private final RotaExecucaoRegistry rotas;   // só p/ LOGAR o trilho escolhido (o roteamento em si é no DespachoUseCase)
     // Doc Final de Requisitos (2.9.3): fora do modo dev, a requisicao deve ser cifrada (W_COP).
     private final boolean exigirCifrado;
 
     public DespachoController(ObjectMapper mapper, WcopCrypto crypto,
-                              SessaoUseCase sessoes, DespachoUseCase despacho,
+                              SessaoUseCase sessoes, DespachoUseCase despacho, RotaExecucaoRegistry rotas,
                               @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado) {
         this.mapper = mapper;
         this.crypto = crypto;
         this.sessoes = sessoes;
         this.despacho = despacho;
+        this.rotas = rotas;
         this.exigirCifrado = exigirCifrado;
     }
 
@@ -96,7 +99,8 @@ public class DespachoController {
             paramsDbg = paramsDbg.substring(0, 600);
         }
         log.info("w_dispatch", kv("programName", programName), kv("methodName", methodName),
-                kv("requestMethod", requestMethod), kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                kv("requestMethod", requestMethod), kv("trilho", rotas.trilho(programName)),
+                kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
                 kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())),
                 kv("sessaoId", LogAnonimizador.pseudonimizarSessao(sessionKey)),
                 kv("sessaoValida", s.isPresent()), kv("params", paramsDbg));

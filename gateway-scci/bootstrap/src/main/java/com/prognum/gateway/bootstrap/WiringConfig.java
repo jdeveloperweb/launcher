@@ -12,16 +12,21 @@ import com.prognum.gateway.documentos.port.in.BaixarDocumentoUseCase;
 import com.prognum.gateway.documentos.port.in.EnviarDocumentoUseCase;
 import com.prognum.gateway.documentos.port.in.UploadChunkadoUseCase;
 import com.prognum.gateway.documentos.port.out.RepositorioUploadChunked;
-import com.prognum.gateway.execucao.DespachoService;
+import com.prognum.gateway.execucao.RoteadorExecucao;
+import com.prognum.gateway.execucao.pascal.ClientePascalExecutor;
 import com.prognum.gateway.execucao.port.in.DespachoUseCase;
 import com.prognum.gateway.execucao.port.out.ExecutorPrograma;
+import com.prognum.gateway.execucao.port.out.RotaExecucaoRegistry;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.web.client.RestClient;
 
 /**
  * Wiring (composition root) dos casos de uso, que sao POJOs puros (application/domain sem Spring).
@@ -62,12 +67,37 @@ public class WiringConfig {
         return new SessaoService(cache, persistente);
     }
 
-    // ---- casos de uso (execucao) ----
-    // A execucao de programas Pascal e SEMPRE via pascal-executor (ClientePascalExecutor, @Component):
-    // o launcher e Java PURO, sem JNA/nativo. A ponte oserver vive so no pascal-executor.
+    // ---- EXECUCAO: 3 trilhos do Strangler (mesmo contrato /interno/executar, muda so a URL base) ----
+    // pascal (default/legado) — executor-url: launcher :8091 OU scci-core hibrido raw :8090 (switch do Configurador).
     @Bean
-    DespachoUseCase despachoService(ExecutorPrograma executor) {
-        return new DespachoService(executor);
+    @Primary
+    ExecutorPrograma executorPascal(RestClient.Builder b,
+            @Value("${gateway.executor-url:${launcher.pascal-executor.url:http://localhost:8091}}") String url) {
+        return new ClientePascalExecutor(b, url);
+    }
+
+    // hibrido — scci-core com SDK embutido (Java orquestra + Pascal in-process).
+    @Bean
+    ExecutorPrograma executorHibrido(RestClient.Builder b,
+            @Value("${gateway.hibrido-url:http://localhost:8090}") String url) {
+        return new ClientePascalExecutor(b, url);
+    }
+
+    // puro — scci-core PURO (Java, sem SDK/Pascal), deploy separado.
+    @Bean
+    ExecutorPrograma executorPuro(RestClient.Builder b,
+            @Value("${gateway.puro-url:http://localhost:8092}") String url) {
+        return new ClientePascalExecutor(b, url);
+    }
+
+    // Roteador /w: a feature-flag por operacao (RotaExecucaoRegistry) escolhe o trilho e delega ao executor certo.
+    @Bean
+    DespachoUseCase despachoService(
+            @Qualifier("executorPascal") ExecutorPrograma pascal,
+            @Qualifier("executorHibrido") ExecutorPrograma hibrido,
+            @Qualifier("executorPuro") ExecutorPrograma puro,
+            RotaExecucaoRegistry rotas) {
+        return new RoteadorExecucao(pascal, hibrido, puro, rotas);
     }
 
     // ---- casos de uso (documentos) ----
