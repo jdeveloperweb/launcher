@@ -1,0 +1,92 @@
+# ============================================================================
+#  Os 3 trilhos Java/Pascal do Strangler (README) via Docker: scci-core PURO
+#  (:8092), scci-core HIBRIDO (:8090) e launcher (:8091), + o Redis compartilhado.
+#  gateway-scci e Configurador NAO estao aqui (fora de escopo deste compose).
+#
+#  Pre-requisito: os jars ja compilados (mvn -DskipTests clean package na raiz).
+#  Uso:
+#    cp .env.example .env   # ajuste os paths do Pascal legado
+#    docker compose --env-file .env build
+#    docker compose --env-file .env up -d
+#
+#  scci-core-hibrido e launcher so executam Pascal DE VERDADE se os volumes abaixo
+#  apontarem pra caixa legada real (binfpc + ambientes). Sem isso, sobem e passam
+#  no health check, mas chamadas que dependam do Pascal falham (sem o binario).
+# ============================================================================
+name: scci
+
+networks:
+  scci-net:
+    driver: bridge
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: scci-redis
+    networks: [scci-net]
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  scci-core-puro:
+    build:
+      context: ../../scci-core/bootstrap
+    image: scci-core:local
+    container_name: scci-core-puro
+    networks: [scci-net]
+    depends_on: [redis]
+    environment:
+      SERVER_PORT: 8092
+      SCCI_SDK: "false"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
+      OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
+    ports:
+      - "8092:8092"
+    restart: unless-stopped
+
+  scci-core-hibrido:
+    build:
+      context: ../../scci-core/bootstrap
+    image: scci-core:local
+    container_name: scci-core-hibrido
+    networks: [scci-net]
+    depends_on: [redis]
+    environment:
+      SERVER_PORT: 8090
+      SCCI_SDK: "true"
+      EXECUTOR_TRANSPORTE: uds
+      EXECUTOR_SHIM: /u/scci/binfpc/oserver-shim
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
+      OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
+    volumes:
+      - ${PASCAL_BINFPC_HOST_PATH:-/u/scci/binfpc}:/u/scci/binfpc:ro
+      - ${PASCAL_AMBIENTES_HOST_PATH:-/u/scci/ambientes}:/u/scci/ambientes:ro
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+
+  launcher:
+    build:
+      context: ../../launcher
+    image: launcher:local
+    container_name: scci-launcher
+    networks: [scci-net]
+    depends_on: [redis]
+    environment:
+      SERVER_PORT: 8091
+      EXECUTOR_TRANSPORTE: uds
+      EXECUTOR_SHIM: /u/scci/binfpc/oserver-shim
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
+      OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
+    volumes:
+      - ${PASCAL_BINFPC_HOST_PATH:-/u/scci/binfpc}:/u/scci/binfpc:ro
+      - ${PASCAL_AMBIENTES_HOST_PATH:-/u/scci/ambientes}:/u/scci/ambientes:ro
+    ports:
+      - "8091:8091"
+    restart: unless-stopped
