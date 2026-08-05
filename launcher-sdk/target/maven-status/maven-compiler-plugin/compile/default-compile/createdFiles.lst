@@ -1,0 +1,7 @@
+com/prognum/launcher/port/ExecutorPrograma.class
+com/prognum/launcher/oserver/NativeOserverBridge.class
+com/prognum/launcher/oserver/NativeOserverBridge$CLib.class
+com/prognum/launcher/model/ResultadoExecucao.class
+com/prognum/launcher/oserver/ProgramExecutor.class
+com/prognum/launcher/model/ComandoExecucao.class
+com/prognum/launcher/oserver/UdsShimBridge.class

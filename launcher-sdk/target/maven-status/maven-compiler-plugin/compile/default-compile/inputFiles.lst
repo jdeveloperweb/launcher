@@ -1,0 +1,6 @@
+/build/launcher-sdk/src/main/java/com/prognum/launcher/model/ComandoExecucao.java
+/build/launcher-sdk/src/main/java/com/prognum/launcher/model/ResultadoExecucao.java
+/build/launcher-sdk/src/main/java/com/prognum/launcher/oserver/NativeOserverBridge.java
+/build/launcher-sdk/src/main/java/com/prognum/launcher/oserver/ProgramExecutor.java
+/build/launcher-sdk/src/main/java/com/prognum/launcher/oserver/UdsShimBridge.java
+/build/launcher-sdk/src/main/java/com/prognum/launcher/port/ExecutorPrograma.java

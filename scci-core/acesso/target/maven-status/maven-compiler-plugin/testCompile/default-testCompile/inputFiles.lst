@@ -1,0 +1,6 @@
+/build/scci-core/acesso/src/test/java/com/prognum/scci/acesso/adapters/out/SccCredenciaisRepositoryAtivoTest.java
+/build/scci-core/acesso/src/test/java/com/prognum/scci/acesso/adapters/out/SccPoliticaSenhaResolverTest.java
+/build/scci-core/acesso/src/test/java/com/prognum/scci/acesso/application/AutenticadorBancoInativoTest.java
+/build/scci-core/acesso/src/test/java/com/prognum/scci/acesso/application/LoginServiceTest.java
+/build/scci-core/acesso/src/test/java/com/prognum/scci/acesso/application/RecuperarSenhaServiceTest.java
+/build/scci-core/acesso/src/test/java/com/prognum/scci/acesso/application/TrocarSenhaServicePoliticaTest.java

@@ -1,0 +1,87 @@
+server:
+  port: 8090          # REST interno do scci-core (o launcher chama; NAO exposto ao front)
+
+spring:
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS:false}   # puro: VT ok (cuidado Oracle JDBC). Hibrido: seguro so c/ executor.transporte=uds. Off por padrao.
+  application:
+    name: scci-core
+  data:
+    redis:                              # MESMO Redis do launcher (contador de tentativas att:, sessao sess:)
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+
+# Doc Final de Requisitos (Autenticacao/Sessao): cache de ambientes (launcherenv.ini), parametrizavel.
+# NAO cacheia credencial/senha de usuario final (essa e sempre lida ao vivo no banco).
+common:
+  environment:
+    cache-habilitado: ${ENV_CACHE_HABILITADO:true}
+    cache-ttl-segundos: ${ENV_CACHE_TTL:300}   # 0 (ou negativo) = sem expiracao por tempo
+
+# Contexto ACESSO (login). Espelha launcher.auth.* (os @Value ja tem estes defaults).
+scci:
+  auth:
+    # Doc Final de Requisitos (Autenticacao): CAPTCHA e recuperacao automatica de senha por e-mail
+    # estao fora do escopo inicial -- parametros removidos (max-erros-captcha, captcha-habilitado).
+    login-err-delay-ms: 1000
+    max-erros: 5
+    dias-aviso-expiracao: 5
+    tentativas-ttl-segundos: 900
+    # metodos:                          # trecho-do-ambiente -> METODO (default: BANCO/loginbd)
+    #   c6bank: OAUTH
+  sessao:
+    # Doc Final de Requisitos (Autenticacao/Sessao): default = sessao infinita (comportamento atual).
+    # 0 (ou negativo) = sem expiracao; DEVE espelhar launcher.sessao.ttl-segundos (Redis compartilhado).
+    ttl-segundos: 0
+  log:
+    # Req 2.7: pseudonimiza o USUARIO nos logs (u_<hash>). Espelha launcher.log.anonimizar-usuario.
+    # Desligar (false) mostra o usuario REAL nos logs do scci-core (ops interno). Togglavel pelo configurador.
+    anonimizar-usuario: ${LOG_ANONIMIZAR_USUARIO:true}
+  documentos:
+    # Doc Final de Requisitos (Upload/Download): lista parametrica de extensoes permitidas no upload
+    # (allow-list, aplicada ANTES do anti-malware/conversao). Vazio = sem restricao adicional aqui.
+    extensoes-permitidas: pdf,xml,jpg,jpeg,png,gif,bmp,tif,tiff,htm,html,txt,csv,rtf,zip,doc,dot,docx,xls,xlt,xla,xlsx,ppt,pot,pps,pptx,odt,ods,odp
+  # Modo HIBRIDO: embute o launcher-sdk p/ rodar Pascal DIRETO (ver SdkHibridoConfig).
+  # Default = PURO (false): nenhum codigo Pascal e carregado; scci-core segue stateless/escalavel.
+  sdk:
+    habilitado: ${SCCI_SDK:false}
+
+# Config do launcher-sdk -- usada SO no modo hibrido (scci.sdk.habilitado=true). Transporte v2 UDS+shim
+# por padrao (Java puro, VT-friendly). No modo PURO estas chaves ficam inertes (sem ProgramExecutor bean).
+executor:
+  transporte: ${EXECUTOR_TRANSPORTE:uds}
+  shim-path: ${EXECUTOR_SHIM:/u/scci/binfpc/oserver-shim}
+  timeout-ms: ${EXECUTOR_TIMEOUT_MS:30000}
+  max-concorrentes: ${EXECUTOR_MAX_CONC:8}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: false                    # Redis lazy: nao derruba o health se estiver fora no boot
+  # Doc Final de Requisitos (Monitoramento/Logging): tracing/metricas OTLP -- espelha o launcher
+  # (antes so existia la; sem isso os spans do scci-core nao apareciam no Collector/X-Ray).
+  otlp:
+    metrics:
+      export:
+        url: ${OTLP_METRICS_URL:http://127.0.0.1:4318/v1/metrics}
+        step: 10s
+        resource-attributes:
+          service.name: scci-core
+    tracing:
+      endpoint: ${OTLP_TRACES_URL:http://127.0.0.1:4318/v1/traces}
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLING:1.0}   # 100% em teste; reduzir em producao
+  metrics:
+    tags:
+      application: scci-core

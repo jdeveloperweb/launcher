@@ -1,0 +1,57 @@
+server:
+  port: 8091          # REST interno do pascal-executor (o launcher chama; NAO exposto ao front)
+
+spring:
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS:false}   # VT so e SEGURO no transporte uds; VT+JNA = pinning. Off por padrao.
+  application:
+    name: launcher        # rename: ex-"pascal-executor" (executor Pascal / oserver)
+  servlet:
+    multipart:
+      max-file-size: 60MB       # uploads (corpoBinario em base64 no JSON) — teto de transporte
+      max-request-size: 80MB
+  codec:
+    max-in-memory-size: 64MB    # respostas grandes (download de documento via Pascal, base64)
+
+# Doc Final de Requisitos (Autenticacao/Sessao): cache de ambientes (launcherenv.ini), parametrizavel.
+common:
+  environment:
+    cache-habilitado: ${ENV_CACHE_HABILITADO:true}
+    cache-ttl-segundos: ${ENV_CACHE_TTL:300}   # 0 (ou negativo) = sem expiracao por tempo
+
+# Execucao dos programas "w" (espelha o launcher.executor.* do launcher legado)
+executor:
+  timeout-ms: 30000            # timeout de recepcao do oserver, em MILISSEGUNDOS (30s); aceita sub-segundo (ex.: 1500)
+  transporte: ${EXECUTOR_TRANSPORTE:jna}   # jna (v1 atual) | uds (v2 UDS+shim, Java puro, VT-friendly). Nao toca no Pascal.
+  shim-path: ${EXECUTOR_SHIM:/u/scci/binfpc/oserver-shim}   # executavel do shim (so no transporte "uds")
+  max-concorrentes: 8
+  max-tentativas: 3
+  retry-delay-ms: 120
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  # Doc Final de Requisitos (Monitoramento/Logging): tracing/metricas OTLP -- espelha o launcher
+  # (antes so existia la; sem isso os spans do pascal-executor nao apareciam no Collector/X-Ray).
+  otlp:
+    metrics:
+      export:
+        url: ${OTLP_METRICS_URL:http://127.0.0.1:4318/v1/metrics}
+        step: 10s
+        resource-attributes:
+          service.name: launcher
+    tracing:
+      endpoint: ${OTLP_TRACES_URL:http://127.0.0.1:4318/v1/traces}
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLING:1.0}   # 100% em teste; reduzir em producao
+  metrics:
+    tags:
+      application: launcher

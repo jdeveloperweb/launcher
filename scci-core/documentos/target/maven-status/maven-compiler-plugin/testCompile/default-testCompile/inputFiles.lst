@@ -1,0 +1,7 @@
+/build/scci-core/documentos/src/test/java/com/prognum/scci/documentos/BaixarDocumentoEntidadeServiceTest.java
+/build/scci-core/documentos/src/test/java/com/prognum/scci/documentos/BaixarDocumentoServiceTest.java
+/build/scci-core/documentos/src/test/java/com/prognum/scci/documentos/EnviarDocumentoServiceTest.java
+/build/scci-core/documentos/src/test/java/com/prognum/scci/documentos/GeradorRelatorioJasperTest.java
+/build/scci-core/documentos/src/test/java/com/prognum/scci/documentos/GerenciarEstruturaServiceTest.java
+/build/scci-core/documentos/src/test/java/com/prognum/scci/documentos/TipoMimeTest.java
+/build/scci-core/documentos/src/test/java/com/prognum/scci/documentos/adapters/out/RepositorioDocumentoFileSystemTest.java

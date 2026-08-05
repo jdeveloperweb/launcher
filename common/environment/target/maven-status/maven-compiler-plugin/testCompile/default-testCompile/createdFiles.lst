@@ -1,0 +1,5 @@
+com/prognum/common/environment/LauncherEnvReaderPoliticaTest.class
+com/prognum/common/environment/LauncherEnvReaderAcessosTest.class
+com/prognum/common/environment/LauncherEnvReaderCacheTest.class
+com/prognum/common/environment/LauncherEnvReaderLogTest.class
+com/prognum/common/environment/JdbcConnectionFactoryTest.class

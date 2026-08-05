@@ -1,0 +1,4 @@
+com/prognum/common/environment/PoliticaSenhaIni.class
+com/prognum/common/environment/LauncherEnvReader.class
+com/prognum/common/environment/SccDbConfig.class
+com/prognum/common/environment/JdbcConnectionFactory.class

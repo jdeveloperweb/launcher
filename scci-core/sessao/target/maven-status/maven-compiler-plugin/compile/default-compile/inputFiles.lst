@@ -1,0 +1,9 @@
+/build/scci-core/sessao/src/main/java/com/prognum/scci/sessao/adapters/in/SessaoInternoController.java
+/build/scci-core/sessao/src/main/java/com/prognum/scci/sessao/adapters/out/RedisRepositorioSessao.java
+/build/scci-core/sessao/src/main/java/com/prognum/scci/sessao/adapters/out/SccSessionRepository.java
+/build/scci-core/sessao/src/main/java/com/prognum/scci/sessao/application/SessaoService.java
+/build/scci-core/sessao/src/main/java/com/prognum/scci/sessao/config/SessaoWiringConfig.java
+/build/scci-core/sessao/src/main/java/com/prognum/scci/sessao/domain/model/Sessao.java
+/build/scci-core/sessao/src/main/java/com/prognum/scci/sessao/domain/port/in/SessaoUseCase.java
+/build/scci-core/sessao/src/main/java/com/prognum/scci/sessao/domain/port/out/RepositorioSessao.java
+/build/scci-core/sessao/src/main/java/com/prognum/scci/sessao/domain/port/out/SessaoPersistente.java

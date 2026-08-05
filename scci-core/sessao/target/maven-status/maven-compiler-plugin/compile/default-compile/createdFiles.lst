@@ -1,0 +1,10 @@
+com/prognum/scci/sessao/application/SessaoService.class
+com/prognum/scci/sessao/config/SessaoWiringConfig.class
+com/prognum/scci/sessao/domain/port/in/SessaoUseCase.class
+com/prognum/scci/sessao/adapters/in/SessaoInternoController$RegistroSessao.class
+com/prognum/scci/sessao/adapters/in/SessaoInternoController.class
+com/prognum/scci/sessao/domain/model/Sessao.class
+com/prognum/scci/sessao/adapters/out/SccSessionRepository.class
+com/prognum/scci/sessao/domain/port/out/SessaoPersistente.class
+com/prognum/scci/sessao/domain/port/out/RepositorioSessao.class
+com/prognum/scci/sessao/adapters/out/RedisRepositorioSessao.class

@@ -1,0 +1,14 @@
+com/prognum/scci/acesso/application/TrocarSenhaServicePoliticaTest$RepoFake.class
+com/prognum/scci/acesso/application/TrocarSenhaServicePoliticaTest.class
+com/prognum/scci/acesso/adapters/out/SccPoliticaSenhaResolverTest.class
+com/prognum/scci/acesso/application/RecuperarSenhaServiceTest$RepoFake.class
+com/prognum/scci/acesso/application/AutenticadorBancoInativoTest.class
+com/prognum/scci/acesso/application/AutenticadorBancoInativoTest$1.class
+com/prognum/scci/acesso/adapters/out/SccCredenciaisRepositoryAtivoTest.class
+com/prognum/scci/acesso/application/LoginServiceTest$1.class
+com/prognum/scci/acesso/application/LoginServiceTest$ContadorFake.class
+com/prognum/scci/acesso/application/TrocarSenhaServicePoliticaTest$1.class
+com/prognum/scci/acesso/application/RecuperarSenhaServiceTest$VerFake.class
+com/prognum/scci/acesso/application/RecuperarSenhaServiceTest.class
+com/prognum/scci/acesso/application/RecuperarSenhaServiceTest$NotifFake.class
+com/prognum/scci/acesso/application/LoginServiceTest.class

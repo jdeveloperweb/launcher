@@ -1,0 +1,3 @@
+com/prognum/scci/notificacao/adapters/out/SmtpNotificador.class
+com/prognum/scci/notificacao/domain/model/Email.class
+com/prognum/scci/notificacao/domain/port/Notificador.class

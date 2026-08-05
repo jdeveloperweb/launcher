@@ -1,0 +1,14 @@
+com/prognum/scci/documentos/EnviarDocumentoServiceTest.class
+com/prognum/scci/documentos/BaixarDocumentoEntidadeServiceTest$2.class
+com/prognum/scci/documentos/EnviarDocumentoServiceTest$FakeArmazenador.class
+com/prognum/scci/documentos/BaixarDocumentoServiceTest$FakeRepo.class
+com/prognum/scci/documentos/adapters/out/RepositorioDocumentoFileSystemTest.class
+com/prognum/scci/documentos/BaixarDocumentoEntidadeServiceTest$3.class
+com/prognum/scci/documentos/BaixarDocumentoEntidadeServiceTest.class
+com/prognum/scci/documentos/BaixarDocumentoServiceTest.class
+com/prognum/scci/documentos/GeradorRelatorioJasperTest.class
+com/prognum/scci/documentos/GerenciarEstruturaServiceTest.class
+com/prognum/scci/documentos/GerenciarEstruturaServiceTest$FakeEstrutura.class
+com/prognum/scci/documentos/TipoMimeTest.class
+com/prognum/scci/documentos/BaixarDocumentoEntidadeServiceTest$1.class
+com/prognum/scci/documentos/BaixarDocumentoEntidadeServiceTest$FakeBaixar.class

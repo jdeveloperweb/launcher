@@ -1,0 +1,5 @@
+/build/common/environment/src/test/java/com/prognum/common/environment/JdbcConnectionFactoryTest.java
+/build/common/environment/src/test/java/com/prognum/common/environment/LauncherEnvReaderAcessosTest.java
+/build/common/environment/src/test/java/com/prognum/common/environment/LauncherEnvReaderCacheTest.java
+/build/common/environment/src/test/java/com/prognum/common/environment/LauncherEnvReaderLogTest.java
+/build/common/environment/src/test/java/com/prognum/common/environment/LauncherEnvReaderPoliticaTest.java
