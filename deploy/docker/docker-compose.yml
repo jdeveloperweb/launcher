@@ -69,24 +69,19 @@ services:
       - "8090:8090"
     restart: unless-stopped
 
-  launcher:
+  gateway-scci:
     build:
-      context: ../../launcher
-    image: launcher:local
-    container_name: scci-launcher
+      context: ../../gateway-scci
+    image: gateway-scci:local
+    container_name: scci-gateway
     networks: [scci-net]
     depends_on: [redis]
     environment:
-      SERVER_PORT: 8091
-      EXECUTOR_TRANSPORTE: uds
-      EXECUTOR_SHIM: /u/scci/binfpc/oserver-shim
+      SERVER_PORT: 8083
       REDIS_HOST: redis
       REDIS_PORT: 6379
       OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
       OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
-    volumes:
-      - ${PASCAL_BINFPC_HOST_PATH:-/u/scci/binfpc}:/u/scci/binfpc:ro
-      - ${PASCAL_AMBIENTES_HOST_PATH:-/u/scci/ambientes}:/u/scci/ambientes:ro
     ports:
-      - "8091:8091"
+      - "8083:8083"
     restart: unless-stopped
