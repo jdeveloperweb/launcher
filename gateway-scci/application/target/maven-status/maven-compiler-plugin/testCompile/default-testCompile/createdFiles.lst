@@ -1,0 +1,10 @@
+com/prognum/gateway/documentos/UploadChunkadoCleanupTest.class
+com/prognum/gateway/documentos/RoteadorBaixarDocumentoTest$1.class
+com/prognum/gateway/documentos/RoteadorBaixarDocumentoTest.class
+com/prognum/gateway/documentos/RoteadorEnviarDocumentoTest$1.class
+com/prognum/gateway/autenticacao/SessaoServiceTest.class
+com/prognum/gateway/documentos/EnvioDocumentoServiceTest.class
+com/prognum/gateway/execucao/DespachoServiceTest.class
+com/prognum/gateway/documentos/DocumentoServiceTest.class
+com/prognum/gateway/documentos/RoteadorEnviarDocumentoTest.class
+com/prognum/gateway/documentos/UploadChunkadoCleanupTest$FakeStaging.class

@@ -1,0 +1,10 @@
+/workspace/gateway-scci/adapters-in/src/main/java/com/prognum/gateway/autenticacao/rest/AutenticacaoController.java
+/workspace/gateway-scci/adapters-in/src/main/java/com/prognum/gateway/compartilhado/web/AdminAmbienteController.java
+/workspace/gateway-scci/adapters-in/src/main/java/com/prognum/gateway/compartilhado/web/AdminSessoesController.java
+/workspace/gateway-scci/adapters-in/src/main/java/com/prognum/gateway/compartilhado/web/RequestIdFilter.java
+/workspace/gateway-scci/adapters-in/src/main/java/com/prognum/gateway/compartilhado/web/SlashNormalizationFilter.java
+/workspace/gateway-scci/adapters-in/src/main/java/com/prognum/gateway/documentos/rest/DocumentosController.java
+/workspace/gateway-scci/adapters-in/src/main/java/com/prognum/gateway/documentos/rest/SccidocController.java
+/workspace/gateway-scci/adapters-in/src/main/java/com/prognum/gateway/documentos/rest/UploadChunkadoController.java
+/workspace/gateway-scci/adapters-in/src/main/java/com/prognum/gateway/execucao/rest/DespachoController.java
+/workspace/gateway-scci/adapters-in/src/main/java/com/prognum/gateway/licencas/rest/LicencasController.java

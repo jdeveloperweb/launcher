@@ -1,0 +1,8 @@
+com/prognum/gateway/execucao/DespachoService.class
+com/prognum/gateway/documentos/RoteadorBaixarDocumento.class
+com/prognum/gateway/documentos/EnvioDocumentoService.class
+com/prognum/gateway/documentos/RoteadorEnviarDocumento.class
+com/prognum/gateway/execucao/RoteadorExecucao.class
+com/prognum/gateway/autenticacao/SessaoService.class
+com/prognum/gateway/documentos/UploadChunkadoService.class
+com/prognum/gateway/documentos/DocumentoService.class
