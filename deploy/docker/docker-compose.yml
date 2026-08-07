@@ -71,7 +71,7 @@ services:
 
   gateway-scci:
     build:
-      context: ../../gateway-scci
+      context: ../../gateway-scci/bootstrap
     image: gateway-scci:local
     container_name: scci-gateway
     networks: [scci-net]
