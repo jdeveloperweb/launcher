@@ -46,6 +46,11 @@ services:
       REDIS_PORT: 6379
       OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
       OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
+    volumes:
+      # ambiente do cliente (launcherenv.ini + config do banco) — necessário p/ login/documentos
+      - ${CLIENTE_HOST_PATH:-/home/c6bank}:${CLIENTE_HOST_PATH:-/home/c6bank}:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8092:8092"
     restart: unless-stopped
@@ -70,6 +75,12 @@ services:
     volumes:
       - ${PASCAL_BINFPC_HOST_PATH:-/u/scci/binfpc}:/u/scci/binfpc:ro
       - ${PASCAL_AMBIENTES_HOST_PATH:-/u/scci/ambientes}:/u/scci/ambientes:ro
+      # ambiente do cliente (launcherenv.ini + config do banco) — sem isso o login não lê a config do DB.
+      # ajuste/adicione os paths dos ambientes que voce testa (ex.: c6bank).
+      - ${CLIENTE_HOST_PATH:-/home/c6bank}:${CLIENTE_HOST_PATH:-/home/c6bank}:ro
+    # se o banco do cliente estiver no HOST (launcherenv apontando p/ localhost), use host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8090:8090"
     restart: unless-stopped
@@ -110,6 +121,11 @@ services:
       GATEWAY_HIBRIDO_URL: http://scci-core-hibrido:8090
       GATEWAY_PURO_URL: http://scci-core-puro:8092
       GATEWAY_EXECUTOR_URL: http://scci-core-hibrido:8090
+      # URL do scci-core p/ os módulos Java (acesso/login, documentos, sessão) — SEM isso o /w/login
+      # cai no default localhost:8090 (= o próprio gateway no container) -> "acesso indisponivel".
+      LAUNCHER_SCCI_CORE_URL: http://scci-core-hibrido:8090
+      # URL do launcher (executor Pascal) p/ o log-evento (sccilog)
+      LAUNCHER_PASCAL_EXECUTOR_URL: http://launcher:8091
       OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
       OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
     ports:
