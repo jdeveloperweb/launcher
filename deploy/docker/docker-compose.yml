@@ -3,6 +3,13 @@
 #  scci-core PURO (:8092), scci-core HIBRIDO (:8090), launcher (:8091) + Redis.
 #  (o Configurador e o Kong nao estao aqui — sobem a parte.)
 #
+#  REDE (importante): gateway, scci-core (puro/hibrido) e launcher rodam em `network_mode: host`.
+#  Motivo: o launcherenv.ini de cada cliente aponta o Postgres p/ DB_HOSTNAME=localhost (= o HOST),
+#  e esses 3 servicos LEEM o .ini E CONECTAM no banco (login, SCCI_SESSION). Dentro de um container
+#  bridge, localhost seria o proprio container -> falha. Com host network, localhost = o host, e os
+#  servicos se enxergam entre si por localhost:porta. So o Redis fica em bridge (publicado em :6379,
+#  alcancado por localhost). O Kong (em container, sobe a parte) chega no gateway por host.docker.internal:8083.
+#
 #  Os Dockerfiles compilam o jar A PARTIR DO FONTE (multi-stage) — NAO precisa de
 #  `mvn package` antes. O `context: ../..` aponta pra RAIZ do monorepo (parent pom +
 #  modulos), que o build precisa; cada servico usa seu `dockerfile:`.
@@ -94,7 +101,8 @@ services:
       dockerfile: launcher/Dockerfile
     image: launcher:local
     container_name: scci-launcher
-    networks: [scci-net]
+    # REDE DO HOST: executa Pascal contra o ambiente do cliente (launcherenv + Postgres localhost).
+    network_mode: host
     environment:
       SERVER_PORT: 8091
       EXECUTOR_TRANSPORTE: uds
@@ -104,8 +112,8 @@ services:
     volumes:
       - ${PASCAL_BINFPC_HOST_PATH:-/u/scci/binfpc}:/u/scci/binfpc:ro
       - ${PASCAL_AMBIENTES_HOST_PATH:-/u/scci/ambientes}:/u/scci/ambientes:ro
-    ports:
-      - "8091:8091"
+      # RAIZ dos ambientes dos clientes (o Pascal le o launcherenv do path que vem no request).
+      - ${AMBIENTES_ROOT:-/home}:${AMBIENTES_ROOT:-/home}:ro
     restart: unless-stopped
 
   gateway-scci:
@@ -114,27 +122,28 @@ services:
       dockerfile: gateway-scci/bootstrap/Dockerfile
     image: gateway-scci:local
     container_name: scci-gateway
-    networks: [scci-net]
+    # REDE DO HOST: o gateway TAMBEM toca o ambiente do cliente — le o launcherenv.ini E grava/valida a
+    # SCCI_SESSION no Postgres (DB_HOSTNAME=localhost), o store autoritativo que o launcher.pas revalida.
+    # Sem host network o /w/login estoura ao registrar a sessao (NoSuchFile no .ini + banco inalcancavel).
+    network_mode: host
     depends_on: [redis, scci-core-puro, scci-core-hibrido]
     environment:
       SERVER_PORT: 8083
-      REDIS_HOST: redis
+      REDIS_HOST: localhost        # redis publicado no host:6379
       REDIS_PORT: 6379
-      # roteamento dos 3 trilhos. Os scci-core rodam em REDE DO HOST (network_mode: host) p/ ver o
-      # Postgres do cliente em localhost, entao o gateway (bridge) fala com eles via host.docker.internal.
-      GATEWAY_HIBRIDO_URL: http://host.docker.internal:8090
-      GATEWAY_PURO_URL: http://host.docker.internal:8092
-      GATEWAY_EXECUTOR_URL: http://host.docker.internal:8090
-      # URL do scci-core p/ os módulos Java (acesso/login, documentos, sessão) — SEM isso o /w/login
-      # cai no default localhost:8090 (= o próprio gateway no container) -> "acesso indisponivel".
-      LAUNCHER_SCCI_CORE_URL: http://host.docker.internal:8090
+      # roteamento dos 3 trilhos — todos na rede do host, entao localhost.
+      GATEWAY_HIBRIDO_URL: http://localhost:8090
+      GATEWAY_PURO_URL: http://localhost:8092
+      GATEWAY_EXECUTOR_URL: http://localhost:8090
+      # URL do scci-core p/ os módulos Java (acesso/login, documentos, sessão).
+      LAUNCHER_SCCI_CORE_URL: http://localhost:8090
       # URL do launcher (executor Pascal) p/ o log-evento (sccilog)
-      LAUNCHER_PASCAL_EXECUTOR_URL: http://launcher:8091
+      LAUNCHER_PASCAL_EXECUTOR_URL: http://localhost:8091
       OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
       OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
-    # os scci-core estao na rede do HOST; o gateway (bridge) os alcanca por host.docker.internal
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "8083:8083"
+    volumes:
+      # o gateway le o launcherenv.ini do ambiente (SCCI_SESSION) — mesma RAIZ dos scci-core.
+      - ${AMBIENTES_ROOT:-/home}:${AMBIENTES_ROOT:-/home}:ro
+      # - /u10:/u10:ro
+      # - /u11:/u11:ro
     restart: unless-stopped
