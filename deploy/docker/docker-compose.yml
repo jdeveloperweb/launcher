@@ -1,17 +1,20 @@
 # ============================================================================
-#  Os 3 trilhos Java/Pascal do Strangler (README) via Docker: scci-core PURO
-#  (:8092), scci-core HIBRIDO (:8090) e launcher (:8091), + o Redis compartilhado.
-#  gateway-scci e Configurador NAO estao aqui (fora de escopo deste compose).
+#  Os trilhos Java/Pascal do Strangler (README) via Docker: gateway-scci (:8083),
+#  scci-core PURO (:8092), scci-core HIBRIDO (:8090), launcher (:8091) + Redis.
+#  (o Configurador e o Kong nao estao aqui — sobem a parte.)
 #
-#  Pre-requisito: os jars ja compilados (mvn -DskipTests clean package na raiz).
+#  Os Dockerfiles compilam o jar A PARTIR DO FONTE (multi-stage) — NAO precisa de
+#  `mvn package` antes. O `context: ../..` aponta pra RAIZ do monorepo (parent pom +
+#  modulos), que o build precisa; cada servico usa seu `dockerfile:`.
+#
 #  Uso:
-#    cp .env.example .env   # ajuste os paths do Pascal legado
-#    docker compose --env-file .env build
+#    cp .env.example .env               # ajuste os paths do Pascal legado (hibrido/launcher)
+#    DOCKER_BUILDKIT=1 docker compose --env-file .env build
 #    docker compose --env-file .env up -d
 #
 #  scci-core-hibrido e launcher so executam Pascal DE VERDADE se os volumes abaixo
-#  apontarem pra caixa legada real (binfpc + ambientes). Sem isso, sobem e passam
-#  no health check, mas chamadas que dependam do Pascal falham (sem o binario).
+#  apontarem pra caixa legada real (binfpc + ambientes). Sem isso, sobem e passam no
+#  health check, mas chamadas que dependam do Pascal falham (sem o binario).
 # ============================================================================
 name: scci
 
@@ -30,7 +33,8 @@ services:
 
   scci-core-puro:
     build:
-      context: ../../scci-core/bootstrap
+      context: ../..
+      dockerfile: scci-core/bootstrap/Dockerfile
     image: scci-core:local
     container_name: scci-core-puro
     networks: [scci-net]
@@ -48,8 +52,9 @@ services:
 
   scci-core-hibrido:
     build:
-      context: ../../scci-core/bootstrap
-    image: scci-core:local
+      context: ../..
+      dockerfile: scci-core/bootstrap/Dockerfile
+    image: scci-core:local            # mesma imagem do puro (muda so o SCCI_SDK)
     container_name: scci-core-hibrido
     networks: [scci-net]
     depends_on: [redis]
@@ -69,17 +74,42 @@ services:
       - "8090:8090"
     restart: unless-stopped
 
+  launcher:
+    build:
+      context: ../..
+      dockerfile: launcher/Dockerfile
+    image: launcher:local
+    container_name: scci-launcher
+    networks: [scci-net]
+    environment:
+      SERVER_PORT: 8091
+      EXECUTOR_TRANSPORTE: uds
+      EXECUTOR_SHIM: /u/scci/binfpc/oserver-shim
+      OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
+      OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
+    volumes:
+      - ${PASCAL_BINFPC_HOST_PATH:-/u/scci/binfpc}:/u/scci/binfpc:ro
+      - ${PASCAL_AMBIENTES_HOST_PATH:-/u/scci/ambientes}:/u/scci/ambientes:ro
+    ports:
+      - "8091:8091"
+    restart: unless-stopped
+
   gateway-scci:
     build:
-      context: ../../gateway-scci/bootstrap
+      context: ../..
+      dockerfile: gateway-scci/bootstrap/Dockerfile
     image: gateway-scci:local
     container_name: scci-gateway
     networks: [scci-net]
-    depends_on: [redis]
+    depends_on: [redis, scci-core-puro, scci-core-hibrido]
     environment:
       SERVER_PORT: 8083
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      # roteamento dos 3 trilhos (o gateway aponta pros containers pela rede scci-net)
+      GATEWAY_HIBRIDO_URL: http://scci-core-hibrido:8090
+      GATEWAY_PURO_URL: http://scci-core-puro:8092
+      GATEWAY_EXECUTOR_URL: http://scci-core-hibrido:8090
       OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
       OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
     ports:

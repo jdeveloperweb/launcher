@@ -1,0 +1,35 @@
+# O contexto do build Docker e a RAIZ do monorepo (os Dockerfiles compilam o fonte).
+# Aqui cortamos tudo que NAO e fonte, pra o contexto ser pequeno e o build rapido.
+
+# saidas de build (o proprio Docker recompila)
+**/target/
+
+# controle de versao
+.git/
+.gitattributes
+
+# node / testes e2e (pesado)
+**/node_modules/
+qa-e2e/
+
+# binarios grandes de deploy (JDK, jmeter, pacotes)
+**/*.tar.gz
+**/*.zip
+**/*.jtl
+
+# a ferramenta Configurador (Node puro) — nao entra no build Java
+configurador/
+
+# docs / IDE / memoria / temporarios
+docs/
+.idea/
+.vscode/
+.claude/
+*.log
+*.md
+!pom.xml
+
+# os proprios artefatos Docker (nao precisam ir no contexto)
+**/Dockerfile
+.dockerignore
+deploy/docker/.env

@@ -1,12 +1,15 @@
 # =====================================================================
-#  Kong DB-less (declarativo) — ESCUTA NA 8082 (a porta que o Apache ja
-#  proxya) e roteia por DOMINIO para o reator hexagonal (8083). Assim o
-#  Apache NAO muda: Browser -> Apache -> Kong(8082) -> reator(8083).
+#  Kong DB-less (declarativo). Fluxo:
+#    Browser -> Apache -> Kong(PROXY :8000, em Docker) -> gateway-scci(:8083 no HOST)
 #
-#  IMPORTANTE: o Apache faz "ProxyPass /aejs-l/rest http://127.0.0.1:8082/"
-#  COM barra final -> ele REMOVE o /aejs-l/rest e o Kong recebe /w/login,
-#  /w/password, /w (sem prefixo). Por isso as rotas abaixo sao /w/* e
-#  strip_path=false (o Kong repassa o path como veio para o reator 8083).
+#  IMPORTANTE 1 (upstream): o Kong roda EM CONTAINER, entao "127.0.0.1:8083"
+#  apontaria pro proprio container, NAO pro gateway do host -> 502. Por isso o
+#  url e "host.docker.internal:8083" (o compose ja mapeia via extra_hosts).
+#  Se um dia rodar o Kong NATIVO (nao-docker), troque de volta para 127.0.0.1:8083.
+#
+#  IMPORTANTE 2 (path): o Apache faz "ProxyPass /aejs-l/rest http://127.0.0.1:8000/"
+#  -> remove o /aejs-l/rest e o Kong recebe /w/login, /w/password, /w, /sccidoc.
+#  Por isso as rotas abaixo sao esses paths com strip_path=false (repassa como veio).
 # =====================================================================
 _format_version: "3.0"
 _transform: true
@@ -14,7 +17,7 @@ _transform: true
 services:
   # -------- dominio AUTENTICACAO --------
   - name: autenticacao
-    url: http://127.0.0.1:8083
+    url: http://host.docker.internal:8083
     routes:
       - name: r-login
         paths: [/w/login]
@@ -42,7 +45,7 @@ services:
 
   # -------- dominio DOCUMENTOS (canal de arquivos sccidoc) --------
   - name: documentos
-    url: http://127.0.0.1:8083
+    url: http://host.docker.internal:8083
     routes:
       - name: r-sccidoc
         paths: [/sccidoc]
@@ -53,7 +56,7 @@ services:
   # Prefixo mais curto: o Kong prioriza o path mais longo, entao /w/login e
   # /w/password acima ganham; o resto de /w cai aqui.
   - name: execucao
-    url: http://127.0.0.1:8083
+    url: http://host.docker.internal:8083
     routes:
       - name: r-dispatch
         paths: [/w]
@@ -83,6 +86,6 @@ plugins:
   # Requer no container kong:  -e KONG_TRACING_INSTRUMENTATIONS=all -e KONG_TRACING_SAMPLING_RATE=1.0
   - name: opentelemetry
     config:
-      endpoint: http://127.0.0.1:4318/v1/traces
+      endpoint: http://host.docker.internal:4318/v1/traces   # collector no HOST (Kong em Docker); non-blocking
       resource_attributes:
         service.name: kong
