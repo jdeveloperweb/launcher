@@ -1,0 +1,15 @@
+com/prognum/gateway/autenticacao/scc/SccSessionRepository.class
+com/prognum/gateway/execucao/pascal/ClientePascalExecutor$ExecutarResponse.class
+com/prognum/gateway/execucao/pascal/ClientePascalExecutor.class
+com/prognum/gateway/documentos/scci/ClienteScciCoreDocumentos$DocumentoNaoEncontradoRemoto.class
+com/prognum/gateway/execucao/pascal/ClientePascalExecutor$ExecutarRequest.class
+com/prognum/gateway/roteamento/ConfigFeatureRegistry$Flag.class
+com/prognum/gateway/autenticacao/scci/ClienteScciCoreAcesso.class
+com/prognum/gateway/documentos/scci/ClienteScciCoreDocumentos.class
+com/prognum/gateway/documentos/chunked/StagingUploadFileSystem.class
+com/prognum/gateway/identidade/scc/MapeamentoAmbienteScc.class
+com/prognum/gateway/autenticacao/scci/ClienteLogEvento.class
+com/prognum/gateway/roteamento/ConfigFeatureRegistry.class
+com/prognum/gateway/documentos/chunked/LimpezaUploadStagingJob.class
+com/prognum/gateway/roteamento/ConfigRotaExecucao.class
+com/prognum/gateway/autenticacao/redis/RedisRepositorioSessao.class

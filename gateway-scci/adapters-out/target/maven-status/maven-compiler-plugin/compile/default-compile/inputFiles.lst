@@ -1,0 +1,11 @@
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/autenticacao/redis/RedisRepositorioSessao.java
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/autenticacao/scc/SccSessionRepository.java
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/autenticacao/scci/ClienteLogEvento.java
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/autenticacao/scci/ClienteScciCoreAcesso.java
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/documentos/chunked/LimpezaUploadStagingJob.java
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/documentos/chunked/StagingUploadFileSystem.java
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/documentos/scci/ClienteScciCoreDocumentos.java
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/execucao/pascal/ClientePascalExecutor.java
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/identidade/scc/MapeamentoAmbienteScc.java
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/roteamento/ConfigFeatureRegistry.java
+/workspace/gateway-scci/adapters-out/src/main/java/com/prognum/gateway/roteamento/ConfigRotaExecucao.java

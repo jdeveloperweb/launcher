@@ -1,0 +1,8 @@
+/workspace/gateway-scci/application/src/main/java/com/prognum/gateway/autenticacao/SessaoService.java
+/workspace/gateway-scci/application/src/main/java/com/prognum/gateway/documentos/DocumentoService.java
+/workspace/gateway-scci/application/src/main/java/com/prognum/gateway/documentos/EnvioDocumentoService.java
+/workspace/gateway-scci/application/src/main/java/com/prognum/gateway/documentos/RoteadorBaixarDocumento.java
+/workspace/gateway-scci/application/src/main/java/com/prognum/gateway/documentos/RoteadorEnviarDocumento.java
+/workspace/gateway-scci/application/src/main/java/com/prognum/gateway/documentos/UploadChunkadoService.java
+/workspace/gateway-scci/application/src/main/java/com/prognum/gateway/execucao/DespachoService.java
+/workspace/gateway-scci/application/src/main/java/com/prognum/gateway/execucao/RoteadorExecucao.java

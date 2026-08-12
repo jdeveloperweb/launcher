@@ -1,0 +1,10 @@
+com/prognum/gateway/documentos/rest/UploadChunkadoController.class
+com/prognum/gateway/documentos/rest/DocumentosController.class
+com/prognum/gateway/documentos/rest/SccidocController.class
+com/prognum/gateway/compartilhado/web/RequestIdFilter.class
+com/prognum/gateway/execucao/rest/DespachoController.class
+com/prognum/gateway/compartilhado/web/SlashNormalizationFilter.class
+com/prognum/gateway/licencas/rest/LicencasController.class
+com/prognum/gateway/autenticacao/rest/AutenticacaoController.class
+com/prognum/gateway/compartilhado/web/AdminAmbienteController.class
+com/prognum/gateway/compartilhado/web/AdminSessoesController.class

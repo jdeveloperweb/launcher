@@ -1,0 +1,153 @@
+# =====================================================================
+#  Launcher SCCI HEXAGONAL — reator na porta 8083 (atras do Kong, na 8082,
+#  que o Apache proxya). Backend REAL: a conexao de cada ambiente vem do
+#  launcherenv.ini (multi-banco), lida por request.
+# =====================================================================
+server:
+  port: 8083
+
+spring:
+  threads:
+    virtual:
+      enabled: ${VIRTUAL_THREADS:false}   # borda sem JNA; VT ok. Cuidado c/ pinning do Oracle JDBC (medir). Off por padrao.
+  application:
+    name: gateway-scci        # rename: ex-"launcher" (borda/orquestrador)
+  servlet:
+    multipart:                        # upload de documentos (canal sccidoc / putDoc)
+      # Doc Final de Requisitos (Upload/Download): tamanho maximo de upload e OBRIGATORIO e
+      # parametrizavel -- este e o teto de transporte do reator (sempre aplicado pelo Spring; nao
+      # ha caminho de upload sem limite). A REGRA de tamanho (se houver) e do programa wdoc REAL,
+      # que le a config do launcherenv.ini (o reator NAO reimplementa isso - so executa o wdoc e
+      # monta o ambiente via LauncherEnvReader). Na frente de tudo, o Apache ja barra em 30MB
+      # (LimitRequestBody), igual no /aejs. Por isso deixamos o reator ACIMA de 30MB: ele nunca
+      # rejeita antes do Apache nem antes do wdoc (que e quem deve decidir a regra fina).
+      max-file-size: ${UPLOAD_MAX_FILE:50MB}
+      max-request-size: ${UPLOAD_MAX_REQUEST:60MB}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}   # redis (docker, host network)
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+
+# Doc Final de Requisitos (Autenticacao/Sessao): cache de ambientes (launcherenv.ini), parametrizavel.
+# NAO cacheia credencial/senha de usuario final (essa e sempre lida ao vivo no banco).
+common:
+  environment:
+    cache-habilitado: ${ENV_CACHE_HABILITADO:true}
+    cache-ttl-segundos: ${ENV_CACHE_TTL:300}   # 0 (ou negativo) = sem expiracao por tempo
+
+launcher:
+  # scci-core: o monolito modular (dominios em Java). O roteador chama o REST interno dele quando a
+  # feature-flag do modulo aponta JAVA; senao executa o programa Pascal (wdoc/wtela/...).
+  scci-core:
+    url: ${SCCI_CORE_URL:http://localhost:8090}
+  # pascal-executor: a ancora legada (JNA/oserver fora do launcher). O RoteadorExecutor chama o REST
+  # interno dele quando a flag 'executor.remoto' esta ligada; senao usa a ponte JNA LOCAL (fallback).
+  pascal-executor:
+    url: ${PASCAL_EXECUTOR_URL:http://localhost:8091}
+  # Feature-flags do Strangler (ConfigFeatureRegistry -> mapa 'flags'). Sem entrada = PASCAL (executa o
+  # binario). A chave e o NOME consultado pelo roteador: 'documentos.<Metodo>' (override por metodo) ou
+  # 'documentos' (default do dominio). Chave com ponto -> notacao de colchetes '[...]' (bind do Spring).
+  # Resiliencia: se o scci-core estiver fora, o cliente cai no Pascal automaticamente.
+  roteamento:
+    flags:
+      "[documentos.GetDocumento]": { habilitado: true }   # GetDocumento (por ID) -> scci-core (Java). VALIDADO ao vivo.
+      # "[documentos]": { habilitado: true }               # ligaria TODO o dominio (download + upload) -> Java
+      # --- acesso (login/senha/etc -> scci-core). Resiliencia: scci-core fora -> auth LOCAL (fallback).
+      "[acesso.Login]": { habilitado: true }               # /w/login -> scci-core (acesso). VALIDADO ao vivo (supervisor).
+      # "[acesso.TrocaSenha]": { habilitado: true }        # /w/password
+      # "[acesso.ValidaAcesso]": { habilitado: true }      # /w/valida-acesso
+      # (acesso.EmailPwd removido: recuperacao automatica de senha por e-mail fora do escopo inicial)
+      # "[acesso]": { habilitado: true }                   # ligaria TODO o dominio acesso -> scci-core
+  # (execucao Pascal e SEMPRE via pascal-executor agora; o launcher nao tem mais ponte JNA local)
+  sessao:
+    # Doc Final de Requisitos (Autenticacao/Sessao): default = sessao infinita (comportamento atual).
+    # 0 (ou negativo) = sem expiracao; um valor positivo liga o timeout por inatividade (ex.: 1800 = 30min).
+    ttl-segundos: 0
+  log:
+    # Req 2.7: pseudonimiza o USUARIO nos logs (u_<hash>). true (default) preserva o comportamento de
+    # producao; em ambiente interno/ops pode-se desligar (usuario REAL na chamada). IP e sessao seguem
+    # sempre mascarados/pseudonimizados. Alteravel pelo configurador (restart do launcher).
+    anonimizar-usuario: ${LOG_ANONIMIZAR_USUARIO:true}
+  documentos:
+    # Doc Final de Requisitos (Upload/Download): lista parametrica de extensoes permitidas no upload,
+    # validada na BORDA (unico ponto de entrada, independente de qual backend a flag escolher).
+    # Vazio = sem restricao adicional aqui.
+    extensoes-permitidas: pdf,xml,jpg,jpeg,png,gif,bmp,tif,tiff,htm,html,txt,csv,rtf,zip,doc,dot,docx,xls,xlt,xla,xlsx,ppt,pot,pps,pptx,odt,ods,odp
+    chunked:
+      # Doc Final de Requisitos (Upload/Download): endpoint PROPOSTO /sccidoc/upload-chunked/* (upload
+      # em blocos). tamanho-maximo-bytes default = 15GB (> 10GB exigido); calibrar pelo heap disponivel
+      # (ver limite documentado em UploadChunkadoService — a montagem final ainda materializa em
+      # memoria antes de entregar ao pipeline existente).
+      staging-dir: ${UPLOAD_CHUNKED_STAGING_DIR:${java.io.tmpdir}/scci-upload-staging}
+      tamanho-maximo-bytes: ${UPLOAD_CHUNKED_MAX_BYTES:16106127360}
+      tamanho-bloco-maximo-bytes: ${UPLOAD_CHUNKED_BLOCO_MAX_BYTES:10485760}
+      limpeza:
+        max-idade-minutos: ${UPLOAD_CHUNKED_LIMPEZA_MAX_IDADE_MIN:240}   # uploads abandonados > isso -> removidos
+        intervalo-ms: ${UPLOAD_CHUNKED_LIMPEZA_INTERVALO_MS:900000}      # a cada 15min varre e limpa
+  legacy:
+    wcop:
+      contexto: CORP_WEB          # w.ini [Servidor] Contexto (default CORP_WEB)
+  wcop:
+    # Doc Final de Requisitos (2.9.3): "modo dev aceita requisicao nao cifrada" -- fora do modo dev,
+    # deve EXIGIR W_COP. Default FALSE preserva o comportamento atual (deploy/payload/smoke-test.sh
+    # manda JSON puro hoje, e nao ha profile de ambiente formalizado no projeto ainda). Ligar
+    # (true) exige coordenar com o front que TODA chamada a /w/*, /w e /sccidoc (JSON) vai cifrada --
+    # NAO se aplica ao upload multipart /sccidoc (cifragem por header opcional, ver SccidocController).
+    exigir-cifrado: ${WCOP_EXIGIR_CIFRADO:false}
+  executor:
+    timeout-segundos: 30
+    max-concorrentes: 8           # espelha o MAXCONN do launcher
+    max-tentativas: 3             # retry so em GET (idempotente)
+    retry-delay-ms: 120
+  auth:
+    # Doc Final de Requisitos (Autenticacao): CAPTCHA e recuperacao automatica de senha por e-mail
+    # estao fora do escopo inicial -- parametros removidos (max-erros-captcha, captcha-habilitado).
+    login-err-delay-ms: 1000
+    max-erros: 5
+    dias-aviso-expiracao: 5
+    # QtMaxLogin do launcher legado: capacidade HERDADA, mantida desligada por padrao (0 = ilimitado).
+    # Doc Final de Requisitos (Gestao de Sessoes / Escopo Negativo): "limitacao de sessoes por
+    # usuario" esta fora do escopo ATIVO desta entrega -- NAO ligar sem decisao de negocio explicita
+    # (ex.: 3 limitaria a 3 sessoes/usuario).
+    max-logins-simultaneos: 0
+    # Metodo de login por cliente (trecho-do-ambiente -> METODO). Sem match => BANCO (loginbd, md5crypt).
+    # Familia "payload-mapeado" (IdP externo ja autenticou): MAPEADO_ITAU/MAPEADO_C6/MAPEADO_BRB/
+    # MAPEADO_CASHMEWEB/MAPEADO_DIRETO/MAPEADO_UNICRED/MAPEADO_AILOS. Descomente e ajuste os trechos reais:
+    # metodos:
+    #   itau: MAPEADO_ITAU
+    #   c6bank: MAPEADO_C6
+    #   brb: MAPEADO_BRB
+    #   cashme: MAPEADO_CASHMEWEB
+    #   unicred: MAPEADO_UNICRED
+    #   ailos: MAPEADO_AILOS
+    policy:
+      min-caracteres: 8
+      requer-composicao: true
+      min-letras: 1
+      min-maiusculas: 1
+      min-digitos: 1
+      min-especiais: 1
+      max-repetidos: 3
+      max-sequenciais: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  otlp:
+    metrics:
+      export:
+        url: ${OTLP_METRICS_URL:http://127.0.0.1:4318/v1/metrics}   # ADOT/OTel Collector
+        step: 10s
+        resource-attributes:
+          service.name: gateway-scci
+    tracing:
+      endpoint: ${OTLP_TRACES_URL:http://127.0.0.1:4318/v1/traces}  # spans -> Collector -> X-Ray
+  tracing:
+    sampling:
+      probability: ${TRACE_SAMPLING:1.0}   # 100% em teste; reduzir em producao
+  metrics:
+    tags:
+      application: gateway-scci

@@ -1,4 +1,4 @@
-/build/common/environment/src/main/java/com/prognum/common/environment/JdbcConnectionFactory.java
-/build/common/environment/src/main/java/com/prognum/common/environment/LauncherEnvReader.java
-/build/common/environment/src/main/java/com/prognum/common/environment/PoliticaSenhaIni.java
-/build/common/environment/src/main/java/com/prognum/common/environment/SccDbConfig.java
+/workspace/common/environment/src/main/java/com/prognum/common/environment/JdbcConnectionFactory.java
+/workspace/common/environment/src/main/java/com/prognum/common/environment/LauncherEnvReader.java
+/workspace/common/environment/src/main/java/com/prognum/common/environment/PoliticaSenhaIni.java
+/workspace/common/environment/src/main/java/com/prognum/common/environment/SccDbConfig.java

@@ -1,0 +1,7 @@
+/workspace/gateway-scci/application/src/test/java/com/prognum/gateway/autenticacao/SessaoServiceTest.java
+/workspace/gateway-scci/application/src/test/java/com/prognum/gateway/documentos/DocumentoServiceTest.java
+/workspace/gateway-scci/application/src/test/java/com/prognum/gateway/documentos/EnvioDocumentoServiceTest.java
+/workspace/gateway-scci/application/src/test/java/com/prognum/gateway/documentos/RoteadorBaixarDocumentoTest.java
+/workspace/gateway-scci/application/src/test/java/com/prognum/gateway/documentos/RoteadorEnviarDocumentoTest.java
+/workspace/gateway-scci/application/src/test/java/com/prognum/gateway/documentos/UploadChunkadoCleanupTest.java
+/workspace/gateway-scci/application/src/test/java/com/prognum/gateway/execucao/DespachoServiceTest.java
