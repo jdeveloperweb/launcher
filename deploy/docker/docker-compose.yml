@@ -47,8 +47,10 @@ services:
       OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
       OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
     volumes:
-      # ambiente do cliente (launcherenv.ini + config do banco) — necessário p/ login/documentos
-      - ${CLIENTE_HOST_PATH:-/home/c6bank}:${CLIENTE_HOST_PATH:-/home/c6bank}:ro
+      # RAIZ(ES) dos ambientes — o ambiente chega por PARAMETRO, entao monta o PARENT (nao um cliente).
+      - ${AMBIENTES_ROOT:-/home}:${AMBIENTES_ROOT:-/home}:ro
+      # - /u10:/u10:ro
+      # - /u11:/u11:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -75,9 +77,12 @@ services:
     volumes:
       - ${PASCAL_BINFPC_HOST_PATH:-/u/scci/binfpc}:/u/scci/binfpc:ro
       - ${PASCAL_AMBIENTES_HOST_PATH:-/u/scci/ambientes}:/u/scci/ambientes:ro
-      # ambiente do cliente (launcherenv.ini + config do banco) — sem isso o login não lê a config do DB.
-      # ajuste/adicione os paths dos ambientes que voce testa (ex.: c6bank).
-      - ${CLIENTE_HOST_PATH:-/home/c6bank}:${CLIENTE_HOST_PATH:-/home/c6bank}:ro
+      # RAIZ(ES) dos ambientes dos clientes. O ambiente chega por PARAMETRO no request (ex.:
+      # /home/c6bank/dados/pg/dados), entao o container precisa enxergar QUALQUER path possivel:
+      # monta o PARENT, nao um cliente. Ajuste AMBIENTES_ROOT no .env; adicione outros roots se houver.
+      - ${AMBIENTES_ROOT:-/home}:${AMBIENTES_ROOT:-/home}:ro
+      # - /u10:/u10:ro
+      # - /u11:/u11:ro
     # se o banco do cliente estiver no HOST (launcherenv apontando p/ localhost), use host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
