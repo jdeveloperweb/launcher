@@ -37,12 +37,16 @@ services:
       dockerfile: scci-core/bootstrap/Dockerfile
     image: scci-core:local
     container_name: scci-core-puro
-    networks: [scci-net]
+    # REDE DO HOST: o launcherenv aponta o Postgres p/ localhost (= o HOST). Com host network o
+    # container enxerga Postgres e Redis do host em localhost, SEM tocar no launcherenv (que e
+    # compartilhado com o Pascal legado). Incompativel com networks/ports/extra_hosts: a porta
+    # vem do SERVER_PORT e o processo bind direto no host.
+    network_mode: host
     depends_on: [redis]
     environment:
       SERVER_PORT: 8092
       SCCI_SDK: "false"
-      REDIS_HOST: redis
+      REDIS_HOST: localhost        # redis publicado no host:6379
       REDIS_PORT: 6379
       OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
       OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
@@ -51,10 +55,6 @@ services:
       - ${AMBIENTES_ROOT:-/home}:${AMBIENTES_ROOT:-/home}:ro
       # - /u10:/u10:ro
       # - /u11:/u11:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "8092:8092"
     restart: unless-stopped
 
   scci-core-hibrido:
@@ -63,14 +63,17 @@ services:
       dockerfile: scci-core/bootstrap/Dockerfile
     image: scci-core:local            # mesma imagem do puro (muda so o SCCI_SDK)
     container_name: scci-core-hibrido
-    networks: [scci-net]
+    # REDE DO HOST (mesmo motivo do puro): launcherenv aponta o Postgres p/ localhost = o HOST.
+    # Sem isso o /interno/acesso/login da 500 (Connection refused ao banco). Incompativel com
+    # networks/ports/extra_hosts. Os volumes (filesystem) continuam funcionando normalmente.
+    network_mode: host
     depends_on: [redis]
     environment:
       SERVER_PORT: 8090
       SCCI_SDK: "true"
       EXECUTOR_TRANSPORTE: uds
       EXECUTOR_SHIM: /u/scci/binfpc/oserver-shim
-      REDIS_HOST: redis
+      REDIS_HOST: localhost        # redis publicado no host:6379
       REDIS_PORT: 6379
       OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
       OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
@@ -83,11 +86,6 @@ services:
       - ${AMBIENTES_ROOT:-/home}:${AMBIENTES_ROOT:-/home}:ro
       # - /u10:/u10:ro
       # - /u11:/u11:ro
-    # se o banco do cliente estiver no HOST (launcherenv apontando p/ localhost), use host.docker.internal
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "8090:8090"
     restart: unless-stopped
 
   launcher:
@@ -122,17 +120,21 @@ services:
       SERVER_PORT: 8083
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      # roteamento dos 3 trilhos (o gateway aponta pros containers pela rede scci-net)
-      GATEWAY_HIBRIDO_URL: http://scci-core-hibrido:8090
-      GATEWAY_PURO_URL: http://scci-core-puro:8092
-      GATEWAY_EXECUTOR_URL: http://scci-core-hibrido:8090
+      # roteamento dos 3 trilhos. Os scci-core rodam em REDE DO HOST (network_mode: host) p/ ver o
+      # Postgres do cliente em localhost, entao o gateway (bridge) fala com eles via host.docker.internal.
+      GATEWAY_HIBRIDO_URL: http://host.docker.internal:8090
+      GATEWAY_PURO_URL: http://host.docker.internal:8092
+      GATEWAY_EXECUTOR_URL: http://host.docker.internal:8090
       # URL do scci-core p/ os módulos Java (acesso/login, documentos, sessão) — SEM isso o /w/login
       # cai no default localhost:8090 (= o próprio gateway no container) -> "acesso indisponivel".
-      LAUNCHER_SCCI_CORE_URL: http://scci-core-hibrido:8090
+      LAUNCHER_SCCI_CORE_URL: http://host.docker.internal:8090
       # URL do launcher (executor Pascal) p/ o log-evento (sccilog)
       LAUNCHER_PASCAL_EXECUTOR_URL: http://launcher:8091
       OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
       OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
+    # os scci-core estao na rede do HOST; o gateway (bridge) os alcanca por host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "8083:8083"
     restart: unless-stopped
