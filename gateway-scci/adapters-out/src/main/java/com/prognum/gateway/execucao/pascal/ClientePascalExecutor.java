@@ -1,10 +1,12 @@
 package com.prognum.gateway.execucao.pascal;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import com.prognum.gateway.execucao.model.ComandoExecucao;
@@ -26,9 +28,21 @@ public class ClientePascalExecutor implements ExecutorPrograma {
 
     private final RestClient rest;
 
+    /** Compat: timeout de leitura default (60s) — cobre o cap de execucao do Pascal (30s) + margem. */
     public ClientePascalExecutor(RestClient.Builder builder, String baseUrl) {
+        this(builder, baseUrl, 60_000L);
+    }
+
+    public ClientePascalExecutor(RestClient.Builder builder, String baseUrl, long readTimeoutMs) {
         // builder GERENCIADO (instrumentado pelo Micrometer) — injeta o traceparent p/ ligar o trace ponta a ponta.
-        this.rest = builder.baseUrl(baseUrl).build();
+        // READ-TIMEOUT explicito e generoso: operacoes de escrita PESADAS (ex.: woriginacao/OperacaoSalvaSimulacao,
+        // ~14s) passavam do default e o gateway devolvia "indisponivel" MESMO tendo salvo no backend (erro falso +
+        // risco de duplicata no retry). O legado nao tem isso (socket direto no oserver). Aqui cobrimos o cap do
+        // executor (executor.timeout-ms, 30s) + margem. Connect-timeout curto (o destino e local).
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(Duration.ofMillis(Math.max(1_000L, readTimeoutMs)));
+        this.rest = builder.baseUrl(baseUrl).requestFactory(factory).build();
     }
 
     @Override

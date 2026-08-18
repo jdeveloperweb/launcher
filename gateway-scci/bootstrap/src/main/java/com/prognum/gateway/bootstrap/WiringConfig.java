@@ -72,22 +72,25 @@ public class WiringConfig {
     @Bean
     @Primary
     ExecutorPrograma executorPascal(RestClient.Builder b,
-            @Value("${gateway.executor-url:${launcher.pascal-executor.url:http://localhost:8091}}") String url) {
-        return new ClientePascalExecutor(b, url);
+            @Value("${gateway.executor-url:${launcher.pascal-executor.url:http://localhost:8091}}") String url,
+            @Value("${launcher.executor.http-timeout-segundos:60}") long timeoutSeg) {
+        return new ClientePascalExecutor(b, url, timeoutSeg * 1000L);
     }
 
     // hibrido — scci-core com SDK embutido (Java orquestra + Pascal in-process).
     @Bean
     ExecutorPrograma executorHibrido(RestClient.Builder b,
-            @Value("${gateway.hibrido-url:http://localhost:8090}") String url) {
-        return new ClientePascalExecutor(b, url);
+            @Value("${gateway.hibrido-url:http://localhost:8090}") String url,
+            @Value("${launcher.executor.http-timeout-segundos:60}") long timeoutSeg) {
+        return new ClientePascalExecutor(b, url, timeoutSeg * 1000L);
     }
 
     // puro — scci-core PURO (Java, sem SDK/Pascal), deploy separado.
     @Bean
     ExecutorPrograma executorPuro(RestClient.Builder b,
-            @Value("${gateway.puro-url:http://localhost:8092}") String url) {
-        return new ClientePascalExecutor(b, url);
+            @Value("${gateway.puro-url:http://localhost:8092}") String url,
+            @Value("${launcher.executor.http-timeout-segundos:60}") long timeoutSeg) {
+        return new ClientePascalExecutor(b, url, timeoutSeg * 1000L);
     }
 
     // Roteador /w: a feature-flag por operacao (RotaExecucaoRegistry) escolhe o trilho e delega ao executor certo.
