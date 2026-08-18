@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,8 +60,15 @@ public class DespachoController {
         this.exigirCifrado = exigirCifrado;
     }
 
-    @PostMapping("/w")
-    public ResponseEntity<byte[]> dispatch(HttpServletRequest req, @RequestBody(required = false) byte[] body) {
+    // Aceita os DOIS formatos do front (fiel ao AejsWebController legado):
+    //   1) POST /w                 + corpo JSON  {programName, methodName, requestMethod, ...}   (dispatch)
+    //   2) POST /w/{prog}/{met}     + corpo form-encoded  tela=...&sessionKey=...                 (abrir tela)
+    // Sem o (2), o front recebia 404 ao abrir telas modais (wtela/tela) e a janela nao abria.
+    @PostMapping({"/w", "/w/{prog}/{met}"})
+    public ResponseEntity<byte[]> dispatch(HttpServletRequest req,
+            @PathVariable(name = "prog", required = false) String progPath,
+            @PathVariable(name = "met", required = false) String metPath,
+            @RequestBody(required = false) byte[] body) {
         String rawAscii = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
         boolean cifrado = crypto.estaCifrado(rawAscii);
         if (exigirCifrado && !cifrado && body != null && body.length > 0) {
@@ -68,13 +76,27 @@ public class DespachoController {
             return resposta(false,
                     "{\"success\":false,\"message\":\"Requisicao deve ser cifrada (W_COP).\",\"codigo\":\"E006\"}");
         }
-        String json = cifrado ? crypto.decifraRequest(rawAscii)
+        String corpo = cifrado ? crypto.decifraRequest(rawAscii)
                 : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8));
 
-        Map<String, String> in = camposDoJson(json);
-        String programName = primeiro(in, "programName", "programa");
-        String methodName = primeiro(in, "methodName", "metodo");
-        String requestMethod = primeiro(in, "requestMethod");
+        // O corpo vem JSON (dispatch) OU form-encoded (abrir tela). Normaliza os campos e o rawJson
+        // que vai pro executor (JSON cru preserva nesting; do form monta um JSON flat).
+        boolean ehJson = corpo.stripLeading().startsWith("{");
+        Map<String, String> in = ehJson ? camposDoJson(corpo) : camposDoForm(corpo);
+        String json = ehJson ? corpo : mapParaJson(in);
+
+        // programa/metodo: o PATH (/w/{prog}/{met}) manda (formato do front ao abrir tela); senao o corpo.
+        // requestMethod no path-based e o verbo HTTP real (POST -> PostTela; GET -> GetTela).
+        String programName = progPath != null ? progPath : primeiro(in, "programName", "programa");
+        String methodName = metPath != null ? metPath : primeiro(in, "methodName", "metodo");
+        String requestMethod = progPath != null ? req.getMethod() : primeiro(in, "requestMethod");
+        // O front as vezes manda requestMethod="null"/vazio no corpo (a.metodo indefinido ao abrir tela
+        // pelo RModal). Fiel ao legado (que usa o REQUEST_METHOD HTTP), cai no verbo HTTP real (POST) ->
+        // PostTela. Sem isso, o montaMetodo geraria "Tela" (inexistente; wtela so tem Get/PostTela) ->
+        // "Rotina Tela nao encontrada" -> resposta SEM 'dados' -> o front quebra (b.dados undefined).
+        if (requestMethod == null || requestMethod.isBlank() || "null".equalsIgnoreCase(requestMethod)) {
+            requestMethod = req.getMethod();
+        }
 
         // VALIDA (papel do launcher): revalida o token ANTES de executar o programa.
         String sessionKey = primeiro(in, "sessionKey");
@@ -142,5 +164,38 @@ public class DespachoController {
             }
         }
         return null;
+    }
+
+    /** Parse do corpo form-encoded (chave=valor&chave=valor) — o formato do front ao abrir tela. */
+    private Map<String, String> camposDoForm(String corpo) {
+        Map<String, String> m = new LinkedHashMap<>();
+        if (corpo == null || corpo.isBlank()) {
+            return m;
+        }
+        for (String par : corpo.split("&")) {
+            int eq = par.indexOf('=');
+            if (eq <= 0) {
+                continue;   // ignora chave vazia (ex.: o "=&" inicial que o front manda)
+            }
+            m.put(urlDecode(par.substring(0, eq)), urlDecode(par.substring(eq + 1)));
+        }
+        return m;
+    }
+
+    /** Monta um JSON flat a partir do mapa (do form) — o executor converte pra PMEMORY XML. */
+    private String mapParaJson(Map<String, String> m) {
+        try {
+            return mapper.writeValueAsString(m);
+        } catch (Exception e) {
+            return "{}";
+        }
+    }
+
+    private static String urlDecode(String s) {
+        try {
+            return java.net.URLDecoder.decode(s, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return s;
+        }
     }
 }
