@@ -39,6 +39,10 @@ final class UdsShimBridge {
     }
 
     private static final int TOKEN_BYTES = 16;          // 32 chars hex
+    // Carencia p/ o programa sair LIMPO antes do destroyForcibly (SIGKILL): a finalizacao do processo faz o
+    // logoff/commit do banco; um kill abrupto faz o Oracle dar ROLLBACK da transacao pendente (o save do
+    // pretendente retornava sucesso mas nao persistia). Legado espera o filho terminar.
+    private static final long REAP_GRACE_MS = 2000;
     private static final SecureRandom RNG = new SecureRandom();
     private static final ScheduledExecutorService WATCHDOG =
             Executors.newSingleThreadScheduledExecutor(r -> {
@@ -177,10 +181,22 @@ final class UdsShimBridge {
         }
     }
 
-    /** Colhe o filho (o shim virou o programa via exec). Só mata se ainda vivo; a JVM reapa o zumbi. */
+    /**
+     * Colhe o filho (o shim virou o programa via exec). Da uma CARENCIA para ele sair LIMPO antes do
+     * destroyForcibly (SIGKILL): a finalizacao faz o logoff/commit do banco, e um kill abrupto faz o Oracle
+     * dar ROLLBACK da transacao pendente (o save do pretendente nao persistia). So forca se realmente travar.
+     */
     private static void colher(Process p) {
-        if (p != null && p.isAlive()) {
-            p.destroyForcibly();
+        if (p == null) {
+            return;
         }
+        try {
+            if (p.waitFor(REAP_GRACE_MS, TimeUnit.MILLISECONDS)) {
+                return;   // saiu limpo dentro da carencia -> transacao consolidada
+            }
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+        p.destroyForcibly();
     }
 }

@@ -47,6 +47,12 @@ final class NativeOserverBridge {
     private static final int WNOHANG = 1;
     private static final int FD_OSERVER = 6;   // fd bidirecional que o InitFD usa
 
+    // Carencia p/ o programa sair LIMPO antes de recorrer ao SIGKILL. A finalizacao do processo faz o
+    // logoff/commit do banco; um SIGKILL abrupto faz o Oracle dar ROLLBACK da transacao pendente (o save
+    // do pretendente via PutPretendente retornava sucesso mas NAO persistia — legado espera o filho sair).
+    private static final long REAP_GRACE_MS = 2000;
+    private static final long REAP_POLL_MS = 5;
+
     /** chdir mexe no estado GLOBAL do processo: serializa apenas a janela do spawn. */
     private static final Object SPAWN_LOCK = new Object();
 
@@ -198,13 +204,31 @@ final class NativeOserverBridge {
         }
     }
 
-    /** Colhe o filho (evita zumbi); se ainda estiver vivo, mata e colhe. */
+    /**
+     * Colhe o filho (evita zumbi). Da uma CARENCIA para ele sair LIMPO antes de recorrer ao SIGKILL: a
+     * finalizacao do processo faz o logoff/commit do banco, e um kill abrupto faz o Oracle dar ROLLBACK da
+     * transacao pendente (o save do pretendente retornava sucesso mas nao gravava). Fiel ao launcher legado,
+     * que aguarda o filho terminar. So mata se ele realmente travar (alem da carencia).
+     */
     private static void colher(CLib c, int pid) {
         IntByReference status = new IntByReference();
-        if (c.waitpid(pid, status, WNOHANG) == 0) {
-            c.kill(pid, SIGKILL);
-            c.waitpid(pid, status, 0);
+        if (c.waitpid(pid, status, WNOHANG) != 0) {
+            return;   // ja saiu (ou ja foi colhido) — caminho comum, sem custo
         }
+        long deadline = System.nanoTime() + REAP_GRACE_MS * 1_000_000L;
+        while (System.nanoTime() < deadline) {
+            try {
+                Thread.sleep(REAP_POLL_MS);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+            if (c.waitpid(pid, status, WNOHANG) != 0) {
+                return;   // saiu limpo dentro da carencia -> logoff normal -> transacao consolidada
+            }
+        }
+        c.kill(pid, SIGKILL);   // travou de verdade -> mata e colhe
+        c.waitpid(pid, status, 0);
     }
 
     private static String[] envArray(Map<String, String> env) {
