@@ -1,0 +1,70 @@
+# =====================================================================
+#  Kong DB-less — CONFIG DE TESTE DE CARGA (SEM rate-limiting).
+#  Igual ao kong.yml de producao, PORÉM com os plugins `rate-limiting`
+#  REMOVIDOS (login e global). Use SOMENTE para rodar a Parte I do teste
+#  de carga isolando o backend; NUNCA subir isso em producao.
+#
+#  Uso (no dir deploy/kong do servidor):
+#    cp kong.yml kong.prod.yml.bak            # backup do config real
+#    cp kong-loadtest.yml kong.yml            # ativa o config sem rate-limit
+#    docker compose restart kong              # recarrega
+#    # ...rodar a Parte I...
+#    cp kong.prod.yml.bak kong.yml            # restaura producao
+#    docker compose restart kong
+# =====================================================================
+_format_version: "3.0"
+_transform: true
+
+services:
+  # -------- dominio AUTENTICACAO --------
+  - name: autenticacao
+    url: http://host.docker.internal:8083
+    routes:
+      - name: r-login
+        paths: [/w/login]
+        strip_path: false
+        methods: [POST]
+        # rate-limiting REMOVIDO p/ o teste de carga (em prod: 20/min por IP)
+      - name: r-password
+        paths: [/w/password]
+        strip_path: false
+        methods: [POST]
+      - name: r-logout
+        paths: [/w/logout]
+        strip_path: false
+        methods: [POST]
+      - name: r-valida-acesso
+        paths: [/w/valida-acesso]
+        strip_path: false
+        methods: [POST]
+
+  # -------- dominio DOCUMENTOS (canal de arquivos sccidoc) --------
+  - name: documentos
+    url: http://host.docker.internal:8083
+    routes:
+      - name: r-sccidoc
+        paths: [/sccidoc]
+        strip_path: false
+        methods: [POST, GET]
+
+  # -------- dominio EXECUCAO (despacho /w) --------
+  - name: execucao
+    url: http://host.docker.internal:8083
+    routes:
+      - name: r-dispatch
+        paths: [/w]
+        strip_path: false
+        methods: [POST]
+
+plugins:
+  # rate-limiting GLOBAL REMOVIDO p/ o teste de carga (em prod: 300/min por IP)
+  - name: correlation-id
+    config:
+      header_name: X-Request-Id
+      generator: uuid
+      echo_downstream: true
+  - name: opentelemetry
+    config:
+      endpoint: http://host.docker.internal:4318/v1/traces
+      resource_attributes:
+        service.name: kong
