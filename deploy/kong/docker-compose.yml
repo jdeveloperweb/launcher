@@ -18,6 +18,10 @@ services:
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_ERROR_LOG: /dev/stderr
       KONG_ADMIN_LISTEN: 0.0.0.0:8001
+      # Teto do corpo da requisicao (nginx). Sem isto, o default (~1MB) rejeita upload grande com 413
+      # ANTES de chegar no gateway (ex.: OCR/documento de 9.5MB nao retornava). Subimos p/ 50MB (acima
+      # do LimitRequestBody 30MB do Apache, que segue sendo o teto real, igual ao /aejs legado).
+      KONG_NGINX_HTTP_CLIENT_MAX_BODY_SIZE: "50m"
     volumes:
       - ./kong.yml:/kong/kong.yml:ro
     ports:
