@@ -92,15 +92,16 @@ public class DespachoController {
         Map<String, String> in = ehJson ? camposDoJson(corpo) : camposDoForm(corpo);
         String json = ehJson ? corpo : mapParaJson(in);
 
-        // programa/metodo: o PATH (/w/{prog}/{met}) manda (formato do front ao abrir tela); senao o corpo.
-        // requestMethod no path-based e o verbo HTTP real (POST -> PostTela; GET -> GetTela).
+        // programa/metodo: o PATH (/w/{prog}/{met}) manda; senao o corpo.
         String programName = progPath != null ? progPath : primeiro(in, "programName", "programa");
         String methodName = metPath != null ? metPath : primeiro(in, "methodName", "metodo");
-        String requestMethod = progPath != null ? req.getMethod() : primeiro(in, "requestMethod");
-        // O front as vezes manda requestMethod="null"/vazio no corpo (a.metodo indefinido ao abrir tela
-        // pelo RModal). Fiel ao legado (que usa o REQUEST_METHOD HTTP), cai no verbo HTTP real (POST) ->
-        // PostTela. Sem isso, o montaMetodo geraria "Tela" (inexistente; wtela so tem Get/PostTela) ->
-        // "Rotina Tela nao encontrada" -> resposta SEM 'dados' -> o front quebra (b.dados undefined).
+        // requestMethod: o front CIFRADO forca o metodo HTTP para POST mas PRESERVA o metodo ORIGINAL no
+        // corpo (app.js: "a.jsonData.requestMethod = a.method; a.method='POST'"). Entao o requestMethod
+        // do CORPO e a verdade — ex.: combos/stores GET viram POST cifrado com requestMethod="GET" ->
+        // "Get"+metodo. So caimos no verbo HTTP real quando o corpo nao traz (chamada plaintext/dev/curl).
+        // Antes o path-based usava req.getMethod() (=POST forcado) -> "Post<metodo>" -> combo vazio
+        // ("Tipo de taxa invalido" etc.). Para 'tela', o corpo traz GET/POST reais -> Get/PostTela (ok).
+        String requestMethod = primeiro(in, "requestMethod");
         if (requestMethod == null || requestMethod.isBlank() || "null".equalsIgnoreCase(requestMethod)) {
             requestMethod = req.getMethod();
         }
