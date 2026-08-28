@@ -137,6 +137,28 @@ public class ProgramExecutor implements ExecutorPrograma {
             payload = paramsXml;
         }
 
+        boolean comCorpoBinario = comando.corpoBinario() != null;
+        ResultadoExecucao r = executaComRetry(metodo, payload, comCorpoBinario, bin, ambEnv, ambiente, ip,
+                programName, usuario);
+
+        // Fallback de NOME (funcoes 'ledados' do front: MontaDominiosFrameSimulacao, VerificaBases,
+        // GetDadosEntrada, ProcessaInformacoesAdicionaisGestao...): elas sao registradas no Pascal com o nome
+        // LITERAL, SEM prefixo de verbo. O reator prefixa pelo verbo e o DespachoController forca POST quando
+        // o front manda requestMethod vazio -> o nome vira "Post<Metodo>" -> "Rotina nao encontrada" -> a
+        // funcao nao roda -> combo/campo fica vazio (bugs AR_6/AR_34/AR_131). O legado so prefixa quando o
+        // requestMethod E um verbo; aqui: se o nome prefixado NAO existe, tenta o nome CRU (sem verbo).
+        // "Nao encontrada" = o metodo NAO rodou, entao o retry e seguro (sem efeito colateral / escrita dupla).
+        String metodoCru = capInicial(methodName);
+        if (!metodoCru.equals(metodo) && rotinaNaoEncontrada(r)) {
+            r = executaComRetry(metodoCru, payload, comCorpoBinario, bin, ambEnv, ambiente, ip,
+                    programName, usuario);
+        }
+        return r;
+    }
+
+    /** Monta o request (METD + DATA) e executa, com retry SO em metodo idempotente (Get*, sem corpo binario). */
+    private ResultadoExecucao executaComRetry(String metodo, byte[] payload, boolean comCorpoBinario, String bin,
+            Map<String, String> ambEnv, String ambiente, String ip, String programName, String usuario) {
         // request = METD ("Metodo,") + DATA (payload dos params)
         ByteArrayOutputStream req = new ByteArrayOutputStream();
         try {
@@ -146,9 +168,7 @@ public class ProgramExecutor implements ExecutorPrograma {
             return erro("Falha montando request.");
         }
 
-        // Retry so em chamadas idempotentes: deriva do metodo FINAL (Get*). Assim um verbo embutido
-        // no nome (ex.: "putX" sem requestMethod) NAO repete (evita escrita dupla). Sem corpo binario.
-        boolean idempotente = metodo.startsWith("Get") && comando.corpoBinario() == null;
+        boolean idempotente = metodo.startsWith("Get") && !comCorpoBinario;
         int tentativas = idempotente ? maxTentativas : 1;
         ResultadoExecucao r = null;
         for (int t = 1; t <= tentativas; t++) {
@@ -166,6 +186,15 @@ public class ProgramExecutor implements ExecutorPrograma {
             }
         }
         return r;
+    }
+
+    /** Resposta do oserver "Rotina &lt;Metodo&gt; nao encontrada" (dispara o fallback de nome cru). */
+    private static boolean rotinaNaoEncontrada(ResultadoExecucao r) {
+        if (r == null || r.corpo() == null) {
+            return false;
+        }
+        String c = r.corpo();
+        return c.contains("nao encontrada") || c.contains("não encontrada");
     }
 
     /** Executa o programa UMA vez (respeitando o limite de concorrencia), via ponte JNA. */
