@@ -18,8 +18,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.nio.charset.StandardCharsets;
@@ -60,24 +61,30 @@ public class DespachoController {
         this.exigirCifrado = exigirCifrado;
     }
 
-    // Aceita os DOIS formatos do front (fiel ao AejsWebController legado):
+    // Aceita os formatos do front (fiel ao AejsWebController legado, que decide pelo REQUEST_METHOD):
     //   1) POST /w                 + corpo JSON  {programName, methodName, requestMethod, ...}   (dispatch)
     //   2) POST /w/{prog}/{met}     + corpo form-encoded  tela=...&sessionKey=...                 (abrir tela)
-    // Sem o (2), o front recebia 404 ao abrir telas modais (wtela/tela) e a janela nao abria.
-    @PostMapping({"/w", "/w/{prog}/{met}"})
+    //   3) GET  /w/{prog}/{met}?... (params na QUERYSTRING)   combos/stores GET do ExtJS (ledados)
+    // Sem o (3), os combos carregados por GET tomavam 404 (Kong/reator so POST) -> combo vazio
+    // ("Tipo de taxa invalido" etc.). O legado aceita GET (QUERY_STRING); aqui espelhamos.
+    @RequestMapping(value = {"/w", "/w/{prog}/{met}"}, method = {RequestMethod.GET, RequestMethod.POST})
     public ResponseEntity<byte[]> dispatch(HttpServletRequest req,
             @PathVariable(name = "prog", required = false) String progPath,
             @PathVariable(name = "met", required = false) String metPath,
             @RequestBody(required = false) byte[] body) {
-        String rawAscii = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
-        boolean cifrado = crypto.estaCifrado(rawAscii);
-        if (exigirCifrado && !cifrado && body != null && body.length > 0) {
+        boolean ehGet = "GET".equalsIgnoreCase(req.getMethod());
+        String rawAscii = (ehGet || body == null) ? "" : new String(body, StandardCharsets.ISO_8859_1);
+        boolean cifrado = !ehGet && crypto.estaCifrado(rawAscii);
+        if (exigirCifrado && !cifrado && !ehGet && body != null && body.length > 0) {
             log.info("wcop_nao_cifrado_rejeitado");
             return resposta(false,
                     "{\"success\":false,\"message\":\"Requisicao deve ser cifrada (W_COP).\",\"codigo\":\"E006\"}");
         }
-        String corpo = cifrado ? crypto.decifraRequest(rawAscii)
-                : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8));
+        // GET: params na QUERYSTRING (texto puro, sem W_COP). POST: corpo (JSON dispatch OU form ao abrir tela).
+        String corpo = ehGet
+                ? mapParaJson(camposDaQuery(req))
+                : (cifrado ? crypto.decifraRequest(rawAscii)
+                        : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8)));
 
         // O corpo vem JSON (dispatch) OU form-encoded (abrir tela). Normaliza os campos e o rawJson
         // que vai pro executor (JSON cru preserva nesting; do form monta um JSON flat).
@@ -179,6 +186,17 @@ public class DespachoController {
             }
             m.put(urlDecode(par.substring(0, eq)), urlDecode(par.substring(eq + 1)));
         }
+        return m;
+    }
+
+    /** Params da QUERYSTRING (chamadas GET do front — stores/combos do ExtJS carregados por GET). */
+    private static Map<String, String> camposDaQuery(HttpServletRequest req) {
+        Map<String, String> m = new LinkedHashMap<>();
+        req.getParameterMap().forEach((k, v) -> {
+            if (v != null && v.length > 0 && v[0] != null) {
+                m.put(k, v[0]);
+            }
+        });
         return m;
     }
 

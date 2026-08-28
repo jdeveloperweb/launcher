@@ -61,7 +61,7 @@ services:
       - name: r-dispatch
         paths: [/w]
         strip_path: false
-        methods: [POST]
+        methods: [POST, GET]   # GET: combos/stores do ExtJS (ledados via querystring) — sem isto davam 404
 
   # -------- SCAFFOLD (novos bounded contexts) — 501 hoje --------
   # - name: licencas
