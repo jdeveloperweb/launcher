@@ -42,7 +42,7 @@ scci:
   documentos:
     # Doc Final de Requisitos (Upload/Download): lista parametrica de extensoes permitidas no upload
     # (allow-list, aplicada ANTES do anti-malware/conversao). Vazio = sem restricao adicional aqui.
-    extensoes-permitidas: pdf,xml,jpg,jpeg,png,gif,bmp,tif,tiff,htm,html,txt,csv,rtf,zip,doc,dot,docx,xls,xlt,xla,xlsx,ppt,pot,pps,pptx,odt,ods,odp
+    extensoes-permitidas: pdf,xml,jpg,jpeg,png,gif,bmp,tif,tiff,htm,html,txt,csv,rtf,zip,doc,dot,docx,xls,xlt,xla,xlsx,ppt,pot,pps,pptx,odt,ods,odp,arqctr
   # Modo HIBRIDO: embute o launcher-sdk p/ rodar Pascal DIRETO (ver SdkHibridoConfig).
   # Default = PURO (false): nenhum codigo Pascal e carregado; scci-core segue stateless/escalavel.
   sdk:

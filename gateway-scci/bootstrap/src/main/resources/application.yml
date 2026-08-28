@@ -73,7 +73,7 @@ launcher:
     # Doc Final de Requisitos (Upload/Download): lista parametrica de extensoes permitidas no upload,
     # validada na BORDA (unico ponto de entrada, independente de qual backend a flag escolher).
     # Vazio = sem restricao adicional aqui.
-    extensoes-permitidas: pdf,xml,jpg,jpeg,png,gif,bmp,tif,tiff,htm,html,txt,csv,rtf,zip,doc,dot,docx,xls,xlt,xla,xlsx,ppt,pot,pps,pptx,odt,ods,odp
+    extensoes-permitidas: pdf,xml,jpg,jpeg,png,gif,bmp,tif,tiff,htm,html,txt,csv,rtf,zip,doc,dot,docx,xls,xlt,xla,xlsx,ppt,pot,pps,pptx,odt,ods,odp,arqctr
     chunked:
       # Doc Final de Requisitos (Upload/Download): endpoint PROPOSTO /sccidoc/upload-chunked/* (upload
       # em blocos). tamanho-maximo-bytes default = 15GB (> 10GB exigido); calibrar pelo heap disponivel
