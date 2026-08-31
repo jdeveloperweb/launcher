@@ -339,18 +339,22 @@ public class ProgramExecutor implements ExecutorPrograma {
         }
     }
 
-    /** Nome de tag XML valido (letra/_ inicial; alfanumerico/._- depois). Senao null (ignora). */
+    /**
+     * Nome de campo aceito no PMEMORY. Fiel ao oserver/TPXml do Pascal, que trafega os params como XML
+     * (serializa -> stream -> FPXml.ParseStream) mas aceita nomes "livres": o metodo 'dominios' usa a
+     * PROPRIA CHAVE p/ montar combos, no formato pos-rotulo:Dominio (ex.: "0-Nenhum:TipoTaxaComDescr",
+     * "0-Todos:TipoPrioridade"). Por isso liberamos DIGITO inicial e ':' (alem de letra/digito/_/.-).
+     * Antes exigia letra/_ inicial e barrava ':' -> essas chaves eram DESCARTADAS -> o dominio nunca
+     * chegava ao Pascal -> combo voltava vazio ("Tipo de taxa invalido" etc.). So barramos chave vazia
+     * e chars que quebrariam o proprio <tag> no XML (espaco, < > & / = aspas).
+     */
     private static String tagValida(String k) {
         if (k == null || k.isEmpty()) {
             return null;
         }
-        char c0 = k.charAt(0);
-        if (!Character.isLetter(c0) && c0 != '_') {
-            return null;
-        }
-        for (int i = 1; i < k.length(); i++) {
+        for (int i = 0; i < k.length(); i++) {
             char c = k.charAt(i);
-            if (!Character.isLetterOrDigit(c) && c != '_' && c != '.' && c != '-') {
+            if (!Character.isLetterOrDigit(c) && c != '_' && c != '.' && c != '-' && c != ':') {
                 return null;
             }
         }
