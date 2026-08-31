@@ -210,6 +210,13 @@ public class ProgramExecutor implements ExecutorPrograma {
             // env do launcherenv.ini (limpo, so o ambiente do launcher) + PATH minimo.
             Map<String, String> progEnv = new LinkedHashMap<>(ambEnv);
             progEnv.putIfAbsent("PATH", "/usr/bin:/bin");
+            // O reator roda como c6bank (sem root p/ /usr/sbin/useradd). Fiel ao login (por BANCO -- o
+            // usuario nem e de SO), o cadastro cria usuario SO NO BANCO: DBUSERS=TRUE faz o wcadastro
+            // pular o useradd/usermod (UsaDBUser em aelib.pas = GetEnv('DBUSERS')='TRUE'); sem isso o
+            // useradd dava exit 1 -> "Erro 1 Contacte o administrador". So afeta o cadastro de usuario
+            // (unico uso de UsaDBUser). Sobrescrevivel pelo [ENVIRONMENT] do launcherenv.ini ou pelo env
+            // do processo; default TRUE (o reator nunca tem root p/ criar usuario de SO).
+            progEnv.putIfAbsent("DBUSERS", System.getenv().getOrDefault("DBUSERS", "TRUE"));
             String home = ambEnv.get("HOME");
             File dir = (home != null && new File(home).isDirectory()) ? new File(home) : new File(ambiente);
             String cwd = dir.isDirectory() ? dir.getAbsolutePath() : null;
