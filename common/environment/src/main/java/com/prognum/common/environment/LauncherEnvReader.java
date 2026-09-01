@@ -85,7 +85,17 @@ public class LauncherEnvReader {
     public Map<String, String> ambienteEnv(String ambientePath, String usuario) {
         Map<String, String> env = new LinkedHashMap<>();
         env.put("USER", usuario == null ? "" : usuario);
-        Path ini = Path.of(ambientePath, "launcherenv.ini");
+        // Fiel ao legado (sccidef.pas:11129 -> GetEnv('SCCIDIRATV')+'/launcherenv.ini'): o DIR do
+        // ambiente vem da env var SCCIDIRATV, NAO do path cru do request. Necessario no gateway em
+        // CONTAINER, onde o ambienteOperacional pode chegar como /u6/... (symlink do host que o container
+        // nao monta) e a leitura estoura (500 no login). Setando SCCIDIRATV no container com o path que
+        // ele ENXERGA (ex.: /home/abc/dados314), o reator le do lugar certo. Sem a env var, cai no path
+        // do request (preserva multi-ambiente nas deployments que nao a setam).
+        String dir = System.getenv("SCCIDIRATV");
+        if (dir == null || dir.isBlank()) {
+            dir = ambientePath;
+        }
+        Path ini = Path.of(dir, "launcherenv.ini");
         List<String> linhas;
         try {
             linhas = Files.readAllLines(ini, StandardCharsets.ISO_8859_1);

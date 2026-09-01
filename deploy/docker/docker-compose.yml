@@ -139,6 +139,11 @@ services:
       LAUNCHER_SCCI_CORE_URL: http://localhost:8090
       # URL do launcher (executor Pascal) p/ o log-evento (sccilog)
       LAUNCHER_PASCAL_EXECUTOR_URL: http://localhost:8091
+      # SCCIDIRATV: dir de onde o launcherenv.ini e lido (fiel ao legado sccidef.pas -> GetEnv('SCCIDIRATV')).
+      # No CONTAINER, aponte pro path que ele ENXERGA (ex.: /home/abc/dados314) — o ambienteOperacional do
+      # request pode vir como /u6/... (symlink do host que o container nao monta). Vazio = usa o path do
+      # request (multi-ambiente). Setar no .env por deployment.
+      SCCIDIRATV: ${SCCIDIRATV:-}
       OTLP_METRICS_URL: ${OTLP_METRICS_URL:-http://127.0.0.1:4318/v1/metrics}
       OTLP_TRACES_URL: ${OTLP_TRACES_URL:-http://127.0.0.1:4318/v1/traces}
     volumes:
