@@ -68,8 +68,22 @@ public class LauncherEnvReader {
         cache.invalidateAll();
     }
 
+    /**
+     * Caminho do launcherenv.ini. Fiel ao legado (sccidef.pas:11129 -> GetEnv('SCCIDIRATV')+
+     * '/launcherenv.ini'): o DIR do ambiente vem da env var SCCIDIRATV, NAO do path cru do request.
+     * Necessario no gateway em CONTAINER, onde o ambienteOperacional pode chegar como /u6/... (symlink do
+     * host que o container nao monta) e a leitura estoura (500 no login). Setando SCCIDIRATV com o path
+     * que o container ENXERGA (ex.: /home/abc/dados314), o reator le do lugar certo. Sem a env var, cai no
+     * path do request (preserva multi-ambiente nas deployments que nao a setam). Usado por TODOS os
+     * leitores (DB config, env, log-evento, politica de senha).
+     */
+    private static Path arquivoIni(String ambientePath) {
+        String dir = System.getenv("SCCIDIRATV");
+        return Path.of((dir == null || dir.isBlank()) ? ambientePath : dir, "launcherenv.ini");
+    }
+
     private SccDbConfig lerDoDisco(String ambientePath) {
-        Path ini = Path.of(ambientePath, "launcherenv.ini");
+        Path ini = arquivoIni(ambientePath);
         try {
             return parse(Files.readAllLines(ini, StandardCharsets.ISO_8859_1));
         } catch (IOException e) {
@@ -85,17 +99,7 @@ public class LauncherEnvReader {
     public Map<String, String> ambienteEnv(String ambientePath, String usuario) {
         Map<String, String> env = new LinkedHashMap<>();
         env.put("USER", usuario == null ? "" : usuario);
-        // Fiel ao legado (sccidef.pas:11129 -> GetEnv('SCCIDIRATV')+'/launcherenv.ini'): o DIR do
-        // ambiente vem da env var SCCIDIRATV, NAO do path cru do request. Necessario no gateway em
-        // CONTAINER, onde o ambienteOperacional pode chegar como /u6/... (symlink do host que o container
-        // nao monta) e a leitura estoura (500 no login). Setando SCCIDIRATV no container com o path que
-        // ele ENXERGA (ex.: /home/abc/dados314), o reator le do lugar certo. Sem a env var, cai no path
-        // do request (preserva multi-ambiente nas deployments que nao a setam).
-        String dir = System.getenv("SCCIDIRATV");
-        if (dir == null || dir.isBlank()) {
-            dir = ambientePath;
-        }
-        Path ini = Path.of(dir, "launcherenv.ini");
+        Path ini = arquivoIni(ambientePath);
         List<String> linhas;
         try {
             linhas = Files.readAllLines(ini, StandardCharsets.ISO_8859_1);
@@ -127,7 +131,7 @@ public class LauncherEnvReader {
      */
     public Map<String, String> logEventos(String ambientePath) {
         Map<String, String> logs = new LinkedHashMap<>();
-        Path ini = Path.of(ambientePath, "launcherenv.ini");
+        Path ini = arquivoIni(ambientePath);
         List<String> linhas;
         try {
             linhas = Files.readAllLines(ini, StandardCharsets.ISO_8859_1);
@@ -169,7 +173,7 @@ public class LauncherEnvReader {
     /** Le uma secao crua do launcherenv.ini (chaves em MAIUSCULO). Vazio se o arquivo nao existir. */
     private Map<String, String> secao(String ambientePath, String secaoAlvo) {
         Map<String, String> vals = new LinkedHashMap<>();
-        Path ini = Path.of(ambientePath, "launcherenv.ini");
+        Path ini = arquivoIni(ambientePath);
         List<String> linhas;
         try {
             linhas = Files.readAllLines(ini, StandardCharsets.ISO_8859_1);
