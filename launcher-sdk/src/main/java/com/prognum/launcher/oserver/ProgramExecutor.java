@@ -335,15 +335,29 @@ public class ProgramExecutor implements ExecutorPrograma {
                 if (item.isObject()) {
                     anexaFilhos(sb, item);
                 } else if (!item.isNull()) {
-                    sb.append(xmlEscape(item.asText()));
+                    sb.append(escalar(item));
                 }
                 sb.append("</").append(tag).append('>');
             }
         } else if (v.isNull()) {
             sb.append('<').append(tag).append("></").append(tag).append('>');
         } else {
-            sb.append('<').append(tag).append('>').append(xmlEscape(v.asText())).append("</").append(tag).append('>');
+            sb.append('<').append(tag).append('>').append(escalar(v)).append("</").append(tag).append('>');
         }
+    }
+
+    /**
+     * Valor escalar de um campo no PMEMORY. Boolean JSON (true/false) vira 'T'/'F' — fiel ao TPXml/pxmllib
+     * do Pascal (setAsBoolean grava 'T'/'F'), que o Pascal le com asString='T'. Sem isso, um checkbox
+     * (coluna tipo=boolean, ex.: 'selecionado' em "Escolher Campos") chegava como "true" e o Pascal
+     * (comparando = 'T') contava 0 campos -> "Nenhum campo selecionado. Campos selecionados: 0".
+     * Strings/numeros seguem via xmlEscape.
+     */
+    private static String escalar(com.fasterxml.jackson.databind.JsonNode v) {
+        if (v.isBoolean()) {
+            return v.booleanValue() ? "T" : "F";
+        }
+        return xmlEscape(v.asText());
     }
 
     /**
