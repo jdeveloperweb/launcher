@@ -167,16 +167,26 @@ final class UdsShimBridge {
     }
 
     private static byte[] leAteEof(SocketChannel ch) throws IOException {
-        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(65536);
+        byte[] acc = new byte[65536];
+        int total = 0;
         ByteBuffer buf = ByteBuffer.allocate(65536);
         while (true) {
             int n = ch.read(buf);
             if (n < 0) {
-                return out.toByteArray();   // EOF = resposta completa
+                return java.util.Arrays.copyOf(acc, total);   // EOF (fallback)
             }
             if (n > 0) {
-                out.write(buf.array(), 0, n);
+                if (total + n > acc.length) {
+                    acc = java.util.Arrays.copyOf(acc, Math.max(acc.length * 2, total + n));
+                }
+                System.arraycopy(buf.array(), 0, acc, total, n);
+                total += n;
                 buf.clear();
+                // Leitura por FRAME (fiel ao oserver_recebe): para no bloco terminal (DATA/EXCEPT), sem
+                // esperar o EOF — que um filho batch forkado seguraria. Ver ProgramExecutor.respostaCompleta.
+                if (ProgramExecutor.respostaCompleta(acc, total)) {
+                    return java.util.Arrays.copyOf(acc, total);
+                }
             }
         }
     }

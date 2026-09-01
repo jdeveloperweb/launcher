@@ -450,6 +450,32 @@ public class ProgramExecutor implements ExecutorPrograma {
         return new ResultadoExecucao(true, "{\"success\":\"false\",\"mensagem\":\"Resposta invalida do programa.\"}");
     }
 
+    /**
+     * True se o buffer JA contem um bloco TERMINAL (DATA $FB / DATA_Z $F9 / EXCEPT $FD) completo — igual
+     * ao oserver_recebe legado, que le por FRAME e NAO espera o EOF. As pontes chamam isto a cada leitura:
+     * assim que a resposta do programa esta pronta, param. Sem isto, quando o programa forka um filho que
+     * herda e SEGURA o socket (fd 6) durante um batch em background (ex.: wjuridico.FiltraSpcSerasa — o pai
+     * responde na hora e sai, o filho processa depois), o EOF so viria quando o filho terminasse -> a
+     * leitura-ate-EOF travava ate o timeout de 30s mesmo ja tendo a resposta do pai em maos. Blocos METD
+     * ($FA/_Z/_K) e DEBUG ($FE) sao pulados. Cabecalho = magic(1) + len(4, big-endian) — igual ao bloco().
+     */
+    static boolean respostaCompleta(byte[] buf, int len) {
+        int pos = 0;
+        while (len - pos >= 5) {
+            int magic = buf[pos] & 0xFF;
+            int blen = ((buf[pos + 1] & 0xFF) << 24) | ((buf[pos + 2] & 0xFF) << 16)
+                    | ((buf[pos + 3] & 0xFF) << 8) | (buf[pos + 4] & 0xFF);
+            if (blen < 0 || len - pos - 5 < blen) {
+                return false;   // tamanho invalido OU bloco ainda incompleto -> le mais (cai no EOF)
+            }
+            if (magic == DATA_HDR || magic == DATA_HDR_Z || magic == EXCEPT_HDR) {
+                return true;    // bloco terminal completo -> resposta pronta, pode parar
+            }
+            pos += 5 + blen;    // METD/DEBUG -> pula e continua
+        }
+        return false;
+    }
+
     private static byte[] inflar(byte[] comp) {
         try {
             Inflater inf = new Inflater();

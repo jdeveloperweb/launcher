@@ -8,7 +8,6 @@ import com.sun.jna.Pointer;
 import com.sun.jna.StringArray;
 import com.sun.jna.ptr.IntByReference;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Map;
 
@@ -159,14 +158,26 @@ final class NativeOserverBridge {
             writeAll(c, parent, request);
             c.shutdown(parent, SHUT_WR);     // sinaliza EOF para o programa
 
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            byte[] acc = new byte[65536];
+            int total = 0;
             byte[] buf = new byte[65536];
             while (true) {
                 long n = c.read(parent, buf, new NativeLong(buf.length)).longValue();
                 if (n > 0) {
-                    out.write(buf, 0, (int) n);
+                    if (total + (int) n > acc.length) {
+                        acc = java.util.Arrays.copyOf(acc, Math.max(acc.length * 2, total + (int) n));
+                    }
+                    System.arraycopy(buf, 0, acc, total, (int) n);
+                    total += (int) n;
+                    // Leitura por FRAME (fiel ao oserver_recebe legado): assim que a resposta do programa
+                    // esta completa (bloco terminal DATA/EXCEPT), PARA — sem esperar o EOF. Sem isto, um
+                    // programa que forka um filho batch em background (o filho herda e segura o socket)
+                    // travava ate o timeout de 30s, mesmo o pai ja tendo respondido (ex.: FiltraSpcSerasa).
+                    if (ProgramExecutor.respostaCompleta(acc, total)) {
+                        break;
+                    }
                 } else if (n == 0) {
-                    break;                   // EOF: programa fechou o socket
+                    break;                   // EOF: programa fechou o socket (fallback)
                 } else {   // n < 0: erro/timeout. Verifica o errno (fix seçao 8) — antes TUDO virava "timeout".
                     int errno = Native.getLastError();
                     if (errno == EINTR) {
@@ -177,15 +188,15 @@ final class NativeOserverBridge {
                     String causa = (errno == EAGAIN)
                             ? "Tempo excedido (" + timeoutMs + "ms)"
                             : "Erro de leitura (errno=" + errno + ")";
-                    throw new IOException(causa + (out.size() > 0
-                            ? " apos " + out.size() + " bytes parciais" : " sem resposta"));
+                    throw new IOException(causa + (total > 0
+                            ? " apos " + total + " bytes parciais" : " sem resposta"));
                 }
             }
             if (fasesNanos != null && fasesNanos.length >= 2) {
                 fasesNanos[0] = tSetup - t0;                 // setup/spawn (socketpair + posix_spawn)
                 fasesNanos[1] = System.nanoTime() - tSetup;  // roundtrip (~ tempo de resposta do Pascal)
             }
-            return out.toByteArray();
+            return java.util.Arrays.copyOf(acc, total);
         } finally {
             c.close(parent);
             colher(c, pid.getValue());
