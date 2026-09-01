@@ -343,6 +343,14 @@ public class SccidocController {
         String nome = nomeArquivo == null ? "" : nomeArquivo;
         int p = nome.lastIndexOf('.');
         String ext = p < 0 ? "" : nome.substring(p + 1).toLowerCase(Locale.ROOT);
+        // Arquivos de retorno SPC/SERASA (wjuridico) tem "extensao" = DATA (ex.: ret.20191105) ou NAO
+        // tem extensao (ex.: SER201911051643). O Pascal (EXTUPLPERMITIDO vazio) sempre aceitou; a
+        // allow-list Java e NOVA e regredia isso ("Extensao de arquivo nao permitida."). Liberamos
+        // extensao vazia e puramente numerica (datas) — segue barrando executaveis (.exe/.sh/.php/.bat/
+        // .js/...); o antimalware do Pascal continua rodando por cima.
+        if (ext.isEmpty() || ext.chars().allMatch(Character::isDigit)) {
+            return true;
+        }
         return extensoesPermitidas.contains(ext);
     }
 
