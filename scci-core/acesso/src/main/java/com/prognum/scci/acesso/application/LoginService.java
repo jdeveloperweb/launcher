@@ -6,6 +6,7 @@ import com.prognum.scci.acesso.domain.port.in.LoginUseCase;
 import com.prognum.scci.acesso.domain.port.out.Autenticador;
 import com.prognum.scci.acesso.domain.port.out.ContadorTentativas;
 import com.prognum.scci.acesso.domain.port.out.MetodoLoginResolver;
+import com.prognum.scci.acesso.domain.port.out.VerificadorVersaoBanco;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,6 +14,7 @@ import java.security.SecureRandom;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
@@ -35,18 +37,21 @@ public class LoginService implements LoginUseCase {
     private final Map<String, Autenticador> porMetodo = new LinkedHashMap<>();
     private final MetodoLoginResolver resolver;
     private final ContadorTentativas attempts;
+    private final VerificadorVersaoBanco versaoBanco;
     private final SecureRandom rnd = new SecureRandom();
 
     private final long delayMs;
     private final int maxErros;
 
     public LoginService(List<Autenticador> autenticadores, MetodoLoginResolver resolver,
-                        ContadorTentativas attempts, long delayMs, int maxErros) {
+                        ContadorTentativas attempts, VerificadorVersaoBanco versaoBanco,
+                        long delayMs, int maxErros) {
         for (Autenticador a : autenticadores) {
             porMetodo.put(a.metodo().toUpperCase(), a);
         }
         this.resolver = resolver;
         this.attempts = attempts;
+        this.versaoBanco = versaoBanco;
         this.delayMs = delayMs;
         this.maxErros = maxErros;
     }
@@ -77,6 +82,16 @@ public class LoginService implements LoginUseCase {
         attempts.reset(usuario);
 
         if (r.sucesso()) {   // 'T' (ok) ou 'C' (aviso) -> emite a sessão (papel do coordenador)
+            // VERIFICAVERSAOBANCO (TestaVersaoBanco do wae.pas, rodado no CarregaAmbiente pos-login): a
+            // versao do banco tem que casar com a do sistema E a instalacao (inst.sh) tem que estar
+            // processada; senao NEGA o login com a mesma mensagem do legado (codigo 'V'). Vem antes de
+            // emitir a sessao — sem versao compativel, nao ha acesso.
+            Optional<String> incompat = versaoBanco.incompatibilidade(ambiente);
+            if (incompat.isPresent()) {
+                log.info("wcop_login_versao_banco", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                        kv("ip", LogAnonimizador.mascararIp(ip)), kv("ambiente", ambiente));
+                return new ResultadoLogin(false, 'V', null, incompat.get(), null);
+            }
             // a Strategy PODE já ter emitido o token (payload-mapeado gera o mesmo do INSERT); senão gera aqui
             String token = r.sessionKey() != null ? r.sessionKey() : novaSessionKey();
             log.info("wcop_login_ok", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),

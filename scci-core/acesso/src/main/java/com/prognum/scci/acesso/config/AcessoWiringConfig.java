@@ -32,6 +32,7 @@ import com.prognum.scci.acesso.domain.port.out.ProvisionamentoUsuario;
 import com.prognum.scci.acesso.domain.port.out.SenhaRepository;
 import com.prognum.scci.acesso.domain.port.out.ValidacaoAcessoRepository;
 import com.prognum.scci.acesso.domain.port.out.VerificadorSenha;
+import com.prognum.scci.acesso.domain.port.out.VerificadorVersaoBanco;
 import com.prognum.scci.acesso.domain.port.out.RecuperacaoSenhaRepository;
 import com.prognum.scci.acesso.domain.port.in.RecuperarSenhaUseCase;
 import com.prognum.scci.acesso.application.RecuperarSenhaService;
@@ -109,10 +110,10 @@ public class AcessoWiringConfig {
     // Doc Final de Requisitos (Autenticação): CAPTCHA fora do escopo inicial — sem parâmetro aqui.
     @Bean
     LoginUseCase loginService(List<Autenticador> autenticadores, MetodoLoginResolver resolver,
-            ContadorTentativas tentativas,
+            ContadorTentativas tentativas, VerificadorVersaoBanco versaoBanco,
             @Value("${scci.auth.login-err-delay-ms:1000}") long delayMs,
             @Value("${scci.auth.max-erros:5}") int maxErros) {
-        return new LoginService(autenticadores, resolver, tentativas, delayMs, maxErros);
+        return new LoginService(autenticadores, resolver, tentativas, versaoBanco, delayMs, maxErros);
     }
 
     // ---- Politica de senha POR AMBIENTE (lida do launcherenv.ini; sem chaves = permissiva) ----

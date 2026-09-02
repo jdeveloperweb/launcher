@@ -170,6 +170,16 @@ public class LauncherEnvReader {
         return inteiro(secao(ambientePath, "ENVIRONMENT"), "ACESSOSSIMULTANEOS");
     }
 
+    /**
+     * VERIFICAVERSAOBANCO do [ENVIRONMENT]: valida a versao do banco no login. Fiel ao wae.pas
+     * ({@code upStr(GetEnv('VERIFICAVERSAOBANCO')) <> 'FALSE'}) — LIGADA por padrao; so DESLIGA se
+     * declarada exatamente 'FALSE' (case-insensitive). Ausente/vazia => ligada.
+     */
+    public boolean verificaVersaoBanco(String ambientePath) {
+        String v = secao(ambientePath, "ENVIRONMENT").get("VERIFICAVERSAOBANCO");
+        return v == null || !"FALSE".equalsIgnoreCase(v.trim());
+    }
+
     /** Le uma secao crua do launcherenv.ini (chaves em MAIUSCULO). Vazio se o arquivo nao existir. */
     private Map<String, String> secao(String ambientePath, String secaoAlvo) {
         Map<String, String> vals = new LinkedHashMap<>();

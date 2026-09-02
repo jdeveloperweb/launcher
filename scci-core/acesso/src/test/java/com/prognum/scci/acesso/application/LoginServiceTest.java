@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 
@@ -12,6 +13,7 @@ import com.prognum.scci.acesso.domain.model.ResultadoLogin;
 import com.prognum.scci.acesso.domain.port.out.Autenticador;
 import com.prognum.scci.acesso.domain.port.out.ContadorTentativas;
 import com.prognum.scci.acesso.domain.port.out.MetodoLoginResolver;
+import com.prognum.scci.acesso.domain.port.out.VerificadorVersaoBanco;
 
 /**
  * Trava o coordenador do login (comum a todos os clientes): sucesso emite sessionKey, credencial
@@ -50,9 +52,12 @@ class LoginServiceTest {
 
     private final MetodoLoginResolver banco = a -> "BANCO";
 
+    /** Verificador de versao do banco: por padrao LIBERA (Optional.empty), como um ambiente ok. */
+    private static final VerificadorVersaoBanco VERSAO_OK = a -> Optional.empty();
+
     @Test
     void sucesso_emite_sessionkey() {
-        LoginService svc = new LoginService(List.of(banco('T')), banco, new ContadorFake(), 0, 5);
+        LoginService svc = new LoginService(List.of(banco('T')), banco, new ContadorFake(), VERSAO_OK, 0, 5);
         ResultadoLogin r = svc.login("jose", "senha", "/amb", "1.2.3.4");
         assertThat(r.sucesso()).isTrue();
         assertThat(r.codErro()).isEqualTo('T');
@@ -62,7 +67,7 @@ class LoginServiceTest {
     @Test
     void invalido_conta_tentativa_e_mantem_F() {
         ContadorFake c = new ContadorFake();
-        LoginService svc = new LoginService(List.of(banco('F')), banco, c, 0, 5);
+        LoginService svc = new LoginService(List.of(banco('F')), banco, c, VERSAO_OK, 0, 5);
         ResultadoLogin r = svc.login("jose", "errada", "/amb", "ip");
         assertThat(r.sucesso()).isFalse();
         assertThat(r.codErro()).isEqualTo('F');
@@ -72,11 +77,25 @@ class LoginServiceTest {
     @Test
     void escala_para_bloqueio_apos_max_erros() {
         ContadorFake c = new ContadorFake();
-        LoginService svc = new LoginService(List.of(banco('F')), banco, c, 0, 5);
+        LoginService svc = new LoginService(List.of(banco('F')), banco, c, VERSAO_OK, 0, 5);
         char ultimo = 'F';
         for (int i = 0; i < 6; i++) {                 // 6 falhas: passa de maxErros(5) -> X
             ultimo = svc.login("jose", "x", "/amb", "ip").codErro();
         }
         assertThat(ultimo).isEqualTo('X');            // bloqueado
+    }
+
+    @Test
+    void versao_banco_incompativel_nega_login_sem_sessao() {
+        // credencial OK (T), mas VERIFICAVERSAOBANCO acusa incompatibilidade -> login negado ('V'),
+        // com a mensagem do legado e SEM emitir sessionKey (fiel ao TestaVersaoBanco do wae.pas).
+        VerificadorVersaoBanco incompat =
+                a -> Optional.of("Versão do Banco de Dados incompatível com a versão do Sistema");
+        LoginService svc = new LoginService(List.of(banco('T')), banco, new ContadorFake(), incompat, 0, 5);
+        ResultadoLogin r = svc.login("jose", "senha", "/amb", "1.2.3.4");
+        assertThat(r.sucesso()).isFalse();
+        assertThat(r.codErro()).isEqualTo('V');
+        assertThat(r.sessionKey()).isNull();
+        assertThat(r.mensagem()).contains("incompatível");
     }
 }
