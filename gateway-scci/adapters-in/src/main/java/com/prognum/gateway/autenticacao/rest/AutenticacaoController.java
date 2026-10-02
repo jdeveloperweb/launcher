@@ -9,6 +9,7 @@ import com.prognum.gateway.autenticacao.port.in.SessaoUseCase;
 import com.prognum.gateway.autenticacao.port.out.AcessoJavaPort;
 import com.prognum.gateway.autenticacao.port.out.RegistroEventoAcesso;
 import com.prognum.common.environment.LauncherEnvReader;
+import com.prognum.common.environment.ResolvedorAmbiente;
 import com.prognum.common.crypto.LogAnonimizador;
 import com.prognum.common.crypto.WcopCrypto;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -64,9 +65,12 @@ public class AutenticacaoController {
     private final RegistroEventoAcesso eventos;
     // Leitura do launcherenv.ini por-ambiente (ex.: ACESSOSSIMULTANEOS).
     private final LauncherEnvReader env;
+    // Tradutor virtual->fisico do ambienteOperacional (VirtualPathToFisical do launcher.pas).
+    private final ResolvedorAmbiente resolvedor;
 
     public AutenticacaoController(ObjectMapper mapper, WcopCrypto crypto, AcessoJavaPort acesso,
                                   SessaoUseCase sessoes, RegistroEventoAcesso eventos, LauncherEnvReader env,
+                                  ResolvedorAmbiente resolvedor,
                                   @Value("${launcher.legacy.wcop.contexto:CORP_WEB}") String contexto,
                                   @Value("${launcher.auth.max-logins-simultaneos:0}") int maxLoginsSimultaneos,
                                   @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado) {
@@ -76,6 +80,7 @@ public class AutenticacaoController {
         this.sessoes = sessoes;
         this.eventos = eventos;
         this.env = env;
+        this.resolvedor = resolvedor;
         this.contexto = contexto;
         this.maxLoginsSimultaneos = maxLoginsSimultaneos;   // 0 = ilimitado (QtMaxLogin do launcher)
         this.exigirCifrado = exigirCifrado;
@@ -114,7 +119,7 @@ public class AutenticacaoController {
 
         String usuario = primeiro(in, "userName", "usuario", "user", "login");
         String senha = primeiro(in, "password", "senha");
-        String ambiente = primeiro(in, "ambienteOperacional", "ambiente");
+        String ambiente = resolvedor.resolver(primeiro(in, "ambienteOperacional", "ambiente"));
 
         ResultadoLogin r;
         try {
@@ -183,7 +188,7 @@ public class AutenticacaoController {
         Optional<Sessao> s = sessoes.consultar(sessionKey);
         String usuario = s.map(Sessao::usuario).orElse(primeiro(in, "userName", "usuario", "user", "login"));
         String ambiente = s.map(Sessao::ambienteOperacional)
-                .orElse(primeiro(in, "ambienteOperacional", "ambiente"));
+                .orElse(resolvedor.resolver(primeiro(in, "ambienteOperacional", "ambiente")));
         String senhaAtual = primeiro(in, "senhaAtual", "senhaatual", "senha", "password", "currentPassword", "oldPassword");
         String novaSenha = primeiro(in, "novaSenha", "novasenha", "newPassword", "senhaNova", "newpassword", "password2");
 
@@ -226,7 +231,7 @@ public class AutenticacaoController {
         Map<String, String> in = camposDoJson(json);
         String usuario = primeiro(in, "userName", "usuario", "user", "login");
         String cpf = primeiro(in, "cpf", "CPF", "documento");
-        String ambiente = primeiro(in, "ambienteOperacional", "ambiente");
+        String ambiente = resolvedor.resolver(primeiro(in, "ambienteOperacional", "ambiente"));
 
         ResultadoTroca r;
         try {
@@ -261,7 +266,7 @@ public class AutenticacaoController {
         Map<String, String> in = camposDoJson(json);
         String tipo = primeiro(in, "tipo", "formatoLogin");
         String valor = primeiro(in, "valor", "cpf", "protocolo", "login");
-        String ambiente = primeiro(in, "ambienteOperacional", "ambiente");
+        String ambiente = resolvedor.resolver(primeiro(in, "ambienteOperacional", "ambiente"));
 
         boolean valido;
         try {

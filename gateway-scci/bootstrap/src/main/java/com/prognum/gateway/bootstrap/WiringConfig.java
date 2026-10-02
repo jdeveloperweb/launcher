@@ -7,6 +7,7 @@ import com.prognum.gateway.autenticacao.port.out.SessaoPersistente;
 import com.prognum.common.crypto.WcopCrypto;
 import com.prognum.common.environment.LauncherEnvReader;
 import com.prognum.common.environment.JdbcConnectionFactory;
+import com.prognum.common.environment.ResolvedorAmbiente;
 import com.prognum.gateway.documentos.UploadChunkadoService;
 import com.prognum.gateway.documentos.port.in.BaixarDocumentoUseCase;
 import com.prognum.gateway.documentos.port.in.EnviarDocumentoUseCase;
@@ -57,6 +58,16 @@ public class WiringConfig {
     @Bean
     JdbcConnectionFactory jdbcConnectionFactory() {
         return new JdbcConnectionFactory();
+    }
+
+    /**
+     * Tradutor do ambiente virtual->fisico (porte do VirtualPathToFisical do launcher.pas): le a secao
+     * [DIRETORIOS] do launcher.conf. Caminho configuravel por LAUNCHER_CONF (default /etc/launcher.conf).
+     * Sem o arquivo (ex.: Docker) ou sem entrada que case, devolve o ambiente como veio. POJO -> @Bean.
+     */
+    @Bean
+    ResolvedorAmbiente resolvedorAmbiente(@Value("${LAUNCHER_CONF:/etc/launcher.conf}") String launcherConf) {
+        return new ResolvedorAmbiente(launcherConf);
     }
 
     // ---- sessao (o EDGE mantem o gate: cache Redis + SCCI_SESSION). O restante do 'acesso'

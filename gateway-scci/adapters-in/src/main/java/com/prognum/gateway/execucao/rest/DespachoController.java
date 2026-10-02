@@ -6,6 +6,7 @@ import com.prognum.gateway.autenticacao.model.Sessao;
 import com.prognum.gateway.autenticacao.port.in.SessaoUseCase;
 import com.prognum.common.crypto.LogAnonimizador;
 import com.prognum.common.crypto.WcopCrypto;
+import com.prognum.common.environment.ResolvedorAmbiente;
 import com.prognum.gateway.execucao.model.ComandoExecucao;
 import com.prognum.gateway.execucao.model.ResultadoExecucao;
 import com.prognum.gateway.execucao.port.in.DespachoUseCase;
@@ -47,17 +48,21 @@ public class DespachoController {
     private final SessaoUseCase sessoes;
     private final DespachoUseCase despacho;
     private final RotaExecucaoRegistry rotas;   // só p/ LOGAR o trilho escolhido (o roteamento em si é no DespachoUseCase)
+    // Tradutor virtual->fisico do ambienteOperacional (VirtualPathToFisical do launcher.pas).
+    private final ResolvedorAmbiente resolvedor;
     // Doc Final de Requisitos (2.9.3): fora do modo dev, a requisicao deve ser cifrada (W_COP).
     private final boolean exigirCifrado;
 
     public DespachoController(ObjectMapper mapper, WcopCrypto crypto,
                               SessaoUseCase sessoes, DespachoUseCase despacho, RotaExecucaoRegistry rotas,
+                              ResolvedorAmbiente resolvedor,
                               @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado) {
         this.mapper = mapper;
         this.crypto = crypto;
         this.sessoes = sessoes;
         this.despacho = despacho;
         this.rotas = rotas;
+        this.resolvedor = resolvedor;
         this.exigirCifrado = exigirCifrado;
     }
 
@@ -109,7 +114,9 @@ public class DespachoController {
         // VALIDA (papel do launcher): revalida o token ANTES de executar o programa.
         String sessionKey = primeiro(in, "sessionKey");
         String usuarioParam = primeiro(in, "userName", "usuario");
-        String ambienteParam = primeiro(in, "ambienteOperacional", "ambiente");
+        // traduz o ambiente virtual (ex.: /cfiae/) p/ o fisico ANTES de validar a sessao (a sessao foi
+        // gravada no login ja com o caminho fisico) e de propagar ao scci-core/launcher-sdk/Pascal.
+        String ambienteParam = resolvedor.resolver(primeiro(in, "ambienteOperacional", "ambiente"));
         Optional<Sessao> s = sessoes.validar(sessionKey, usuarioParam, ambienteParam);
 
         // Se veio sessionKey mas a sessao NAO e valida -> rejeita (nao executa). Sem sessionKey

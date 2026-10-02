@@ -8,6 +8,7 @@ import com.prognum.gateway.autenticacao.model.Sessao;
 import com.prognum.gateway.autenticacao.port.in.SessaoUseCase;
 import com.prognum.common.crypto.LogAnonimizador;
 import com.prognum.common.crypto.WcopCrypto;
+import com.prognum.common.environment.ResolvedorAmbiente;
 import com.prognum.gateway.documentos.model.RespostaDocumento;
 import com.prognum.gateway.documentos.port.in.BaixarDocumentoUseCase;
 import com.prognum.gateway.documentos.port.in.EnviarDocumentoUseCase;
@@ -70,6 +71,8 @@ public class SccidocController {
     private final SessaoUseCase sessoes;
     private final BaixarDocumentoUseCase documentos;
     private final EnviarDocumentoUseCase envio;
+    // Tradutor virtual->fisico do ambienteOperacional (VirtualPathToFisical do launcher.pas).
+    private final ResolvedorAmbiente resolvedor;
     private final Set<String> extensoesPermitidas;
     // Doc Final de Requisitos (2.9.3): fora do modo dev, a requisicao deve ser cifrada (W_COP).
     // Aplicado so no /sccidoc JSON (metodo sccidoc()) -- NAO no upload multipart (sccidocUpload):
@@ -80,6 +83,7 @@ public class SccidocController {
 
     public SccidocController(ObjectMapper mapper, WcopCrypto crypto, SessaoUseCase sessoes,
                             BaixarDocumentoUseCase documentos, EnviarDocumentoUseCase envio,
+                            ResolvedorAmbiente resolvedor,
                             @Value("${launcher.documentos.extensoes-permitidas:}") String[] extensoesPermitidas,
                             @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado) {
         this.mapper = mapper;
@@ -87,6 +91,7 @@ public class SccidocController {
         this.sessoes = sessoes;
         this.documentos = documentos;
         this.envio = envio;
+        this.resolvedor = resolvedor;
         this.extensoesPermitidas = Arrays.stream(extensoesPermitidas)
                 .map(e -> e.trim().toLowerCase(Locale.ROOT))
                 .filter(e -> !e.isEmpty())
@@ -120,7 +125,7 @@ public class SccidocController {
         }
         String sessionKey = primeiro(in, "sessionKey");
         String usuarioParam = primeiro(in, "userName", "usuario");
-        String ambienteParam = primeiro(in, "ambienteOperacional", "ambiente");
+        String ambienteParam = resolvedor.resolver(primeiro(in, "ambienteOperacional", "ambiente"));
 
         // VALIDA (igual ao /w): revalida a sessao antes de executar.
         Optional<Sessao> s = sessoes.validar(sessionKey, usuarioParam, ambienteParam);
@@ -163,7 +168,7 @@ public class SccidocController {
         Map<String, String> in = queryParaMapa(req);
         String sessionKey = cookieOuParam(req, in, "sessionKey");
         String usuarioParam = cookieOuParam(req, in, "userName", "usuario");
-        String ambienteParam = cookieOuParam(req, in, "ambienteOperacional", "ambiente");
+        String ambienteParam = resolvedor.resolver(cookieOuParam(req, in, "ambienteOperacional", "ambiente"));
 
         Optional<Sessao> s = sessoes.validar(sessionKey, usuarioParam, ambienteParam);
         if (sessionKey != null && s.isEmpty()) {
@@ -261,7 +266,7 @@ public class SccidocController {
         }
         String sessionKey = paramOuHeader(req, in, "sessionKey");
         String usuarioParam = paramOuHeader(req, in, "userName", "usuario");
-        String ambienteParam = paramOuHeader(req, in, "ambienteOperacional", "ambiente");
+        String ambienteParam = resolvedor.resolver(paramOuHeader(req, in, "ambienteOperacional", "ambiente"));
 
         Optional<Sessao> s = sessoes.validar(sessionKey, usuarioParam, ambienteParam);
         if (sessionKey != null && s.isEmpty()) {

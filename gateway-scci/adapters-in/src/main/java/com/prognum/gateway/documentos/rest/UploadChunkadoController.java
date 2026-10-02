@@ -6,6 +6,7 @@ import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.prognum.common.crypto.LogAnonimizador;
+import com.prognum.common.environment.ResolvedorAmbiente;
 import com.prognum.gateway.autenticacao.model.Sessao;
 import com.prognum.gateway.autenticacao.port.in.SessaoUseCase;
 import com.prognum.gateway.documentos.port.in.UploadChunkadoUseCase;
@@ -65,11 +66,15 @@ public class UploadChunkadoController {
     private final ObjectMapper mapper;
     private final SessaoUseCase sessoes;
     private final UploadChunkadoUseCase uploads;
+    // Tradutor virtual->fisico do ambienteOperacional (VirtualPathToFisical do launcher.pas).
+    private final ResolvedorAmbiente resolvedor;
 
-    public UploadChunkadoController(ObjectMapper mapper, SessaoUseCase sessoes, UploadChunkadoUseCase uploads) {
+    public UploadChunkadoController(ObjectMapper mapper, SessaoUseCase sessoes, UploadChunkadoUseCase uploads,
+                                    ResolvedorAmbiente resolvedor) {
         this.mapper = mapper;
         this.sessoes = sessoes;
         this.uploads = uploads;
+        this.resolvedor = resolvedor;
     }
 
     @Operation(summary = "Inicia uma sessão de upload em blocos",
@@ -78,7 +83,7 @@ public class UploadChunkadoController {
     public ResponseEntity<String> iniciar(@RequestBody Map<String, Object> body, HttpServletRequest req) {
         String sessionKey = texto(body, "sessionKey");
         String usuarioParam = texto(body, "userName", "usuario");
-        String ambienteParam = texto(body, "ambienteOperacional", "ambiente");
+        String ambienteParam = resolvedor.resolver(texto(body, "ambienteOperacional", "ambiente"));
 
         Optional<Sessao> s = sessoes.validar(sessionKey, usuarioParam, ambienteParam);
         if (sessionKey != null && s.isEmpty()) {
