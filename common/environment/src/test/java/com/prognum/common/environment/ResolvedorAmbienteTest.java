@@ -43,19 +43,20 @@ class ResolvedorAmbienteTest {
 
     @Test
     void mantem_o_resto_do_caminho() throws IOException {
-        assertThat(comConf(CONF).resolver("/cfiae/sub/arq.pdf")).isEqualTo("/home/cfiae/dados/sub/arq.pdf");
+        // ambiente aninhado (ex.: filial): mantém o resto e garante a '/' final (como o ExtractFilePath)
+        assertThat(comConf(CONF).resolver("/cfiae/filial01")).isEqualTo("/home/cfiae/dados/filial01/");
     }
 
     @Test
     void caminho_fisico_passa_pela_entrada_home() throws IOException {
-        // com home=/home, /home/cfiae/dados casa 'home' e volta igual (quem já manda físico continua)
-        assertThat(comConf(CONF).resolver("/home/cfiae/dados")).isEqualTo("/home/cfiae/dados");
+        // com home=/home, /home/cfiae/dados casa 'home' e volta p/ o mesmo lugar (com a '/' final do legado)
+        assertThat(comConf(CONF).resolver("/home/cfiae/dados")).isEqualTo("/home/cfiae/dados/");
     }
 
     @Test
-    void sem_barra_final_nao_casa_volta_como_veio() throws IOException {
-        // legado daria vazio; divergência proposital: devolve como veio
-        assertThat(comConf(CONF).resolver("/cfiae")).isEqualTo("/cfiae");
+    void sem_barra_final_tambem_traduz() throws IOException {
+        // o legado garante a '/' final (ExtractFilePath) -> /cfiae resolve igual a /cfiae/
+        assertThat(comConf(CONF).resolver("/cfiae")).isEqualTo("/home/cfiae/dados/");
     }
 
     @Test
@@ -65,7 +66,7 @@ class ResolvedorAmbienteTest {
 
     @Test
     void valor_sem_barra_inicial_e_normalizado() throws IOException {
-        assertThat(comConf(CONF).resolver("/cdhu-ht/doc")).isEqualTo("/home/scci_data/dados/doc");
+        assertThat(comConf(CONF).resolver("/cdhu-ht/")).isEqualTo("/home/scci_data/dados/");
     }
 
     @Test
@@ -84,7 +85,7 @@ class ResolvedorAmbienteTest {
     void primeira_entrada_que_casa_vence_a_ordem() throws IOException {
         // duas entradas que casam /app/sub/f: a PRIMEIRA do arquivo vence (fiel ao while do legado)
         String conf = "[DIRETORIOS]\napp/sub=/primeiro\napp=/segundo\n";
-        assertThat(comConf(conf).resolver("/app/sub/f")).isEqualTo("/primeiro/f");
+        assertThat(comConf(conf).resolver("/app/sub/f")).isEqualTo("/primeiro/f/");
     }
 
     @Test
@@ -106,11 +107,11 @@ class ResolvedorAmbienteTest {
         Path f = tmp.resolve("launcher.conf");
         Files.writeString(f, "[DIRETORIOS]\ncli=/antigo\n", StandardCharsets.ISO_8859_1);
         ResolvedorAmbiente r = new ResolvedorAmbiente(f.toString());
-        assertThat(r.resolver("/cli/x")).isEqualTo("/antigo/x");
+        assertThat(r.resolver("/cli/x")).isEqualTo("/antigo/x/");
 
         // reescreve com mapeamento novo e empurra o mtime pra frente (garante detecção)
         Files.writeString(f, "[DIRETORIOS]\ncli=/novo/lugar\n", StandardCharsets.ISO_8859_1);
         Files.setLastModifiedTime(f, FileTime.fromMillis(System.currentTimeMillis() + 5000));
-        assertThat(r.resolver("/cli/x")).isEqualTo("/novo/lugar/x");
+        assertThat(r.resolver("/cli/x")).isEqualTo("/novo/lugar/x/");
     }
 }

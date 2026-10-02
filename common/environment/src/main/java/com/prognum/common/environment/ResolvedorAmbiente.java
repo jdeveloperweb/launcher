@@ -16,6 +16,12 @@ import java.util.List;
  * NA ORDEM do arquivo e usa a primeira cujo NOME é o começo do caminho seguido de {@code /};
  * devolve {@code <diretório configurado> + <resto do caminho a partir da '/'>}.</p>
  *
+ * <p>No legado o ambiente nunca chega "pelado": o launcher o deriva de {@code ExtractFilePath(SERVERPATH)}
+ * (o diretório do programa), que SEMPRE termina em {@code /} — por isso o match (que exige {@code <nome>}
+ * seguido de {@code /}) sempre casa, e um {@code /cfiae} sem barra falharia lá também. Reproduzimos essa
+ * garantia: a {@code /} final é assegurada antes de casar, então {@code /cfiae} e {@code /cfiae/} resolvem
+ * igual (e no mesmo resultado do legado).</p>
+ *
  * <p><b>Única diferença do legado:</b> quando NENHUMA entrada casa, o legado devolvia vazio (e o login
  * falhava); aqui devolvemos o caminho COMO VEIO. Assim quem já manda o caminho físico
  * ({@code /home/cfiae/dados}) continua entrando, e um ambiente sem {@code launcher.conf} (ex.: Docker)
@@ -55,11 +61,16 @@ public final class ResolvedorAmbiente {
             return virtualPath;
         }
         Snapshot s = snapshotAtual();
+        // No legado o ambiente chega como ExtractFilePath(SERVERPATH) -> SEMPRE termina em '/'; por isso o
+        // VirtualPathToFisical (que exige <nome> + '/') sempre casa, e um '/cfiae' pelado falharia LÁ também.
+        // Reproduzimos a garantia da '/' final: assim '/cfiae' e '/cfiae/' resolvem igual (e no mesmo
+        // resultado do legado, ex.: /home/cfiae/dados/).
+        String comBarra = virtualPath.endsWith("/") ? virtualPath : virtualPath + "/";
         // tira UMA '/' inicial (fiel: if copy(VirtualPath,1,1)='/' then delete(VirtualPath,1,1))
-        String p = virtualPath.charAt(0) == '/' ? virtualPath.substring(1) : virtualPath;
+        String p = comBarra.charAt(0) == '/' ? comBarra.substring(1) : comBarra;
         for (Entrada e : s.entradas()) {
             int len = e.nome().length();
-            // começa com <nome> E o caractere seguinte é '/' (precisa sobrar algo além do nome)
+            // começa com <nome> E o caractere seguinte é '/' (fiel a copy(VirtualPath,len+1,1)=PathDelim)
             if (len > 0 && p.length() > len && p.startsWith(e.nome()) && p.charAt(len) == '/') {
                 return e.dir() + p.substring(len);   // dir + '/resto' (fiel a Value + copy(,len+1,MaxInt))
             }
