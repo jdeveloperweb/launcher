@@ -153,15 +153,6 @@ public class ProgramExecutor implements ExecutorPrograma {
             r = executaComRetry(metodoCru, payload, comCorpoBinario, bin, ambEnv, ambiente, ip,
                     programName, usuario);
         }
-        // Ultimo fallback: o nome do metodo EXATO como veio (SEM capitalizar). Programas antigos
-        // registram metodos em MINUSCULO (ex.: 'leversao', 'verificaversaoscci') e o oserver casa
-        // case-sensitive; como montaMetodo/capInicial sempre capitalizam a 1a letra, esses metodos davam
-        // "Rotina nao encontrada" e eram inalcancaveis pelo reator. So dispara quando as formas
-        // capitalizadas ja falharam com "nao encontrada" (metodo NAO rodou -> retry seguro, sem efeito).
-        if (!methodName.equals(metodo) && !methodName.equals(metodoCru) && rotinaNaoEncontrada(r)) {
-            r = executaComRetry(methodName, payload, comCorpoBinario, bin, ambEnv, ambiente, ip,
-                    programName, usuario);
-        }
         return r;
     }
 

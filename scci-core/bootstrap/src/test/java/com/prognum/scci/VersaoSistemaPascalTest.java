@@ -4,30 +4,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-/** Trava o extrator de versao do corpo do wverificascci (tolerante ao formato: JSON/XML/kv). */
+/** Trava a leitura da versao do stdout do scciver (valida formato, preserva a letra do patch). */
 class VersaoSistemaPascalTest {
 
     @Test
-    void extrai_de_json_chave_capitalizada() {
-        assertThat(VersaoSistemaPascal.extrairVersao("{\"success\":true,\"Versao\":\"984\"}")).isEqualTo("984");
+    void le_a_versao_do_stdout() {
+        assertThat(VersaoSistemaPascal.primeiraVersao("984")).isEqualTo("984");
+        assertThat(VersaoSistemaPascal.primeiraVersao("983a")).isEqualTo("983a");   // letra do patch preservada
+        assertThat(VersaoSistemaPascal.primeiraVersao("  9.85  ")).isEqualTo("9.85");
     }
 
     @Test
-    void extrai_de_json_chave_minuscula_pontuada() {
-        assertThat(VersaoSistemaPascal.extrairVersao("{\"versao\":\"9.84\"}")).isEqualTo("9.84");
-    }
-
-    @Test
-    void extrai_de_xml_pmemory() {
-        assertThat(VersaoSistemaPascal.extrairVersao("<PMEMORY><Versao>984</Versao></PMEMORY>")).isEqualTo("984");
-    }
-
-    @Test
-    void sem_versao_ou_erro_devolve_null() {
-        // corpo de erro NAO deve casar (mensagem com "Versão" mas sem valor numerico apos :/=/>)
-        assertThat(VersaoSistemaPascal.extrairVersao(
-                "{\"success\":false,\"message\":\"Versão do Banco incompatível\"}")).isNull();
-        assertThat(VersaoSistemaPascal.extrairVersao("{\"success\":false}")).isNull();
-        assertThat(VersaoSistemaPascal.extrairVersao(null)).isNull();
+    void linha_invalida_ou_vazia_devolve_null() {
+        // warning de lib / linha inesperada no stdout NAO vira versao (senao bloquearia login a toa) -> fail-open
+        assertThat(VersaoSistemaPascal.primeiraVersao("WARNING: libabc.so not found")).isNull();
+        assertThat(VersaoSistemaPascal.primeiraVersao("")).isNull();
+        assertThat(VersaoSistemaPascal.primeiraVersao(null)).isNull();
     }
 }
