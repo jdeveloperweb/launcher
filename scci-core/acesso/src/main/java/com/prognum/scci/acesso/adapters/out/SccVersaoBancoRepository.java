@@ -32,8 +32,12 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
  * <p><b>Versao do sistema:</b> lida da FONTE DA VERDADE — a constante {@code Versao}/{@code VersaoC} do
  * {@code smv.pas}, compilada no binario Pascal — via {@link VersaoSistemaProvider} (NAO mais de config,
  * que desatualizava a cada release). Se o provider nao conseguir determinar a versao (deploy puro, falha),
- * o check NAO bloqueia (fail-open). A comparacao normaliza os dois lados (so digitos), pois a fonte pode dar
- * o formato compacto ({@code "984"}) e {@code NU_VERSAO} vem pontuado ({@code "9.84"}). SOMENTE LEITURA.</p>
+ * o check NAO bloqueia (fail-open).</p>
+ *
+ * <p><b>Comparacao:</b> alinha os formatos removendo apenas o PONTO (a fonte da o compacto {@code "984"}/
+ * {@code "983a"} e {@code NU_VERSAO} vem pontuado {@code "9.84"}/{@code "9.83a"}) e PRESERVA a LETRA do patch
+ * e o case — {@code "9.83a"} NAO pode passar por {@code "9.83"} (fiel ao {@code VersaoDb <> Versao} exato do
+ * legado; o {@code VersaoC} e o {@code Versao} sem o ponto, entao a letra sobrevive). SOMENTE LEITURA.</p>
  */
 @Component
 public class SccVersaoBancoRepository implements VerificadorVersaoBanco {
@@ -66,7 +70,7 @@ public class SccVersaoBancoRepository implements VerificadorVersaoBanco {
         }
 
         // versao do SISTEMA: da fonte real (binario Pascal), nao de config. Indeterminavel => fail-open.
-        String sistema = versaoProvider.versaoSistema(ambiente).map(SccVersaoBancoRepository::soDigitos).orElse("");
+        String sistema = versaoProvider.versaoSistema(ambiente).map(SccVersaoBancoRepository::normalizaVersao).orElse("");
         if (sistema.isEmpty()) {
             log.warn("versao_sistema_indeterminada_login_liberado", kv("ambiente", ambiente));
             return Optional.empty();
@@ -91,9 +95,9 @@ public class SccVersaoBancoRepository implements VerificadorVersaoBanco {
                     + c.host() + "/" + c.database(), e);
         }
 
-        // 1) versao do banco tem que ser IGUAL a do sistema (VersaoDb <> Versao => bloqueia). Normaliza
-        //    ambos (so digitos): a fonte pode dar "984" (compacto) e NU_VERSAO vem "9.84" (pontuado).
-        if (!sistema.equals(soDigitos(versaoDb))) {
+        // 1) versao do banco tem que ser IGUAL a do sistema (VersaoDb <> Versao => bloqueia). Alinha o
+        //    formato tirando so o ponto (compacto "983a" x pontuado "9.83a") e MANTEM a letra do patch.
+        if (!sistema.equals(normalizaVersao(versaoDb))) {
             return Optional.of(MSG_VERSAO_INCOMPATIVEL);
         }
         // 2) instalacao processada: DT_PROC_INST nulo == juliano(...) <= 0 no legado => inst.sh pendente
@@ -103,8 +107,12 @@ public class SccVersaoBancoRepository implements VerificadorVersaoBanco {
         return Optional.empty();
     }
 
-    /** Reduz a versao a digitos ("9.84" -> "984", "984" -> "984") p/ comparar formatos diferentes. */
-    static String soDigitos(String v) {
-        return v == null ? "" : v.replaceAll("[^0-9]", "");
+    /**
+     * Alinha compacto (VersaoC {@code "983a"}) x pontuado (NU_VERSAO {@code "9.83a"}) tirando SO o ponto;
+     * PRESERVA a letra do patch e o case. Assim {@code "9.83a"} -> {@code "983a"} NAO casa com {@code "9.83"}
+     * -> {@code "983"} (a letra conta, fiel ao {@code <>} exato do legado).
+     */
+    static String normalizaVersao(String v) {
+        return v == null ? "" : v.trim().replace(".", "");
     }
 }
