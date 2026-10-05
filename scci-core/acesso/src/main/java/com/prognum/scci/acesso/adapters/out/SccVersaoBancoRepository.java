@@ -1,10 +1,12 @@
 package com.prognum.scci.acesso.adapters.out;
 
 import com.prognum.scci.acesso.domain.port.out.VerificadorVersaoBanco;
+import com.prognum.scci.acesso.domain.port.out.VersaoSistemaProvider;
 import com.prognum.common.environment.JdbcConnectionFactory;
 import com.prognum.common.environment.LauncherEnvReader;
 import com.prognum.common.environment.SccDbConfig;
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
@@ -13,25 +15,30 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.Optional;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 /**
  * Adapter de saida: porte FIEL do {@code TestaVersaoBanco} do wae.pas — a validacao inicial de versao
  * do banco no login, disparada por {@code VERIFICAVERSAOBANCO} (secao [ENVIRONMENT] do launcherenv.ini).
  *
  * <p>Le a maior versao instalada na base ({@code SELECT NU_VERSAO, DT_PROC_INST FROM VERSAO_INST
- * ORDER BY NU_VERSAO DESC}) e compara com a versao do SISTEMA (a constante {@code Versao} do smv.pas,
- * hoje {@code '9.83'} — exposta como {@code scci.auth.versao-sistema}). Bloqueia o login quando:</p>
+ * ORDER BY NU_VERSAO DESC}) e compara com a versao do SISTEMA. Bloqueia o login quando:</p>
  * <ol>
  *   <li>a versao do banco difere da do sistema ({@code VersaoDb <> Versao} no legado); ou</li>
  *   <li>a rotina de instalacao (inst.sh) ainda nao foi processada — {@code DT_PROC_INST} nulo, que
  *       no legado e {@code juliano(DateTimeToData(DtProcInst)) <= 0} (data nula => juliano <= 0).</li>
  * </ol>
  *
- * <p><b>Versao do sistema:</b> no legado ela e COMPILADA no binario (smv.pas). Aqui vem por
- * configuracao ({@code scci.auth.versao-sistema}, default {@code 9.83}) e DEVE ser atualizada junto
- * com cada release do Pascal, exatamente como a constante {@code Versao} e bumpada la. SOMENTE LEITURA.</p>
+ * <p><b>Versao do sistema:</b> lida da FONTE DA VERDADE — a constante {@code Versao}/{@code VersaoC} do
+ * {@code smv.pas}, compilada no binario Pascal — via {@link VersaoSistemaProvider} (NAO mais de config,
+ * que desatualizava a cada release). Se o provider nao conseguir determinar a versao (deploy puro, falha),
+ * o check NAO bloqueia (fail-open). A comparacao normaliza os dois lados (so digitos), pois a fonte pode dar
+ * o formato compacto ({@code "984"}) e {@code NU_VERSAO} vem pontuado ({@code "9.84"}). SOMENTE LEITURA.</p>
  */
 @Component
 public class SccVersaoBancoRepository implements VerificadorVersaoBanco {
+
+    private static final Logger log = LoggerFactory.getLogger(SccVersaoBancoRepository.class);
 
     // Mensagens IDENTICAS as do wae.pas (o QA compara AEJS Pascal x AEJS Java pelo texto).
     private static final String MSG_VERSAO_INCOMPATIVEL =
@@ -41,13 +48,13 @@ public class SccVersaoBancoRepository implements VerificadorVersaoBanco {
 
     private final LauncherEnvReader env;
     private final JdbcConnectionFactory connections;
-    private final String versaoSistema;
+    private final VersaoSistemaProvider versaoProvider;
 
     public SccVersaoBancoRepository(LauncherEnvReader env, JdbcConnectionFactory connections,
-            @Value("${scci.auth.versao-sistema:9.83}") String versaoSistema) {
+            VersaoSistemaProvider versaoProvider) {
         this.env = env;
         this.connections = connections;
-        this.versaoSistema = versaoSistema == null ? "" : versaoSistema.trim();
+        this.versaoProvider = versaoProvider;
     }
 
     @Override
@@ -55,6 +62,13 @@ public class SccVersaoBancoRepository implements VerificadorVersaoBanco {
         // VERIFICAVERSAOBANCO: roda a menos que declarada EXATAMENTE 'FALSE' (fiel ao wae.pas:
         // upStr(GetEnv('VERIFICAVERSAOBANCO')) <> 'FALSE' — ausente/vazia => LIGADA).
         if (!env.verificaVersaoBanco(ambiente)) {
+            return Optional.empty();
+        }
+
+        // versao do SISTEMA: da fonte real (binario Pascal), nao de config. Indeterminavel => fail-open.
+        String sistema = versaoProvider.versaoSistema(ambiente).map(SccVersaoBancoRepository::soDigitos).orElse("");
+        if (sistema.isEmpty()) {
+            log.warn("versao_sistema_indeterminada_login_liberado", kv("ambiente", ambiente));
             return Optional.empty();
         }
 
@@ -77,8 +91,9 @@ public class SccVersaoBancoRepository implements VerificadorVersaoBanco {
                     + c.host() + "/" + c.database(), e);
         }
 
-        // 1) versao do banco tem que ser IGUAL a do sistema (VersaoDb <> Versao => bloqueia)
-        if (!versaoSistema.equals(versaoDb.trim())) {
+        // 1) versao do banco tem que ser IGUAL a do sistema (VersaoDb <> Versao => bloqueia). Normaliza
+        //    ambos (so digitos): a fonte pode dar "984" (compacto) e NU_VERSAO vem "9.84" (pontuado).
+        if (!sistema.equals(soDigitos(versaoDb))) {
             return Optional.of(MSG_VERSAO_INCOMPATIVEL);
         }
         // 2) instalacao processada: DT_PROC_INST nulo == juliano(...) <= 0 no legado => inst.sh pendente
@@ -86,5 +101,10 @@ public class SccVersaoBancoRepository implements VerificadorVersaoBanco {
             return Optional.of(MSG_INST_PENDENTE);
         }
         return Optional.empty();
+    }
+
+    /** Reduz a versao a digitos ("9.84" -> "984", "984" -> "984") p/ comparar formatos diferentes. */
+    static String soDigitos(String v) {
+        return v == null ? "" : v.replaceAll("[^0-9]", "");
     }
 }
