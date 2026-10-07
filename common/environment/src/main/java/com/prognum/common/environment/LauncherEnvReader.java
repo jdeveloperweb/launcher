@@ -182,18 +182,30 @@ public class LauncherEnvReader {
 
     /**
      * SEG_IDENTIFICACAO do [SEGURANCA]: a chave de sessao FIXA da conta de integracao ('loginintegracao').
-     * Fiel ao launcher.pas ({@code ReadString('SEGURANCA','SEG_IDENTIFICACAO','')}), que a envia ao
-     * loginintegracao como a "chave de secao configurada". {@code null} se ausente.
+     * Fiel ao launcher.pas ({@code ReadString('SEGURANCA','SEG_IDENTIFICACAO','')}).
+     *
+     * <p><b>Le DIRETO do ambiente do request</b> — NAO passa pelo {@code arquivoIni}/{@code SCCIDIRATV}.
+     * Motivo: a chave de integracao e POR-AMBIENTE (cada cliente tem a sua), e o {@code SCCIDIRATV} (um
+     * dir FIXO) faria ler o launcherenv ERRADO no multi-ambiente — a validacao da integracao compararia
+     * o sessionKey contra a SEG_IDENTIFICACAO de outro ambiente. O ambiente ja chega resolvido (fisico)
+     * do controller (ResolvedorAmbiente). {@code null} se ausente.</p>
      */
     public String segIdentificacao(String ambientePath) {
-        String v = secao(ambientePath, "SEGURANCA").get("SEG_IDENTIFICACAO");
+        if (ambientePath == null || ambientePath.isBlank()) {
+            return null;
+        }
+        String v = secaoDe(Path.of(ambientePath, "launcherenv.ini"), "SEGURANCA").get("SEG_IDENTIFICACAO");
         return v == null || v.isBlank() ? null : v.trim();
     }
 
-    /** Le uma secao crua do launcherenv.ini (chaves em MAIUSCULO). Vazio se o arquivo nao existir. */
+    /** Le uma secao crua do launcherenv.ini do ambiente (via arquivoIni -> honra SCCIDIRATV). Vazio se ausente. */
     private Map<String, String> secao(String ambientePath, String secaoAlvo) {
+        return secaoDe(arquivoIni(ambientePath), secaoAlvo);
+    }
+
+    /** Parseia uma secao (chaves em MAIUSCULO) do launcherenv.ini do CAMINHO DADO (sem SCCIDIRATV). */
+    private static Map<String, String> secaoDe(Path ini, String secaoAlvo) {
         Map<String, String> vals = new LinkedHashMap<>();
-        Path ini = arquivoIni(ambientePath);
         List<String> linhas;
         try {
             linhas = Files.readAllLines(ini, StandardCharsets.ISO_8859_1);
