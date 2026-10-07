@@ -2,6 +2,7 @@ package com.prognum.gateway.autenticacao;
 
 import com.prognum.gateway.autenticacao.model.Sessao;
 import com.prognum.gateway.autenticacao.port.out.RepositorioSessao;
+import com.prognum.gateway.autenticacao.port.out.SegurancaIntegracao;
 import com.prognum.gateway.autenticacao.port.out.SessaoPersistente;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +21,8 @@ class SessaoServiceTest {
 
     private final RepositorioSessao cache = mock(RepositorioSessao.class);
     private final SessaoPersistente persistente = mock(SessaoPersistente.class);
-    private final SessaoService svc = new SessaoService(cache, persistente);
+    private final SegurancaIntegracao integracao = mock(SegurancaIntegracao.class);
+    private final SessaoService svc = new SessaoService(cache, persistente, integracao);
 
     @Test
     void registrar_grava_nos_dois() {
@@ -63,6 +65,29 @@ class SessaoServiceTest {
     @Test
     void validar_sessionKey_null_vazio() {
         assertThat(svc.validar(null, "joao", "/amb")).isEmpty();
+    }
+
+    // ---- conta de integracao (loginintegracao): validacao STATELESS contra SEG_IDENTIFICACAO ----
+
+    @Test
+    void integracao_sessionkey_bate_seg_identificacao_valida_sem_tocar_store() {
+        when(integracao.identificacao("/cdhu-ht/api")).thenReturn("DXJKLDEOSX");
+        Optional<Sessao> r = svc.validar("DXJKLDEOSX", "loginintegracao", "/cdhu-ht/api");
+        assertThat(r).contains(new Sessao("loginintegracao", "/cdhu-ht/api"));
+        verify(cache, never()).buscar(any());                         // stateless: nem olha o cache
+        verify(persistente, never()).estaValida(any(), any(), any()); // nem a SCCI_SESSION
+    }
+
+    @Test
+    void integracao_sessionkey_errada_vazio() {
+        when(integracao.identificacao("/cdhu-ht/api")).thenReturn("DXJKLDEOSX");
+        assertThat(svc.validar("CHAVE_ERRADA", "loginintegracao", "/cdhu-ht/api")).isEmpty();
+    }
+
+    @Test
+    void integracao_ambiente_sem_seg_identificacao_vazio() {
+        when(integracao.identificacao(any())).thenReturn(null);   // ambiente sem SEG_IDENTIFICACAO
+        assertThat(svc.validar("qualquer", "loginintegracao", "/cdhu-ht/api")).isEmpty();
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.prognum.gateway.autenticacao;
 import com.prognum.gateway.autenticacao.model.Sessao;
 import com.prognum.gateway.autenticacao.port.in.SessaoUseCase;
 import com.prognum.gateway.autenticacao.port.out.RepositorioSessao;
+import com.prognum.gateway.autenticacao.port.out.SegurancaIntegracao;
 import com.prognum.gateway.autenticacao.port.out.SessaoPersistente;
 
 import java.util.Optional;
@@ -17,12 +18,17 @@ import java.util.Optional;
  */
 public class SessaoService implements SessaoUseCase {
 
+    /** Conta de integracao (loginintegracao.pas): usuario FIXO, sessao validada STATELESS. */
+    private static final String USUARIO_INTEGRACAO = "loginintegracao";
+
     private final RepositorioSessao cache;
     private final SessaoPersistente persistente;
+    private final SegurancaIntegracao integracao;
 
-    public SessaoService(RepositorioSessao cache, SessaoPersistente persistente) {
+    public SessaoService(RepositorioSessao cache, SessaoPersistente persistente, SegurancaIntegracao integracao) {
         this.cache = cache;
         this.persistente = persistente;
+        this.integracao = integracao;
     }
 
     @Override
@@ -43,6 +49,16 @@ public class SessaoService implements SessaoUseCase {
     public Optional<Sessao> validar(String sessionKey, String usuarioInformado, String ambienteInformado) {
         if (sessionKey == null) {
             return Optional.empty();
+        }
+        // Conta de integracao (loginintegracao.pas): nao ha login/sessao no store — a integracao manda
+        // usuario='loginintegracao' + sessionKey=<SEG_IDENTIFICACAO> em CADA chamada. Valida STATELESS:
+        // bate a sessionKey contra a SEG_IDENTIFICACAO fixa do ambiente ([SEGURANCA]). So isto; nao cai
+        // no cache/SCCI_SESSION (a integracao nunca logou).
+        if (USUARIO_INTEGRACAO.equals(usuarioInformado)) {
+            String esperado = integracao.identificacao(ambienteInformado);
+            return (esperado != null && esperado.equals(sessionKey))
+                    ? Optional.of(new Sessao(usuarioInformado, ambienteInformado))
+                    : Optional.empty();
         }
         Optional<Sessao> emCache = cache.buscar(sessionKey);
         if (emCache.isPresent()) {

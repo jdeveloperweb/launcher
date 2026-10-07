@@ -180,6 +180,16 @@ public class LauncherEnvReader {
         return v == null || !"FALSE".equalsIgnoreCase(v.trim());
     }
 
+    /**
+     * SEG_IDENTIFICACAO do [SEGURANCA]: a chave de sessao FIXA da conta de integracao ('loginintegracao').
+     * Fiel ao launcher.pas ({@code ReadString('SEGURANCA','SEG_IDENTIFICACAO','')}), que a envia ao
+     * loginintegracao como a "chave de secao configurada". {@code null} se ausente.
+     */
+    public String segIdentificacao(String ambientePath) {
+        String v = secao(ambientePath, "SEGURANCA").get("SEG_IDENTIFICACAO");
+        return v == null || v.isBlank() ? null : v.trim();
+    }
+
     /** Le uma secao crua do launcherenv.ini (chaves em MAIUSCULO). Vazio se o arquivo nao existir. */
     private Map<String, String> secao(String ambientePath, String secaoAlvo) {
         Map<String, String> vals = new LinkedHashMap<>();

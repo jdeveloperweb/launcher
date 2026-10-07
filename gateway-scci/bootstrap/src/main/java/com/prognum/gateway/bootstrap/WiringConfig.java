@@ -74,8 +74,9 @@ public class WiringConfig {
     //      (login/senha/recuperacao/valida) foi movido para o scci-core; o launcher so o chama
     //      via ClienteScciCoreAcesso (AcessoJavaPort, @Component). ----
     @Bean
-    SessaoUseCase sessaoService(RepositorioSessao cache, SessaoPersistente persistente) {
-        return new SessaoService(cache, persistente);
+    SessaoUseCase sessaoService(RepositorioSessao cache, SessaoPersistente persistente,
+            com.prognum.gateway.autenticacao.port.out.SegurancaIntegracao integracao) {
+        return new SessaoService(cache, persistente, integracao);
     }
 
     // ---- EXECUCAO: 3 trilhos do Strangler (mesmo contrato /interno/executar, muda so a URL base) ----
