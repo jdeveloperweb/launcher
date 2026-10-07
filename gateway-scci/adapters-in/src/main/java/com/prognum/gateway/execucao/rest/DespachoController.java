@@ -113,7 +113,9 @@ public class DespachoController {
 
         // VALIDA (papel do launcher): revalida o token ANTES de executar o programa.
         String sessionKey = primeiro(in, "sessionKey");
-        String usuarioParam = primeiro(in, "userName", "usuario");
+        // "username" (minusculo) e o que a INTEGRACAO manda (ex.: curl do wintegracaoCDHU com
+        // username=loginintegracao); o front ExtJS manda "userName". Aceita as duas grafias + "usuario".
+        String usuarioParam = primeiro(in, "userName", "username", "usuario");
         // traduz o ambiente virtual (ex.: /cfiae/) p/ o fisico ANTES de validar a sessao (a sessao foi
         // gravada no login ja com o caminho fisico) e de propagar ao scci-core/launcher-sdk/Pascal.
         String ambienteParam = resolvedor.resolver(primeiro(in, "ambienteOperacional", "ambiente"));
