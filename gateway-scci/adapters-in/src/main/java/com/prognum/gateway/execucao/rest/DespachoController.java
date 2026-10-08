@@ -24,6 +24,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -155,9 +159,33 @@ public class DespachoController {
                     .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=ISO-8859-1")
                     .body(crypto.cifraResposta(json));
         }
+        // 'json' veio do Pascal lido como ISO-8859-1 (1 byte = 1 char), entao getBytes(ISO_8859_1) sao os
+        // BYTES ORIGINAIS do programa. Programas de integracao/React FORCAM UTF-8 na saida (ex.:
+        // wintegracaoCDHU: "JsonOut.encoding := 'UTF-8'"); re-encodar esses bytes (getBytes UTF_8) DOBRA a
+        // codificacao -> acento quebrado ("informaÃ§Ã£o"). Entao: se os bytes JA sao UTF-8 valido, repassa
+        // como vieram; so converte ISO->UTF quando NAO e UTF-8 (programas ISO-8859-1 legados/ExtJS plaintext).
+        byte[] bytes = json.getBytes(StandardCharsets.ISO_8859_1);
+        byte[] corpo = ehUtf8Valido(bytes) ? bytes : json.getBytes(StandardCharsets.UTF_8);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=UTF-8")
-                .body(json.getBytes(StandardCharsets.UTF_8));
+                .body(corpo);
+    }
+
+    /**
+     * True se {@code bytes} ja formam UTF-8 VALIDO — i.e., o programa Pascal forcou UTF-8 na saida.
+     * ASCII puro conta como valido (identico nos dois charsets, sem diferenca). Acento ISO-8859-1 (ex.:
+     * {@code ç}=0xE7) NAO e UTF-8 valido (byte-lider sem continuacao) -> false. Pacote p/ teste.
+     */
+    static boolean ehUtf8Valido(byte[] bytes) {
+        CharsetDecoder dec = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        try {
+            dec.decode(ByteBuffer.wrap(bytes));
+            return true;
+        } catch (CharacterCodingException e) {
+            return false;
+        }
     }
 
     private Map<String, String> camposDoJson(String json) {
