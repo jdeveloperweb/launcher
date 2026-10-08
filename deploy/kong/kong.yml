@@ -61,7 +61,7 @@ services:
       - name: r-dispatch
         paths: [/w]
         strip_path: false
-        methods: [POST, GET]   # GET: combos/stores do ExtJS (ledados via querystring) — sem isto davam 404
+        methods: [POST, GET, PUT, DELETE]   # GET: combos/stores do ExtJS (ledados via querystring) — sem isto davam 404; PUT/DELETE: front React
 
   # -------- SCAFFOLD (novos bounded contexts) — 501 hoje --------
   # - name: licencas

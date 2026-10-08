@@ -125,7 +125,7 @@ public class SccidocController {
             requestMethod = req.getMethod();
         }
         String sessionKey = primeiro(in, "sessionKey");
-        String usuarioParam = primeiro(in, "userName", "usuario");
+        String usuarioParam = primeiro(in, "userName", "username", "usuario");
         String ambienteParam = resolvedor.resolver(primeiro(in, "ambienteOperacional", "ambiente"));
 
         // VALIDA (igual ao /w): revalida a sessao antes de executar.
@@ -168,7 +168,7 @@ public class SccidocController {
                                               HttpServletRequest req) {
         Map<String, String> in = queryParaMapa(req);
         String sessionKey = cookieOuParam(req, in, "sessionKey");
-        String usuarioParam = cookieOuParam(req, in, "userName", "usuario");
+        String usuarioParam = cookieOuParam(req, in, "userName", "username", "usuario");
         String ambienteParam = resolvedor.resolver(cookieOuParam(req, in, "ambienteOperacional", "ambiente"));
 
         Optional<Sessao> s = sessoes.validar(sessionKey, usuarioParam, ambienteParam);
@@ -266,7 +266,7 @@ public class SccidocController {
             requestMethod = req.getMethod();
         }
         String sessionKey = paramOuHeader(req, in, "sessionKey");
-        String usuarioParam = paramOuHeader(req, in, "userName", "usuario");
+        String usuarioParam = paramOuHeader(req, in, "userName", "username", "usuario");
         String ambienteParam = resolvedor.resolver(paramOuHeader(req, in, "ambienteOperacional", "ambiente"));
 
         Optional<Sessao> s = sessoes.validar(sessionKey, usuarioParam, ambienteParam);

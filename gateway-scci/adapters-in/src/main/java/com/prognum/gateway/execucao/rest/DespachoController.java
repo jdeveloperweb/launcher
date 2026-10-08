@@ -73,21 +73,29 @@ public class DespachoController {
     //   3) GET  /w/{prog}/{met}?... (params na QUERYSTRING)   combos/stores GET do ExtJS (ledados)
     // Sem o (3), os combos carregados por GET tomavam 404 (Kong/reator so POST) -> combo vazio
     // ("Tipo de taxa invalido" etc.). O legado aceita GET (QUERY_STRING); aqui espelhamos.
-    @RequestMapping(value = {"/w", "/w/{prog}/{met}"}, method = {RequestMethod.GET, RequestMethod.POST})
+    //   4) PUT/DELETE /w/{prog}/{met}  (front React: PutPretendente, OperacaoSalvaSimulacao, ExcluiDocumento)
+    //      O legado repassa o REQUEST_METHOD ao programa (Put<metodo>/Delete<metodo>); sem eles davam 405.
+    @RequestMapping(value = {"/w", "/w/{prog}/{met}"},
+            method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE})
     public ResponseEntity<byte[]> dispatch(HttpServletRequest req,
             @PathVariable(name = "prog", required = false) String progPath,
             @PathVariable(name = "met", required = false) String metPath,
             @RequestBody(required = false) byte[] body) {
         boolean ehGet = "GET".equalsIgnoreCase(req.getMethod());
-        String rawAscii = (ehGet || body == null) ? "" : new String(body, StandardCharsets.ISO_8859_1);
-        boolean cifrado = !ehGet && crypto.estaCifrado(rawAscii);
-        if (exigirCifrado && !cifrado && !ehGet && body != null && body.length > 0) {
+        // PUT/DELETE sem corpo trazem os params na QUERYSTRING, igual ao GET.
+        boolean semCorpoPutDelete = (body == null || body.length == 0)
+                && ("PUT".equalsIgnoreCase(req.getMethod()) || "DELETE".equalsIgnoreCase(req.getMethod()));
+        boolean usaQuery = ehGet || semCorpoPutDelete;
+        String rawAscii = (usaQuery || body == null) ? "" : new String(body, StandardCharsets.ISO_8859_1);
+        boolean cifrado = !usaQuery && crypto.estaCifrado(rawAscii);
+        if (exigirCifrado && !cifrado && !usaQuery && body != null && body.length > 0) {
             log.info("wcop_nao_cifrado_rejeitado");
             return resposta(false,
                     "{\"success\":false,\"message\":\"Requisicao deve ser cifrada (W_COP).\",\"codigo\":\"E006\"}");
         }
-        // GET: params na QUERYSTRING (texto puro, sem W_COP). POST: corpo (JSON dispatch OU form ao abrir tela).
-        String corpo = ehGet
+        // GET (e PUT/DELETE sem corpo): params na QUERYSTRING (texto puro, sem W_COP).
+        // POST/PUT/DELETE com corpo: JSON dispatch OU form ao abrir tela.
+        String corpo = usaQuery
                 ? mapParaJson(camposDaQuery(req))
                 : (cifrado ? crypto.decifraRequest(rawAscii)
                         : (body == null || body.length == 0 ? "{}" : new String(body, StandardCharsets.UTF_8)));
