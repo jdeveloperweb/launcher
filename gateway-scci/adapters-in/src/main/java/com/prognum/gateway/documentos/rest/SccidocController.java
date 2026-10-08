@@ -9,6 +9,7 @@ import com.prognum.gateway.autenticacao.port.in.SessaoUseCase;
 import com.prognum.common.crypto.LogAnonimizador;
 import com.prognum.common.crypto.WcopCrypto;
 import com.prognum.common.environment.ResolvedorAmbiente;
+import com.prognum.gateway.compartilhado.RespostaCharset;
 import com.prognum.gateway.documentos.model.RespostaDocumento;
 import com.prognum.gateway.documentos.port.in.BaixarDocumentoUseCase;
 import com.prognum.gateway.documentos.port.in.EnviarDocumentoUseCase;
@@ -521,9 +522,11 @@ public class SccidocController {
                     .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=ISO-8859-1")
                     .body(crypto.cifraResposta(json));
         }
+        // plaintext: repassa se o programa ja saiu em UTF-8 (nao re-encoda -> evita double-encode de acento),
+        // senao converte ISO-8859-1->UTF-8. Mesma regra do /w (RespostaCharset).
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=UTF-8")
-                .body(json.getBytes(StandardCharsets.UTF_8));
+                .body(RespostaCharset.corpoPlaintext(json));
     }
 
     /**
