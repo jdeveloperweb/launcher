@@ -37,4 +37,22 @@ class RespostaCharsetTest {
         String corpo = new String(bytesDoPascal, StandardCharsets.ISO_8859_1);
         return new String(RespostaCharset.corpoPlaintext(corpo), StandardCharsets.UTF_8);
     }
+
+    /**
+     * Canal CIFRADO (ExtJS): o {@code paraIso} tem que fazer o ExtJS (ISO-8859-1) ver o acento CORRETO,
+     * tanto pra programa que força UTF-8 quanto pra programa ISO-8859-1 legado.
+     */
+    @Test
+    void paraIso_corrige_o_acento_no_extjs_cifrado() {
+        assertThat(extjsVe("informação".getBytes(StandardCharsets.UTF_8))).isEqualTo("informação"); // força UTF-8 -> reinterpreta
+        assertThat(extjsVe("informação".getBytes(StandardCharsets.ISO_8859_1))).isEqualTo("informação"); // ISO -> inalterado
+        assertThat(extjsVe("sem acento".getBytes(StandardCharsets.UTF_8))).isEqualTo("sem acento");
+    }
+
+    /** SDK lê ISO-8859-1 -> paraIso -> cifraResposta encoda em ISO-8859-1 -> ExtJS decifra + decode ISO. */
+    private static String extjsVe(byte[] bytesDoPascal) {
+        String json = new String(bytesDoPascal, StandardCharsets.ISO_8859_1);
+        byte[] paraCifrar = RespostaCharset.paraIso(json).getBytes(StandardCharsets.ISO_8859_1);
+        return new String(paraCifrar, StandardCharsets.ISO_8859_1);
+    }
 }

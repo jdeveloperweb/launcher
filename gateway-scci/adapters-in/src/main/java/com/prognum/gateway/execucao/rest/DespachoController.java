@@ -152,9 +152,10 @@ public class DespachoController {
 
     private ResponseEntity<byte[]> resposta(boolean cifrado, String json) {
         if (cifrado) {
+            // ExtJS (ISO-8859-1): se o programa forcou UTF-8, reinterpreta antes de cifrar (senao "Ã§").
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=ISO-8859-1")
-                    .body(crypto.cifraResposta(json));
+                    .body(crypto.cifraResposta(RespostaCharset.paraIso(json)));
         }
         // Resposta plaintext: repassa se o programa ja saiu em UTF-8 (nao re-encoda -> evita o double-encode
         // "informaÃ§Ã£o"), senao converte ISO-8859-1->UTF-8. Mesma regra pros canais /sccidoc e login.

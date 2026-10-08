@@ -28,6 +28,17 @@ public final class RespostaCharset {
     }
 
     /**
+     * Prepara o {@code json} para o canal CIFRADO (W_COP/ExtJS — o {@code cifraResposta} encoda o texto em
+     * ISO-8859-1). Se o programa forçou UTF-8 (o SDK leu como ISO-8859-1 → String "double": {@code Ã§}),
+     * REINTERPRETA pro Unicode correto ({@code ç}), para que o {@code getBytes(ISO_8859_1)} do
+     * {@code cifraResposta} produza o acento CERTO no ExtJS. Programa ISO-8859-1 legado → devolve inalterado.
+     */
+    public static String paraIso(String json) {
+        byte[] bytes = json.getBytes(StandardCharsets.ISO_8859_1);
+        return ehUtf8Valido(bytes) ? new String(bytes, StandardCharsets.UTF_8) : json;
+    }
+
+    /**
      * True se {@code bytes} já formam UTF-8 VÁLIDO — i.e., o programa Pascal forçou UTF-8 na saída. ASCII
      * puro conta como válido (idêntico nos dois charsets). Acento ISO-8859-1 (ex.: {@code ç}=0xE7) NÃO é
      * UTF-8 válido (byte-líder sem continuação) → false.
