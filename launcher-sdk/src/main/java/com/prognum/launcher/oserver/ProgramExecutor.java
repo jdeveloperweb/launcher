@@ -48,6 +48,14 @@ public class ProgramExecutor implements ExecutorPrograma {
     private static final Set<String> ROTEAMENTO = Set.of(
             "programName", "methodName", "requestMethod", "programa", "metodo");
 
+    /**
+     * Chave reservada no rawJson com o XML PMEMORY JA MONTADO pelo gateway (POST com corpo cru no
+     * /sccidoc, ex.: SOAP do wintegracaoCDHU). Vai como esta, sem a conversao JSON -> PMEMORY: o
+     * programa procura os nos pelo nome com prefixo (soapenv:Body), que a conversao nao preserva.
+     * Contrato gateway &lt;-&gt; hibrido: o mesmo nome esta no SccidocController do gateway.
+     */
+    static final String CHAVE_PMEMORY_XML = "__pmemoryXml";   // package-private p/ teste
+
     // Magics (oserver.pas)
     private static final int DATA_HDR = 0xFB, DATA_HDR_Z = 0xF9, METD_HDR = 0xFA,
             METD_HDR_Z = 0xF7, METD_HDR_K = 0xFC, METD_HDR_K_Z = 0xF8, EXCEPT_HDR = 0xFD;
@@ -113,7 +121,11 @@ public class ProgramExecutor implements ExecutorPrograma {
         try {
             com.fasterxml.jackson.databind.JsonNode node =
                     mapper.readTree(rawJson == null || rawJson.isBlank() ? "{}" : rawJson);
-            if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode obj) {
+            com.fasterxml.jackson.databind.JsonNode pronto = node == null ? null : node.get(CHAVE_PMEMORY_XML);
+            if (pronto != null && pronto.isTextual()) {
+                // XML PMEMORY ja montado (SOAP): bytes do cliente preservados (1 char = 1 byte)
+                paramsXml = pronto.asText().getBytes(StandardCharsets.ISO_8859_1);
+            } else if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode obj) {
                 obj.remove(ROTEAMENTO);
                 paramsXml = jsonParaPmemoryXml(obj).getBytes(StandardCharsets.ISO_8859_1);
             } else {

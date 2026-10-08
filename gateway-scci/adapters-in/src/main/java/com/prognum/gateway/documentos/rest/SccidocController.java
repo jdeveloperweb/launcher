@@ -81,12 +81,27 @@ public class SccidocController {
     // form/query fields (fluxo ja validado ao vivo); forcar cifrado ali arriscaria quebrar upload
     // real em producao sem necessidade, ja que a sessao e validada da mesma forma nos dois casos.
     private final boolean exigirCifrado;
+    // Equivalentes ao w.ini do sccidoc.pas (ambienteOperacional / usuarioWeb): usados no POST com corpo
+    // cru (SOAP) quando o cliente nao manda ambiente/usuario -- o caso das integracoes SOAP da CDHU.
+    private final String ambientePadrao;
+    private final String usuarioPadrao;
+
+    /**
+     * Chave reservada no rawJson com o XML PMEMORY JA MONTADO (SOAP). O executor do hibrido
+     * (ProgramExecutor do launcher-sdk) usa esse XML como esta, sem converter de JSON. Contrato
+     * gateway &lt;-&gt; hibrido: o mesmo nome esta no ProgramExecutor.
+     */
+    static final String CHAVE_PMEMORY_XML = "__pmemoryXml";
 
     public SccidocController(ObjectMapper mapper, WcopCrypto crypto, SessaoUseCase sessoes,
                             BaixarDocumentoUseCase documentos, EnviarDocumentoUseCase envio,
                             ResolvedorAmbiente resolvedor,
                             @Value("${launcher.documentos.extensoes-permitidas:}") String[] extensoesPermitidas,
-                            @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado) {
+                            @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado,
+                            @Value("${launcher.sccidoc.ambiente-padrao:}") String ambientePadrao,
+                            @Value("${launcher.sccidoc.usuario-padrao:}") String usuarioPadrao) {
+        this.ambientePadrao = ambientePadrao;
+        this.usuarioPadrao = usuarioPadrao;
         this.mapper = mapper;
         this.crypto = crypto;
         this.sessoes = sessoes;
@@ -197,6 +212,282 @@ public class SccidocController {
         // Doc Final de Requisitos (2.9.5/regra 9): falha de arquivo -> HTML. Aqui cifrado e sempre
         // false (navegacao direta do browser nunca usa W_COP), entao o HTML sempre se aplica.
         return respostaDocumento(d, false, false, true);
+    }
+
+    /**
+     * POST com CORPO CRU em {@code /sccidoc/{programa}/{metodo}} — porte do DoRawRemoteCall do sccidoc.pas,
+     * usado pelas integracoes SOAP (ex.: wintegracaoCDHU/SoapCDHU -> PostSoapCDHU). Fiel ao legado:
+     * <ul>
+     *   <li>corpo XML (SOAP): o PROPRIO documento vira o PMEMORY (raiz renomeada, prefixos/atributos
+     *       preservados) + os params de controle como filhos (DecodeParams faz Params.ParseString);</li>
+     *   <li>corpo JSON/form: vira params, como no DecodeParams;</li>
+     *   <li>params da query, headers userName/sessionKey/ambienteOperacional e cookies, nessa ordem;</li>
+     *   <li>vai pelo canal de documentos ([tamanho][PMEMORY]) e a resposta usa o Tipo do cabecalho
+     *       (o PostSoapCDHU responde .TEXT/XML -> text/xml).</li>
+     * </ul>
+     * Sem isto o SOAP dava 405 (so havia GET nessa rota) e, pelo /w, "Stream read error".
+     */
+    @Operation(summary = "POST com corpo cru (SOAP/integração)",
+            description = "Corpo XML vira o PMEMORY do programa (porte do DoRawRemoteCall do sccidoc.pas). "
+                    + "Erro numa chamada SOAP devolve SOAP Fault (text/xml), como o legado.")
+    @PostMapping({"/sccidoc/{programa}/{metodo}", "/sccidoc/{programa}/{metodo}/**"})
+    public ResponseEntity<byte[]> sccidocCorpoCru(@PathVariable String programa, @PathVariable String metodo,
+                                                  HttpServletRequest req,
+                                                  @RequestBody(required = false) byte[] body) {
+        String contentType = req.getContentType() == null ? "" : req.getContentType().toLowerCase(Locale.ROOT);
+        if (contentType.startsWith("multipart")) {
+            return resposta(false, "{\"success\":false,\"message\":\"Upload multipart deve ser enviado para /sccidoc.\"}");
+        }
+        String raw = body == null ? "" : new String(body, StandardCharsets.ISO_8859_1);
+        boolean cifrado = !raw.isEmpty() && crypto.estaCifrado(raw);
+        if (exigirCifrado && !cifrado && !raw.isEmpty()) {
+            log.info("wcop_nao_cifrado_rejeitado");
+            return resposta(false,
+                    "{\"success\":false,\"message\":\"Requisicao deve ser cifrada (W_COP).\",\"codigo\":\"E006\"}");
+        }
+        // bytes preservados 1:1 (ISO-8859-1), como a AnsiString Entrada do CGI
+        String entrada = cifrado ? crypto.decifraRequest(raw) : raw;
+        String corpo = entrada.stripLeading();
+        boolean soap = corpo.startsWith("<");
+
+        // params: query primeiro; o corpo JSON/form so completa (no legado o 1o valor achado vence)
+        Map<String, String> params = queryParaMapa(req);
+        if (!soap && !corpo.isEmpty()) {
+            Map<String, String> doCorpo = corpo.startsWith("{") ? camposDoJson(corpo) : camposDoForm(corpo);
+            doCorpo.forEach(params::putIfAbsent);
+        }
+        String sessionKey = valorDaChamada(req, params, "sessionKey", "SESSIONKEY", "sessionkey");
+        String usuarioParam = valorDaChamada(req, params, "userName", "username", "usuario", "USERNAME");
+        if (usuarioParam == null && !usuarioPadrao.isBlank()) {
+            usuarioParam = usuarioPadrao;                 // Params.USERNAME := wini.usuarioWeb
+        }
+        String ambienteBruto = valorDaChamada(req, params, "ambienteOperacional", "ambiente", "AMBIENTEOPERACIONAL");
+        if (ambienteBruto == null && !ambientePadrao.isBlank()) {
+            ambienteBruto = ambientePadrao;               // Params.AMBIENTEOPERACIONAL := wini.ambienteOperacional
+        }
+        if (ambienteBruto == null) {
+            return falhaCorpoCru(soap, cifrado, "Parametro ambienteOperacional é obrigatório");
+        }
+        String contexto = valorDaChamada(req, params, "contexto", "CONTEXTO");
+        String ambienteParam = resolvedor.resolver(ambienteBruto);
+
+        Optional<Sessao> s = sessoes.validar(sessionKey, usuarioParam, ambienteParam);
+        if (sessionKey != null && s.isEmpty()) {
+            return soap ? soapFault()
+                    : resposta(cifrado,
+                            "{\"success\":false,\"message\":\"Sessao expirada. Faca login novamente.\",\"codigo\":\"E004\"}");
+        }
+        String usuario = s.map(Sessao::usuario).orElse(usuarioParam);
+        String ambiente = s.map(Sessao::ambienteOperacional).orElse(ambienteParam);
+
+        String programName = Optional.ofNullable(primeiro(params, "programName")).orElse(programa);
+        String methodName = Optional.ofNullable(primeiro(params, "methodName")).orElse(metodo);
+        String requestMethod = Optional.ofNullable(primeiro(params, "requestMethod")).orElse(req.getMethod());
+
+        // params de controle que o sccidoc.pas acrescenta ao PMEMORY
+        Map<String, String> controle = new LinkedHashMap<>(params);
+        controle.put("USERNAME", usuario);
+        controle.put("SESSIONKEY", sessionKey);
+        controle.put("AMBIENTEOPERACIONAL", ambienteBruto);
+        controle.put("CONTEXTO", contexto);
+        controle.put("REMOTE_ADDR", req.getRemoteAddr());
+
+        ObjectNode obj = mapper.createObjectNode();
+        if (soap) {
+            String pmemory;
+            try {
+                pmemory = montaPmemoryXml(entrada, controle);
+            } catch (IllegalArgumentException e) {
+                return soapFault();
+            }
+            obj.put(CHAVE_PMEMORY_XML, pmemory);
+        } else {
+            controle.forEach((k, v) -> {
+                if (v != null) {
+                    obj.put(k, v);
+                }
+            });
+        }
+
+        log.info("sccidoc_corpo_cru", kv("programName", programName), kv("methodName", methodName),
+                kv("requestMethod", requestMethod), kv("soap", soap),
+                kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuario)),
+                kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())),
+                kv("sessaoId", LogAnonimizador.pseudonimizarSessao(sessionKey)), kv("sessaoValida", s.isPresent()));
+
+        RespostaDocumento d = documentos.baixar(new ComandoExecucao(
+                ambiente, programName, methodName, requestMethod, obj.toString(), usuario, req.getRemoteAddr(), true));
+        if (d.erro()) {
+            return soap ? soapFault() : resposta(cifrado, d.texto());
+        }
+        if (d.arquivo()) {
+            return respostaDocumento(d, cifrado);
+        }
+        // Cabecalho com Tipo e sem Nome (ex.: PostSoapCDHU: {"Tipo":".TEXT/XML"} + XML): o legado escreve o
+        // Content-Type pelo Tipo e copia o resto do stream, sem Content-Disposition.
+        CorpoComTipo ct = corpoComTipo(d.texto());
+        if (ct != null) {
+            return ResponseEntity.ok().header(HttpHeaders.CONTENT_TYPE, mime(ct.tipo())).body(ct.corpo());
+        }
+        return resposta(cifrado, d.texto());
+    }
+
+    private ResponseEntity<byte[]> falhaCorpoCru(boolean soap, boolean cifrado, String mensagem) {
+        if (soap) {
+            return soapFault();
+        }
+        ObjectNode erro = mapper.createObjectNode();
+        erro.put("success", false);
+        erro.put("message", mensagem);
+        return resposta(cifrado, erro.toString());
+    }
+
+    /** O mesmo SOAP Fault que o sccidoc.pas devolve quando o PostSoapCDHU falha. */
+    private static ResponseEntity<byte[]> soapFault() {
+        String xml = "<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">\n"
+                + "<soap:Body>\n<soap:Fault>\n<faultcode>soap:Server</faultcode>\n"
+                + "<faultstring>Não foi possível processar a requisição.</faultstring>\n"
+                + "<detail>Parâmetro inválido ou erro interno durante o processamento.</detail>\n"
+                + "</soap:Fault>\n</soap:Body>\n</soap:Envelope>\n";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, "text/xml; charset=utf-8")
+                .body(xml.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Monta o PMEMORY a partir do XML do corpo, como o sccidoc.pas (Params.ParseString + renomear a raiz
+     * para PMEMORY + acrescentar os params como filhos). Trabalha no TEXTO para preservar prefixos
+     * (soapenv:Body), atributos e bytes do cliente -- o PostSoapCDHU procura os nos pelo nome com prefixo.
+     */
+    static String montaPmemoryXml(String xml, Map<String, String> filhos) {   // package-private p/ teste
+        int ini = inicioDaRaiz(xml);
+        if (ini < 0) {
+            throw new IllegalArgumentException("XML sem elemento raiz");
+        }
+        int fimNome = ini + 1;
+        while (fimNome < xml.length() && !Character.isWhitespace(xml.charAt(fimNome))
+                && xml.charAt(fimNome) != '>' && xml.charAt(fimNome) != '/') {
+            fimNome++;
+        }
+        String nomeRaiz = xml.substring(ini + 1, fimNome);
+        StringBuilder extras = new StringBuilder();
+        filhos.forEach((k, v) -> {
+            if (v != null && k != null && k.matches("[A-Za-z_][A-Za-z0-9_.-]*")) {
+                extras.append('<').append(k).append('>').append(escapaXml(v)).append("</").append(k).append('>');
+            }
+        });
+        String fechamento = "</" + nomeRaiz;
+        int fim = xml.lastIndexOf(fechamento);
+        if (fim < 0) {                                    // raiz auto-fechada: <raiz .../>
+            int autoFecha = xml.indexOf("/>", fimNome);
+            if (autoFecha < 0) {
+                throw new IllegalArgumentException("XML sem fechamento da raiz");
+            }
+            return xml.substring(0, ini) + "<PMEMORY" + xml.substring(fimNome, autoFecha) + ">"
+                    + extras + "</PMEMORY>" + xml.substring(autoFecha + 2);
+        }
+        return xml.substring(0, ini) + "<PMEMORY" + xml.substring(fimNome, fim) + extras
+                + "</PMEMORY" + xml.substring(fim + fechamento.length());
+    }
+
+    /** Posicao do '<' do elemento raiz, pulando declaracao (<?..?>), comentarios e DOCTYPE. */
+    private static int inicioDaRaiz(String xml) {
+        int i = xml.indexOf('<');
+        while (i >= 0 && i + 1 < xml.length()) {
+            char c = xml.charAt(i + 1);
+            int fim;
+            if (c == '?') {
+                fim = xml.indexOf("?>", i);
+                fim = fim < 0 ? -1 : fim + 2;
+            } else if (xml.startsWith("<!--", i)) {
+                fim = xml.indexOf("-->", i);
+                fim = fim < 0 ? -1 : fim + 3;
+            } else if (c == '!') {
+                fim = xml.indexOf('>', i);
+                fim = fim < 0 ? -1 : fim + 1;
+            } else {
+                return i;
+            }
+            if (fim < 0) {
+                return -1;
+            }
+            i = xml.indexOf('<', fim);
+        }
+        return -1;
+    }
+
+    private static String escapaXml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
+    /** Cabecalho (Tipo) + corpo de uma resposta [LE32][cabecalho XML ou JSON][corpo]. */
+    record CorpoComTipo(String tipo, byte[] corpo) {
+    }
+
+    /**
+     * Se a resposta for [LE32 tamanho][cabecalho com Tipo][corpo], devolve Tipo + corpo; senao null.
+     * O cabecalho pode ser XML (&lt;Tipo&gt;) ou JSON ("Tipo"), como o TpXml do legado aceita os dois.
+     */
+    static CorpoComTipo corpoComTipo(String resposta) {   // package-private p/ teste
+        if (resposta == null) {
+            return null;
+        }
+        byte[] b = resposta.getBytes(StandardCharsets.ISO_8859_1);
+        if (b.length < 4) {
+            return null;
+        }
+        int len = (b[0] & 0xFF) | ((b[1] & 0xFF) << 8) | ((b[2] & 0xFF) << 16) | ((b[3] & 0xFF) << 24);
+        if (len <= 0 || 4 + len > b.length) {
+            return null;
+        }
+        String cab = new String(b, 4, len, StandardCharsets.ISO_8859_1);
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(?i)(?:\"Tipo\"\\s*:\\s*\"([^\"]*)\"|<Tipo>([^<]*)</Tipo>)").matcher(cab);
+        if (!m.find()) {
+            return null;
+        }
+        String tipo = (m.group(1) != null ? m.group(1) : m.group(2)).trim();
+        return new CorpoComTipo(tipo, Arrays.copyOfRange(b, 4 + len, b.length));
+    }
+
+    /** Valor de um param na ordem do sccidoc.pas: header HTTP -> query/corpo -> cookie. */
+    private static String valorDaChamada(HttpServletRequest req, Map<String, String> params, String... chaves) {
+        for (String k : chaves) {
+            String v = req.getHeader(k);
+            if (v != null && !v.isBlank()) {
+                return v;
+            }
+            v = params.get(k);
+            if (v != null && !v.isBlank()) {
+                return v;
+            }
+        }
+        Cookie[] cookies = req.getCookies();
+        if (cookies != null) {
+            for (String k : chaves) {
+                for (Cookie c : cookies) {
+                    if (c.getName().equalsIgnoreCase(k) && c.getValue() != null && !c.getValue().isBlank()) {
+                        return c.getValue();
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Corpo form-encoded (chave=valor&amp;...), como o DecodeParams do legado. */
+    private static Map<String, String> camposDoForm(String corpo) {
+        Map<String, String> m = new LinkedHashMap<>();
+        for (String par : corpo.split("&")) {
+            int eq = par.indexOf('=');
+            String k = eq < 0 ? par : par.substring(0, eq);
+            String v = eq < 0 ? "" : par.substring(eq + 1);
+            if (!k.isBlank()) {
+                m.put(java.net.URLDecoder.decode(k, StandardCharsets.UTF_8),
+                        java.net.URLDecoder.decode(v, StandardCharsets.UTF_8));
+            }
+        }
+        return m;
     }
 
     /** Monta a resposta HTTP a partir do RespostaDocumento: arquivo (mime+disposition) ou JSON. */
