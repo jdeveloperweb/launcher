@@ -85,6 +85,12 @@ launcher:
       limpeza:
         max-idade-minutos: ${UPLOAD_CHUNKED_LIMPEZA_MAX_IDADE_MIN:240}   # uploads abandonados > isso -> removidos
         intervalo-ms: ${UPLOAD_CHUNKED_LIMPEZA_INTERVALO_MS:900000}      # a cada 15min varre e limpa
+  sccidoc:
+    # POST com corpo cru em /sccidoc/{programa}/{metodo} (SOAP, ex.: wintegracaoCDHU/SoapCDHU): quando o
+    # cliente nao manda ambiente/usuario, usa estes -- equivalentes ao w.ini do sccidoc.pas
+    # (ambienteOperacional / usuarioWeb). As integracoes SOAP da CDHU nao mandam: precisa configurar.
+    ambiente-padrao: ${SCCIDOC_AMBIENTE_PADRAO:}
+    usuario-padrao: ${SCCIDOC_USUARIO_PADRAO:}
   legacy:
     wcop:
       contexto: CORP_WEB          # w.ini [Servidor] Contexto (default CORP_WEB)
