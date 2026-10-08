@@ -10,6 +10,12 @@ import java.util.Optional;
  */
 public interface SessaoUseCase {
 
+    /**
+     * Usuario fixo do login de integracao (React/stateless) — ver loginintegracao.pas. Discrimina o
+     * CONSUMIDOR da resposta cifrada: loginintegracao = React (decodifica UTF-8); senao = ExtJS (Latin-1).
+     */
+    String USUARIO_INTEGRACAO = "loginintegracao";
+
     /** Login: registra a sessao (cache Redis + SCCI_SESSION autoritativo). */
     void registrar(String sessionKey, String usuario, String ambienteOperacional, String ip);
 

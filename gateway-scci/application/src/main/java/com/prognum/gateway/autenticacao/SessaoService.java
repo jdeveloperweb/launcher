@@ -18,8 +18,8 @@ import java.util.Optional;
  */
 public class SessaoService implements SessaoUseCase {
 
-    /** Conta de integracao (loginintegracao.pas): usuario FIXO, sessao validada STATELESS. */
-    private static final String USUARIO_INTEGRACAO = "loginintegracao";
+    // USUARIO_INTEGRACAO ("loginintegracao") vem do port SessaoUseCase (fonte unica, usada tambem no
+    // gateway p/ escolher o charset da resposta cifrada por consumidor).
 
     private final RepositorioSessao cache;
     private final SessaoPersistente persistente;

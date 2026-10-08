@@ -3,6 +3,7 @@ package com.prognum.common.crypto;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -53,11 +54,11 @@ public class WcopCrypto {
         while (fim > 0 && claro[fim - 1] == 0) {              // remove padding #0
             fim--;
         }
-        // ISO-8859-1 (Latin-1), NAO UTF-8: o front (ExtJS) cifra em Latin-1 — o MESMO charset que o
-        // cifraResposta assume na volta ("O front trata os bytes como Latin-1"). Com UTF-8, os bytes de
-        // acento do Latin-1 (0xE7=ç, 0xE3=ã, 0xE9=é...) nao sao UTF-8 valido e viravam '�' (caractere
-        // invalido) — so nos acentuados, no sistema inteiro (todo request cifrado: nome, busca, filtro...).
-        return new String(claro, 0, fim, StandardCharsets.ISO_8859_1);
+        // UTF-8: o front cifra o claro em UTF-8 (CryptoJS Utf8.parse) — contrato original (ver a matriz
+        // de encoding em docs/ANALISE-LEGADO.md). O acento quebrado era na RESPOSTA, nao aqui: a resposta
+        // cifrada sai em ISO-8859-1 (ExtJS) ou UTF-8 (React/loginintegracao) conforme o consumidor; ver
+        // cifraResposta(texto, charset). Request e resposta usam charsets diferentes DE PROPOSITO.
+        return new String(claro, 0, fim, StandardCharsets.UTF_8);
     }
 
     /**
@@ -65,9 +66,19 @@ public class WcopCrypto {
      * a serem escritos no corpo HTTP (NAO e UTF-8 valido apos o XOR).
      */
     public byte[] cifraResposta(String texto) {
-        // O front trata os bytes da resposta como Latin-1 (1 byte = 1 char), entao
-        // os acentos vao como ISO-8859-1 (UTF-8 apareceria como "Ã§").
-        byte[] dados = texto.getBytes(StandardCharsets.ISO_8859_1);
+        // Default: ExtJS classico le os bytes da resposta como Latin-1 (1 byte = 1 char).
+        return cifraResposta(texto, StandardCharsets.ISO_8859_1);
+    }
+
+    /**
+     * Idem, escolhendo o charset do texto pelo CONSUMIDOR: ISO-8859-1 pro ExtJS (le Latin-1) e UTF-8 pro
+     * React/loginintegracao (le UTF-8). O XOR so mexe nos bytes ASCII (bit 7 = 0), entao os bytes de acento
+     * (Latin-1 0xE7 OU UTF-8 0xC3 0xA7) passam intactos e o front certo os decodifica. Mesmo programa,
+     * fronts com decode diferente -> charset por-consumidor (senao: ExtJS ve "Ã§" ou React ve caractere
+     * invalido). Ver docs/ANALISE-LEGADO.md.
+     */
+    public byte[] cifraResposta(String texto, Charset charset) {
+        byte[] dados = texto.getBytes(charset);
         int j = 0;
         for (int i = 0; i < dados.length; i++) {
             if ((dados[i] & 0x80) == 0) {                     // só os bytes ASCII

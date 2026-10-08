@@ -125,6 +125,8 @@ public class DespachoController {
         // "username" (minusculo) e o que a INTEGRACAO manda (ex.: curl do wintegracaoCDHU com
         // username=loginintegracao); o front ExtJS manda "userName". Aceita as duas grafias + "usuario".
         String usuarioParam = primeiro(in, "userName", "username", "usuario");
+        // Consumidor da resposta cifrada: loginintegracao = React (decodifica UTF-8); senao ExtJS (Latin-1).
+        boolean integracao = SessaoUseCase.USUARIO_INTEGRACAO.equalsIgnoreCase(usuarioParam);
         // traduz o ambiente virtual (ex.: /cfiae/) p/ o fisico ANTES de validar a sessao (a sessao foi
         // gravada no login ja com o caminho fisico) e de propagar ao scci-core/launcher-sdk/Pascal.
         String ambienteParam = resolvedor.resolver(primeiro(in, "ambienteOperacional", "ambiente"));
@@ -136,7 +138,7 @@ public class DespachoController {
             log.info("w_dispatch_sessao_invalida", kv("usuario", LogAnonimizador.pseudonimizarUsuario(usuarioParam)),
                     kv("ip", LogAnonimizador.mascararIp(req.getRemoteAddr())),
                     kv("sessaoId", LogAnonimizador.pseudonimizarSessao(sessionKey)));
-            return resposta(cifrado,
+            return resposta(cifrado, integracao,
                     "{\"success\":false,\"message\":\"Sessao expirada. Faca login novamente.\",\"codigo\":\"E004\"}");
         }
         String usuario = s.map(Sessao::usuario).orElse(usuarioParam);
@@ -155,15 +157,22 @@ public class DespachoController {
 
         ResultadoExecucao r = despacho.despachar(new ComandoExecucao(
                 ambiente, programName, methodName, requestMethod, json, usuario, req.getRemoteAddr()));
-        return resposta(cifrado, r.corpo());
+        return resposta(cifrado, integracao, r.corpo());
     }
 
     private ResponseEntity<byte[]> resposta(boolean cifrado, String json) {
+        return resposta(cifrado, false, json);   // default ExtJS (Latin-1); erros ASCII nao dependem disso
+    }
+
+    private ResponseEntity<byte[]> resposta(boolean cifrado, boolean integracao, String json) {
         if (cifrado) {
-            // ExtJS (ISO-8859-1): se o programa forcou UTF-8, reinterpreta antes de cifrar (senao "Ã§").
+            // paraIso normaliza o acento pra Unicode; o charset da cifra e POR CONSUMIDOR: React
+            // (loginintegracao) decodifica UTF-8; ExtJS le Latin-1 (senao "Ã§" no ExtJS ou invalido no React).
+            String rotulo = integracao ? "UTF-8" : "ISO-8859-1";
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=ISO-8859-1")
-                    .body(crypto.cifraResposta(RespostaCharset.paraIso(json)));
+                    .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=" + rotulo)
+                    .body(crypto.cifraResposta(RespostaCharset.paraIso(json),
+                            integracao ? StandardCharsets.UTF_8 : StandardCharsets.ISO_8859_1));
         }
         // Resposta plaintext: repassa se o programa ja saiu em UTF-8 (nao re-encoda -> evita o double-encode
         // "informaÃ§Ã£o"), senao converte ISO-8859-1->UTF-8. Mesma regra pros canais /sccidoc e login.

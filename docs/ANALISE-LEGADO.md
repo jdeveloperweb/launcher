@@ -30,13 +30,15 @@ além do log JSON. Ambas são **fáceis** (mais um UPDATE / mais um INSERT no ad
 
 ## 2. Matriz de codificação (encoding) por fluxo
 
-O I/O com os programas Pascal (Linux) é **ISO-8859-1 (Latin-1)** de ponta a ponta. Ponto crítico: a
-**resposta ao front tem que sair em ISO-8859-1** (não UTF-8), senão o front mostra `Ã§` no lugar de `ç`.
+O I/O com os programas Pascal (Linux) é **ISO-8859-1 (Latin-1)**. Ponto crítico: o charset da **resposta
+cifrada** depende do **CONSUMIDOR** — o **ExtJS** clássico decodifica **Latin-1** (sair em UTF-8 → `Ã§`);
+o **React** (CFIAE, login `loginintegracao`) decodifica **UTF-8** (sair em Latin-1 → caractere inválido só
+nos acentos). O XOR só mexe nos bytes ASCII, então os bytes de acento passam intactos e o front certo os lê.
 
 | Fluxo | Codificação | Peça no reator |
 |---|---|---|
-| Request cifrado (front → reator) | AES-128-CBC → claro **UTF-8** | `WcopCrypto.decifraRequest` |
-| Resposta cifrada (reator → front) | XOR posicional + **ISO-8859-1** | `WcopCrypto.cifraResposta` |
+| Request cifrado (front → reator) | AES-128-CBC → claro **UTF-8** (os dois fronts) | `WcopCrypto.decifraRequest` |
+| Resposta cifrada (reator → front) | XOR posicional + **ISO-8859-1** (ExtJS) / **UTF-8** (React/loginintegracao) | `WcopCrypto.cifraResposta(texto, charset)`; o gateway escolhe por `SessaoUseCase.USUARIO_INTEGRACAO` |
 | Params ao programa (`<PMEMORY>`) | **ISO-8859-1** | `ProgramExecutor` (getBytes ISO-8859-1) |
 | Resposta do programa (blocos oserver) | **ISO-8859-1** | `ProgramExecutor.parseBlocos` (new String ISO-8859-1) |
 | Documento binário (get/putDoc) | **bytes crus** (sem conversão) | `DocumentoService` / `SccidocController` |

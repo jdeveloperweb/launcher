@@ -126,6 +126,8 @@ public class SccidocController {
         }
         String sessionKey = primeiro(in, "sessionKey");
         String usuarioParam = primeiro(in, "userName", "username", "usuario");
+        // Consumidor da resposta cifrada: loginintegracao = React (UTF-8); senao ExtJS (Latin-1).
+        boolean integracao = SessaoUseCase.USUARIO_INTEGRACAO.equalsIgnoreCase(usuarioParam);
         String ambienteParam = resolvedor.resolver(primeiro(in, "ambienteOperacional", "ambiente"));
 
         // VALIDA (igual ao /w): revalida a sessao antes de executar.
@@ -150,7 +152,7 @@ public class SccidocController {
         // navegacao). htmlEmErro so tem efeito quando cifrado==false (ver respostaDocumento): um
         // request CIFRADO espera resposta cifrada (XOR); nao ha como "cifrar HTML" nesse esquema
         // sem quebrar o decode do front, entao nesse caso o erro continua JSON cifrado.
-        return respostaDocumento(d, cifrado, true);
+        return respostaDocumento(d, cifrado, integracao, true);
     }
 
     /**
@@ -194,12 +196,12 @@ public class SccidocController {
                 ambiente, programa, metodo, "GET", json, usuario, req.getRemoteAddr(), true));
         // Doc Final de Requisitos (2.9.5/regra 9): falha de arquivo -> HTML. Aqui cifrado e sempre
         // false (navegacao direta do browser nunca usa W_COP), entao o HTML sempre se aplica.
-        return respostaDocumento(d, false, true);
+        return respostaDocumento(d, false, false, true);
     }
 
     /** Monta a resposta HTTP a partir do RespostaDocumento: arquivo (mime+disposition) ou JSON. */
     private ResponseEntity<byte[]> respostaDocumento(RespostaDocumento d, boolean cifrado) {
-        return respostaDocumento(d, cifrado, false);
+        return respostaDocumento(d, cifrado, false, false);
     }
 
     /**
@@ -209,12 +211,13 @@ public class SccidocController {
      *                   HTML puro sem quebrar o decode do front, então nesse caso o erro continua
      *                   JSON cifrado (contrato W_COP preservado).
      */
-    private ResponseEntity<byte[]> respostaDocumento(RespostaDocumento d, boolean cifrado, boolean htmlEmErro) {
+    private ResponseEntity<byte[]> respostaDocumento(RespostaDocumento d, boolean cifrado, boolean integracao,
+                                                     boolean htmlEmErro) {
         if (d.erro()) {
             if (htmlEmErro && !cifrado) {
                 return paginaErroHtml(d.texto());
             }
-            return resposta(cifrado, d.texto());                    // erro do programa -> JSON
+            return resposta(cifrado, integracao, d.texto());        // erro do programa -> JSON
         }
         if (d.arquivo()) {
             String disposicao = (d.download() ? "attachment; " : "") + "filename=\"" + nomeSeguro(d.nome()) + "\"";
@@ -228,7 +231,7 @@ public class SccidocController {
                     .header(HttpHeaders.CONTENT_DISPOSITION, disposicao)
                     .body(d.conteudo());                            // arquivo binario RAW (sccidoc nao cifra o arquivo)
         }
-        return resposta(cifrado, d.texto());                        // texto/JSON de passagem
+        return resposta(cifrado, integracao, d.texto());            // texto/JSON de passagem
     }
 
     /**
@@ -267,6 +270,7 @@ public class SccidocController {
         }
         String sessionKey = paramOuHeader(req, in, "sessionKey");
         String usuarioParam = paramOuHeader(req, in, "userName", "username", "usuario");
+        boolean integracao = SessaoUseCase.USUARIO_INTEGRACAO.equalsIgnoreCase(usuarioParam);
         String ambienteParam = resolvedor.resolver(paramOuHeader(req, in, "ambienteOperacional", "ambiente"));
 
         Optional<Sessao> s = sessoes.validar(sessionKey, usuarioParam, ambienteParam);
@@ -326,7 +330,7 @@ public class SccidocController {
                 kv("sessaoId", LogAnonimizador.pseudonimizarSessao(sessionKey)), kv("sessaoValida", s.isPresent()),
                 kv("cifrado", cifrado), kv("temAppData", appData != null),
                 kv("respostaPrefixo", corpo.length() > 60 ? corpo.substring(0, 60) : corpo));
-        return resposta(cifrado, corpo);
+        return resposta(cifrado, integracao, corpo);
     }
 
     /** Extensão (com o ponto, minúscula) de um nome de arquivo enviado — só para fins de auditoria/log. */
@@ -517,11 +521,18 @@ public class SccidocController {
     }
 
     private ResponseEntity<byte[]> resposta(boolean cifrado, String json) {
+        return resposta(cifrado, false, json);   // default ExtJS (Latin-1); erros ASCII nao dependem disso
+    }
+
+    private ResponseEntity<byte[]> resposta(boolean cifrado, boolean integracao, String json) {
         if (cifrado) {
-            // ExtJS (ISO-8859-1): se o programa forcou UTF-8, reinterpreta antes de cifrar (senao "Ã§").
+            // charset da cifra POR CONSUMIDOR: React (loginintegracao) decodifica UTF-8; ExtJS le Latin-1
+            // (senao "Ã§" no ExtJS ou caractere invalido no React). paraIso normaliza o acento antes.
+            String rotulo = integracao ? "UTF-8" : "ISO-8859-1";
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=ISO-8859-1")
-                    .body(crypto.cifraResposta(RespostaCharset.paraIso(json)));
+                    .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=" + rotulo)
+                    .body(crypto.cifraResposta(RespostaCharset.paraIso(json),
+                            integracao ? StandardCharsets.UTF_8 : StandardCharsets.ISO_8859_1));
         }
         // plaintext: repassa se o programa ja saiu em UTF-8 (nao re-encoda -> evita double-encode de acento),
         // senao converte ISO-8859-1->UTF-8. Mesma regra do /w (RespostaCharset).

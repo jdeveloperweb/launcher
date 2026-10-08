@@ -76,11 +76,38 @@ class WcopCryptoTest {
     }
 
     @Test
-    @DisplayName("request cifrado com ACENTO: decifra em ISO-8859-1 (o front/ExtJS cifra em Latin-1)")
+    @DisplayName("resposta cifrada POR CONSUMIDOR: ISO-8859-1 p/ ExtJS (Latin-1), UTF-8 p/ React")
+    void resposta_cifrada_por_consumidor() {
+        String texto = "{\"desc\":\"Habitação\"}";   // ç ã vindos do banco/Pascal
+        // O front desfaz o XOR e decodifica no SEU charset -> tem que ver o texto CORRETO.
+        assertThat(frontVe(crypto.cifraResposta(texto), StandardCharsets.ISO_8859_1))                  // default = ExtJS
+                .isEqualTo(texto);
+        assertThat(frontVe(crypto.cifraResposta(texto, StandardCharsets.UTF_8), StandardCharsets.UTF_8)) // React
+                .isEqualTo(texto);
+        // E o mismatch quebra (prova o motivo do por-consumidor): ISO cifrado lido como UTF-8 = inválido.
+        assertThat(frontVe(crypto.cifraResposta(texto), StandardCharsets.UTF_8)).contains("�");
+    }
+
+    /** Desfaz o prefixo (".*(@") + XOR (auto-inverso) e decodifica como o front faz. */
+    private static String frontVe(byte[] wire, java.nio.charset.Charset frontCharset) {
+        byte[] body = new byte[wire.length - 4];
+        System.arraycopy(wire, 4, body, 0, body.length);
+        int j = 0;
+        for (int i = 0; i < body.length; i++) {
+            if ((body[i] & 0x80) == 0) {
+                j = (j + 1) & 0xFF;
+                body[i] = (byte) (body[i] ^ (0x70 + (j & 15)));
+            }
+        }
+        return new String(body, frontCharset);
+    }
+
+    @Test
+    @DisplayName("request cifrado com ACENTO: decifra em UTF-8 (o front cifra o claro em UTF-8)")
     void decifra_request_com_acento() throws Exception {
-        // Regressão do bug "só alguns caracteres ficam inválidos": o front (ExtJS) cifra o corpo em
-        // ISO-8859-1. Decodificar o claro como UTF-8 transformava 0xE7/0xE3/... em '�'. Este
-        // round-trip só passa porque decifraRequest decodifica em ISO-8859-1.
+        // Contrato original (matriz de encoding): o front cifra o corpo em UTF-8 (CryptoJS Utf8.parse).
+        // Este round-trip só passa porque decifraRequest decodifica em UTF-8 — o acento quebrado do
+        // usuário era na RESPOSTA (charset por consumidor no cifraResposta), não aqui.
         String claro = "{\"nome\":\"São João\",\"obs\":\"informação ção áéíóú çãõ\"}";
         String blob = cifraRequestComoOFront(claro);
 
@@ -89,14 +116,14 @@ class WcopCryptoTest {
     }
 
     /**
-     * Inverso do {@code decifraRequest} — só para o teste: cifra como o front/ExtJS faz
-     * (claro em ISO-8859-1, pad #0 até múltiplo de 16, AES-128-CBC/NoPadding, prefixo "____"+salt).
+     * Inverso do {@code decifraRequest} — só para o teste: cifra como o front faz
+     * (claro em UTF-8, pad #0 até múltiplo de 16, AES-128-CBC/NoPadding, prefixo "____"+salt).
      */
     private static String cifraRequestComoOFront(String claro) throws Exception {
         String salt = "123456789";                                   // 9 dígitos = base64 válido no mod1
         byte[] key = Base64.getDecoder().decode(WcopCrypto.mod1("iDajpt6RujmyZhxM7kbVVI==", salt));
         byte[] iv = Base64.getDecoder().decode("8qzYJ7ULNNU6sle9nDAuQg==");
-        byte[] dados = claro.getBytes(StandardCharsets.ISO_8859_1); // o front cifra em Latin-1
+        byte[] dados = claro.getBytes(StandardCharsets.UTF_8);       // o front cifra o claro em UTF-8
         int ate16 = (dados.length + 15) / 16 * 16;
         byte[] padded = Arrays.copyOf(dados, ate16);                 // completa com #0 (NoPadding)
 
