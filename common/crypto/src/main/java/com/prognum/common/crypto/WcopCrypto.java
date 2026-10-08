@@ -53,7 +53,11 @@ public class WcopCrypto {
         while (fim > 0 && claro[fim - 1] == 0) {              // remove padding #0
             fim--;
         }
-        return new String(claro, 0, fim, StandardCharsets.UTF_8);
+        // ISO-8859-1 (Latin-1), NAO UTF-8: o front (ExtJS) cifra em Latin-1 — o MESMO charset que o
+        // cifraResposta assume na volta ("O front trata os bytes como Latin-1"). Com UTF-8, os bytes de
+        // acento do Latin-1 (0xE7=ç, 0xE3=ã, 0xE9=é...) nao sao UTF-8 valido e viravam '�' (caractere
+        // invalido) — so nos acentuados, no sistema inteiro (todo request cifrado: nome, busca, filtro...).
+        return new String(claro, 0, fim, StandardCharsets.ISO_8859_1);
     }
 
     /**

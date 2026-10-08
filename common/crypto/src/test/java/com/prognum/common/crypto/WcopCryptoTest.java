@@ -3,7 +3,11 @@ package com.prognum.common.crypto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import javax.crypto.Cipher;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -69,6 +73,37 @@ class WcopCryptoTest {
         byte[] orig = "ção".getBytes(StandardCharsets.ISO_8859_1);
         // 'ç'=0xE7, 'ã'=0xE3 são >=0x80 -> devem aparecer intactos em algum lugar do corpo cifrado.
         assertThat(enc).contains(orig[0]).contains(orig[1]);
+    }
+
+    @Test
+    @DisplayName("request cifrado com ACENTO: decifra em ISO-8859-1 (o front/ExtJS cifra em Latin-1)")
+    void decifra_request_com_acento() throws Exception {
+        // Regressão do bug "só alguns caracteres ficam inválidos": o front (ExtJS) cifra o corpo em
+        // ISO-8859-1. Decodificar o claro como UTF-8 transformava 0xE7/0xE3/... em '�'. Este
+        // round-trip só passa porque decifraRequest decodifica em ISO-8859-1.
+        String claro = "{\"nome\":\"São João\",\"obs\":\"informação ção áéíóú çãõ\"}";
+        String blob = cifraRequestComoOFront(claro);
+
+        assertThat(crypto.estaCifrado(blob)).isTrue();
+        assertThat(crypto.decifraRequest(blob)).isEqualTo(claro);
+    }
+
+    /**
+     * Inverso do {@code decifraRequest} — só para o teste: cifra como o front/ExtJS faz
+     * (claro em ISO-8859-1, pad #0 até múltiplo de 16, AES-128-CBC/NoPadding, prefixo "____"+salt).
+     */
+    private static String cifraRequestComoOFront(String claro) throws Exception {
+        String salt = "123456789";                                   // 9 dígitos = base64 válido no mod1
+        byte[] key = Base64.getDecoder().decode(WcopCrypto.mod1("iDajpt6RujmyZhxM7kbVVI==", salt));
+        byte[] iv = Base64.getDecoder().decode("8qzYJ7ULNNU6sle9nDAuQg==");
+        byte[] dados = claro.getBytes(StandardCharsets.ISO_8859_1); // o front cifra em Latin-1
+        int ate16 = (dados.length + 15) / 16 * 16;
+        byte[] padded = Arrays.copyOf(dados, ate16);                 // completa com #0 (NoPadding)
+
+        Method aes = WcopCrypto.class.getDeclaredMethod("aes", int.class, byte[].class, byte[].class, byte[].class);
+        aes.setAccessible(true);
+        byte[] ct = (byte[]) aes.invoke(null, Cipher.ENCRYPT_MODE, key, iv, padded);
+        return "____" + salt + Base64.getEncoder().encodeToString(ct);
     }
 
     @Test
