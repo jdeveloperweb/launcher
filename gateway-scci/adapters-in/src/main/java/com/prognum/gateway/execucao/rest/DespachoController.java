@@ -53,11 +53,14 @@ public class DespachoController {
     private final ResolvedorAmbiente resolvedor;
     // Doc Final de Requisitos (2.9.3): fora do modo dev, a requisicao deve ser cifrada (W_COP).
     private final boolean exigirCifrado;
+    // w.ini [Servidor] Criptografa: false responde em texto puro mesmo com request cifrado (como o legado com F).
+    private final boolean cifrarResposta;
 
     public DespachoController(ObjectMapper mapper, WcopCrypto crypto,
                               SessaoUseCase sessoes, DespachoUseCase despacho, RotaExecucaoRegistry rotas,
                               ResolvedorAmbiente resolvedor,
-                              @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado) {
+                              @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado,
+                              @Value("${launcher.wcop.cifrar-resposta:true}") boolean cifrarResposta) {
         this.mapper = mapper;
         this.crypto = crypto;
         this.sessoes = sessoes;
@@ -65,6 +68,7 @@ public class DespachoController {
         this.rotas = rotas;
         this.resolvedor = resolvedor;
         this.exigirCifrado = exigirCifrado;
+        this.cifrarResposta = cifrarResposta;
     }
 
     // Aceita os formatos do front (fiel ao AejsWebController legado, que decide pelo REQUEST_METHOD):
@@ -165,7 +169,7 @@ public class DespachoController {
     }
 
     private ResponseEntity<byte[]> resposta(boolean cifrado, boolean integracao, String json) {
-        if (cifrado) {
+        if (cifrado && cifrarResposta) {
             // paraIso normaliza o acento pra Unicode; o charset da cifra e POR CONSUMIDOR: React
             // (loginintegracao) decodifica UTF-8; ExtJS le Latin-1 (senao "Ã§" no ExtJS ou invalido no React).
             String rotulo = integracao ? "UTF-8" : "ISO-8859-1";

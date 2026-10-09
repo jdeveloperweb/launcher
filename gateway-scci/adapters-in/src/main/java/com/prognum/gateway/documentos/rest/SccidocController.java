@@ -81,6 +81,8 @@ public class SccidocController {
     // form/query fields (fluxo ja validado ao vivo); forcar cifrado ali arriscaria quebrar upload
     // real em producao sem necessidade, ja que a sessao e validada da mesma forma nos dois casos.
     private final boolean exigirCifrado;
+    // w.ini [Servidor] Criptografa: false responde em texto puro mesmo com request cifrado (como o legado com F).
+    private final boolean cifrarResposta;
     // Equivalentes ao w.ini do sccidoc.pas (ambienteOperacional / usuarioWeb): usados no POST com corpo
     // cru (SOAP) quando o cliente nao manda ambiente/usuario -- o caso das integracoes SOAP da CDHU.
     private final String ambientePadrao;
@@ -99,7 +101,9 @@ public class SccidocController {
                             @Value("${launcher.documentos.extensoes-permitidas:}") String[] extensoesPermitidas,
                             @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado,
                             @Value("${launcher.sccidoc.ambiente-padrao:}") String ambientePadrao,
-                            @Value("${launcher.sccidoc.usuario-padrao:}") String usuarioPadrao) {
+                            @Value("${launcher.sccidoc.usuario-padrao:}") String usuarioPadrao,
+                            @Value("${launcher.wcop.cifrar-resposta:true}") boolean cifrarResposta) {
+        this.cifrarResposta = cifrarResposta;
         this.ambientePadrao = ambientePadrao;
         this.usuarioPadrao = usuarioPadrao;
         this.mapper = mapper;
@@ -816,7 +820,7 @@ public class SccidocController {
     }
 
     private ResponseEntity<byte[]> resposta(boolean cifrado, boolean integracao, String json) {
-        if (cifrado) {
+        if (cifrado && cifrarResposta) {
             // charset da cifra POR CONSUMIDOR: React (loginintegracao) decodifica UTF-8; ExtJS le Latin-1
             // (senao "Ã§" no ExtJS ou caractere invalido no React). paraIso normaliza o acento antes.
             String rotulo = integracao ? "UTF-8" : "ISO-8859-1";

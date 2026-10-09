@@ -101,6 +101,10 @@ launcher:
     # (true) exige coordenar com o front que TODA chamada a /w/*, /w e /sccidoc (JSON) vai cifrada --
     # NAO se aplica ao upload multipart /sccidoc (cifragem por header opcional, ver SccidocController).
     exigir-cifrado: ${WCOP_EXIGIR_CIFRADO:false}
+    # Espelha o w.ini [Servidor] Criptografa do legado. true (default): request cifrado -> resposta
+    # cifrada (XOR). false (= Criptografa=F): o request cifrado continua sendo decifrado, mas a
+    # resposta sai em texto puro -- legivel no DevTools e nas integracoes, como no legado.
+    cifrar-resposta: ${WCOP_CIFRAR_RESPOSTA:true}
   executor:
     timeout-segundos: 30
     max-concorrentes: 8           # espelha o MAXCONN do launcher
