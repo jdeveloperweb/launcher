@@ -61,6 +61,8 @@ public class AutenticacaoController {
     // sem profile de ambiente formalizado) -- ligar via launcher.wcop.exigir-cifrado=true exige
     // decisao operacional coordenada com o front antes do rollout.
     private final boolean exigirCifrado;
+    // w.ini [Servidor] Criptografa: false responde em texto puro mesmo com request cifrado (como o legado com F).
+    private final boolean cifrarResposta;
     // Log de eventos de acesso (secao [LOG] do launcherenv, ex.: sccilog) — best-effort/assincrono.
     private final RegistroEventoAcesso eventos;
     // Leitura do launcherenv.ini por-ambiente (ex.: ACESSOSSIMULTANEOS).
@@ -73,7 +75,9 @@ public class AutenticacaoController {
                                   ResolvedorAmbiente resolvedor,
                                   @Value("${launcher.legacy.wcop.contexto:CORP_WEB}") String contexto,
                                   @Value("${launcher.auth.max-logins-simultaneos:0}") int maxLoginsSimultaneos,
-                                  @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado) {
+                                  @Value("${launcher.wcop.exigir-cifrado:false}") boolean exigirCifrado,
+                                  @Value("${launcher.wcop.cifrar-resposta:true}") boolean cifrarResposta) {
+        this.cifrarResposta = cifrarResposta;
         this.mapper = mapper;
         this.crypto = crypto;
         this.acesso = acesso;
@@ -306,7 +310,7 @@ public class AutenticacaoController {
 
     // -------------------------------------------------------------- helpers (iguais ao legado)
     private ResponseEntity<byte[]> resposta(boolean cifrado, String json) {
-        if (cifrado) {
+        if (cifrado && cifrarResposta) {
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_TYPE, "application/json; charset=ISO-8859-1")
                     .body(crypto.cifraResposta(json));

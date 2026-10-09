@@ -75,6 +75,7 @@ var TRANSPORTE_OPTS=[
 var META={
   // ---- cripto / sessão ----
   'launcher.wcop.exigir-cifrado':{d:'Exige que a requisição venha CIFRADA (W_COP). Ligado: rejeita texto puro com E006 (produção). Desligado: aceita JSON puro (modo dev/teste).',danger:true},
+  'launcher.wcop.cifrar-resposta':{d:'Cifra a resposta (XOR) quando a requisição veio cifrada. Desligado = w.ini Criptografa=F do legado: resposta em texto puro.'},
   'launcher.legacy.wcop.contexto':{d:'Contexto do cabeçalho W_COP legado (combina com o front). Só mexer alinhado com o cliente.'},
   'launcher.sessao.ttl-segundos':{d:'Timeout de sessão OCIOSA no Redis (porte do GLOBALTIMEOUT). 0 = nunca expira.',u:'seg'},
   'launcher.log.anonimizar-usuario':{d:'Pseudonimiza o usuário nos logs (u_<hash>). Desligar mostra o usuário REAL (ops interno). IP e sessão seguem mascarados.'},
