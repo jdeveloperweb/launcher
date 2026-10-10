@@ -2,6 +2,7 @@ package com.prognum.gateway.execucao.rest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.prognum.gateway.autenticacao.model.Sessao;
 import com.prognum.gateway.autenticacao.port.in.SessaoUseCase;
 import com.prognum.common.crypto.LogAnonimizador;
@@ -147,6 +148,12 @@ public class DespachoController {
         }
         String usuario = s.map(Sessao::usuario).orElse(usuarioParam);
         String ambiente = s.map(Sessao::ambienteOperacional).orElse(ambienteParam);
+        // No GET plaintext o "userName" se perde no caminho do proxy (o Apache gera "//" -> o
+        // SlashNormalizationFilter faz forward e o re-parse dropa o param) -> o PMEMORY vai sem userName
+        // e o wae/wmenu nega "Usuario nao tem permissao de logar no sistema". O legado wcorp SEMPRE injeta
+        // USERNAME/SESSIONKEY nos Params (wcorp.pas:1532-1534), nao confia na querystring. Fazemos igual:
+        // garante userName (= usuario da sessao) e sessionKey no PMEMORY. So adiciona se nao vieram.
+        json = garantirAuthNoPmemory(json, usuario, sessionKey);
 
         String paramsDbg = in.toString();
         if (paramsDbg.length() > 600) {
@@ -242,6 +249,35 @@ public class DespachoController {
         } catch (Exception e) {
             return "{}";
         }
+    }
+
+    /**
+     * Garante userName/sessionKey no PMEMORY — fiel ao wcorp.pas:1532-1534, que SEMPRE injeta
+     * USERNAME/SESSIONKEY nos Params (do header), sem confiar na querystring. No reator o GET plaintext
+     * perde o userName no proxy (// + forward), e sem ele o wae/wmenu nega acesso. So adiciona o que
+     * faltar; preserva o JSON original (inclusive nesting). Corpo nao-objeto -> inalterado.
+     */
+    private String garantirAuthNoPmemory(String json, String usuario, String sessionKey) {
+        try {
+            JsonNode node = mapper.readTree(json == null || json.isBlank() ? "{}" : json);
+            if (node instanceof ObjectNode obj) {
+                boolean mudou = false;
+                if (usuario != null && !usuario.isBlank() && !obj.hasNonNull("userName")) {
+                    obj.put("userName", usuario);
+                    mudou = true;
+                }
+                if (sessionKey != null && !sessionKey.isBlank() && !obj.hasNonNull("sessionKey")) {
+                    obj.put("sessionKey", sessionKey);
+                    mudou = true;
+                }
+                if (mudou) {
+                    return mapper.writeValueAsString(obj);
+                }
+            }
+        } catch (Exception ignore) {
+            // corpo nao-objeto (XML/form) -> mantem como veio
+        }
+        return json;
     }
 
     private static String urlDecode(String s) {
