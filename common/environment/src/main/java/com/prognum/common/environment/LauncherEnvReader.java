@@ -92,13 +92,42 @@ public class LauncherEnvReader {
     }
 
     /**
-     * Variaveis de ambiente do ambiente (secao [ENVIRONMENT] do launcherenv.ini) + USER,
-     * para o launcher EXECUTAR os programas com o mesmo ambiente que o daemon monta (SetAmbiente).
+     * Caminho do launcher.conf, pela mesma regra do {@link ResolvedorAmbiente} (fiel ao Refresh do
+     * legado): o do diretorio de trabalho tem prioridade; senao o de LAUNCHER_CONF (default
+     * /etc/launcher.conf).
+     */
+    private static Path arquivoLauncherConf() {
+        Path cwd = Path.of("launcher.conf");
+        if (Files.isRegularFile(cwd)) {
+            return cwd;
+        }
+        String conf = System.getenv("LAUNCHER_CONF");
+        return Path.of((conf == null || conf.isBlank()) ? "/etc/launcher.conf" : conf);
+    }
+
+    /**
+     * Variaveis de ambiente do ambiente + USER, para o launcher EXECUTAR os programas com o mesmo
+     * ambiente que o daemon monta (SetAmbiente): primeiro a secao [ENV] do launcher.conf (global do
+     * servidor: LANG, LC_ALL, TMP...), depois a [ENVIRONMENT] do launcherenv.ini, que manda sobre ela.
      * Expande referencias $VAR/${VAR}.
      */
     public Map<String, String> ambienteEnv(String ambientePath, String usuario) {
+        return ambienteEnv(ambientePath, usuario, arquivoLauncherConf());
+    }
+
+    Map<String, String> ambienteEnv(String ambientePath, String usuario, Path launcherConf) {
         Map<String, String> env = new LinkedHashMap<>();
         env.put("USER", usuario == null ? "" : usuario);
+        // [ENV] do launcher.conf: o daemon legado o carrega no proprio ambiente e os programas herdam.
+        // Aqui o programa NAO herda o ambiente do processo Java, entao sem isto o LANG/LC_ALL nao
+        // chegavam ao Pascal (relatorio TXT->PDF sem acento). Arquivo ausente (ex.: Docker) = sem [ENV].
+        if (Files.isRegularFile(launcherConf)) {
+            try {
+                aplicarSecao(env, Files.readAllLines(launcherConf, StandardCharsets.ISO_8859_1), "ENV");
+            } catch (IOException e) {
+                // ilegivel -> segue so com o launcherenv.ini, como antes
+            }
+        }
         Path ini = arquivoIni(ambientePath);
         List<String> linhas;
         try {
@@ -106,6 +135,12 @@ public class LauncherEnvReader {
         } catch (IOException e) {
             throw new IllegalStateException("nao foi possivel ler " + ini, e);
         }
+        aplicarSecao(env, linhas, "ENVIRONMENT");
+        return env;
+    }
+
+    /** Poe em {@code env} as chaves da secao pedida, expandindo $VAR com o que ja esta no mapa. */
+    private static void aplicarSecao(Map<String, String> env, List<String> linhas, String secaoAlvo) {
         String secao = "";
         for (String bruta : linhas) {
             String l = bruta.trim();
@@ -117,11 +152,10 @@ public class LauncherEnvReader {
                 continue;
             }
             int eq = l.indexOf('=');
-            if (eq > 0 && "ENVIRONMENT".equals(secao)) {
+            if (eq > 0 && secaoAlvo.equals(secao)) {
                 env.put(l.substring(0, eq).trim(), expandir(l.substring(eq + 1).trim(), env));
             }
         }
-        return env;
     }
 
     /**
