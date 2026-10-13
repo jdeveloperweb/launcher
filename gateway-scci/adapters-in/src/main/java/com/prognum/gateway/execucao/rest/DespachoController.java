@@ -111,6 +111,18 @@ public class DespachoController {
         Map<String, String> in = ehJson ? camposDoJson(corpo) : camposDoForm(corpo);
         String json = ehJson ? corpo : mapParaJson(in);
 
+        // POST/PUT/DELETE com corpo: o front manda os params de controle na QUERYSTRING e so "dados=" no
+        // corpo (abrir tela: POST /w/wtela/tela?=&tela=...&sessionKey=...&userName=...). O legado junta
+        // QUERY_STRING e corpo; aqui so o corpo era lido -> a tela chegava sem nome e sem sessao ao wtela
+        // ("Funcao nao disponivel."). O corpo manda; a query so completa o que nao veio nele.
+        if (!usaQuery) {
+            Map<String, String> extras = soNaQuery(in, camposDoForm(req.getQueryString()));
+            if (!extras.isEmpty()) {
+                in.putAll(extras);
+                json = ehJson ? completarJson(json, extras) : mapParaJson(in);
+            }
+        }
+
         // programa/metodo: o PATH (/w/{prog}/{met}) manda; senao o corpo.
         String programName = progPath != null ? progPath : primeiro(in, "programName", "programa");
         String methodName = metPath != null ? metPath : primeiro(in, "methodName", "metodo");
@@ -215,8 +227,40 @@ public class DespachoController {
         return null;
     }
 
-    /** Parse do corpo form-encoded (chave=valor&chave=valor) — o formato do front ao abrir tela. */
-    private Map<String, String> camposDoForm(String corpo) {
+    /** Params que vieram so na QUERYSTRING (chave ausente no corpo) — o corpo nunca e sobrescrito. */
+    static Map<String, String> soNaQuery(Map<String, String> corpo, Map<String, String> query) {
+        Map<String, String> m = new LinkedHashMap<>();
+        query.forEach((k, v) -> {
+            if (!corpo.containsKey(k)) {
+                m.put(k, v);
+            }
+        });
+        return m;
+    }
+
+    /** Acrescenta os params no JSON do dispatch preservando o original (inclusive nesting). */
+    private String completarJson(String json, Map<String, String> extras) {
+        try {
+            JsonNode node = mapper.readTree(json);
+            if (node instanceof ObjectNode obj) {
+                extras.forEach((k, v) -> {
+                    if (!obj.has(k)) {
+                        obj.put(k, v);
+                    }
+                });
+                return mapper.writeValueAsString(obj);
+            }
+        } catch (Exception ignore) {
+            // corpo nao-objeto -> mantem como veio
+        }
+        return json;
+    }
+
+    /**
+     * Parse de pares form-encoded (chave=valor&chave=valor) — o formato do corpo do front ao abrir tela
+     * e o da QUERYSTRING crua.
+     */
+    static Map<String, String> camposDoForm(String corpo) {
         Map<String, String> m = new LinkedHashMap<>();
         if (corpo == null || corpo.isBlank()) {
             return m;
