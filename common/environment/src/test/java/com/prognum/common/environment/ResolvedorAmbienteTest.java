@@ -114,4 +114,21 @@ class ResolvedorAmbienteTest {
         Files.setLastModifiedTime(f, FileTime.fromMillis(System.currentTimeMillis() + 5000));
         assertThat(r.resolver("/cli/x")).isEqualTo("/novo/lugar/x/");
     }
+
+    @Test
+    void recarregar_rele_mesmo_sem_mudar_mtime_nem_tamanho() throws IOException {
+        Path f = tmp.resolve("launcher.conf");
+        Files.writeString(f, "[DIRETORIOS]\ncli=/aaaaa\n", StandardCharsets.ISO_8859_1);
+        FileTime mtime = Files.getLastModifiedTime(f);
+        ResolvedorAmbiente r = new ResolvedorAmbiente(f.toString());
+        assertThat(r.resolver("/cli/x")).isEqualTo("/aaaaa/x/");
+
+        // mesmo tamanho e mesmo mtime: a deteccao automatica nao percebe a troca
+        Files.writeString(f, "[DIRETORIOS]\ncli=/bbbbb\n", StandardCharsets.ISO_8859_1);
+        Files.setLastModifiedTime(f, mtime);
+        assertThat(r.resolver("/cli/x")).isEqualTo("/aaaaa/x/");
+
+        r.recarregar();
+        assertThat(r.resolver("/cli/x")).isEqualTo("/bbbbb/x/");
+    }
 }

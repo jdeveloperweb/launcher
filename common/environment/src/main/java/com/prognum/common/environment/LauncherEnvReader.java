@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -137,6 +138,33 @@ public class LauncherEnvReader {
         }
         aplicarSecao(env, linhas, "ENVIRONMENT");
         return env;
+    }
+
+    /** Nome de variavel cujo valor nao sai em resposta de admin (senha, chave, token...). */
+    private static final Pattern SENSIVEL = Pattern.compile("(?i).*(SENHA|PASS|PWD|SECRET|TOKEN|CHAVE|KEY).*");
+
+    /**
+     * Valor EFETIVO das variaveis pedidas no ambiente que o programa Pascal recebe — a mesma montagem do
+     * {@link #ambienteEnv} ([ENV] do launcher.conf + [ENVIRONMENT] do launcherenv.ini), lida do disco agora.
+     * Serve para conferir uma alteracao (ex.: DATAH) sem rodar programa. O nome casa sem diferenciar
+     * maiuscula (DataH = DATAH); ausente = null; nome sensivel volta mascarado.
+     */
+    public Map<String, String> variaveisEfetivas(String ambientePath, Collection<String> nomes) {
+        return variaveisEfetivas(ambientePath, nomes, arquivoLauncherConf());
+    }
+
+    Map<String, String> variaveisEfetivas(String ambientePath, Collection<String> nomes, Path launcherConf) {
+        Map<String, String> env = ambienteEnv(ambientePath, "", launcherConf);
+        Map<String, String> r = new LinkedHashMap<>();
+        for (String nome : nomes) {
+            String v = env.get(nome);
+            if (v == null) {
+                v = env.entrySet().stream().filter(e -> e.getKey().equalsIgnoreCase(nome))
+                        .map(Map.Entry::getValue).findFirst().orElse(null);
+            }
+            r.put(nome, v != null && SENSIVEL.matcher(nome).matches() ? "***" : v);
+        }
+        return r;
     }
 
     /** Poe em {@code env} as chaves da secao pedida, expandindo $VAR com o que ja esta no mapa. */

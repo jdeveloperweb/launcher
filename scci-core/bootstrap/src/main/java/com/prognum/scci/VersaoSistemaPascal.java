@@ -45,6 +45,11 @@ public class VersaoSistemaPascal implements VersaoSistemaProvider {
         this.env = env;
     }
 
+    /** Esquece as versoes lidas (troca de binfpc sem reiniciar) — chamado pelo POST /admin/env/reload. */
+    public void limparCache() {
+        cache.clear();
+    }
+
     @Override
     public Optional<String> versaoSistema(String ambiente) {
         if (ambiente == null || ambiente.isBlank()) {
