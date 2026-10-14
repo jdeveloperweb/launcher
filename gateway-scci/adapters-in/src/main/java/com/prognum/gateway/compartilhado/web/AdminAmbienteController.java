@@ -1,6 +1,8 @@
 package com.prognum.gateway.compartilhado.web;
 
 import com.prognum.common.environment.LauncherEnvReader;
+import com.prognum.common.environment.RecargaAmbiente;
+import com.prognum.common.environment.ResolvedorAmbiente;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -8,14 +10,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+import java.util.Map;
+
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
 /**
- * Admin operacional: RECARREGA o cache do launcherenv.ini em RUNTIME, sem reiniciar o processo nem
- * esperar o TTL. Util quando alteram o .ini de um ambiente (troca de banco, colunas, política) e
- * querem efeito imediato. Delega ao {@link LauncherEnvReader#invalidar}/{@link LauncherEnvReader#invalidarTudo}
- * (a releitura acontece na proxima requisicao daquele ambiente). Cada serviço (launcher/scci-core/
- * pascal-executor) tem o seu cache — exponha o mesmo endpoint onde precisar do efeito.
+ * Admin operacional: RECARREGA a configuracao em RUNTIME, sem reiniciar o processo nem esperar o TTL —
+ * o SIGHUP do launcher legado (ver {@link RecargaAmbiente}). Aqui: o launcher.conf ([DIRETORIOS], via
+ * {@link ResolvedorAmbiente#recarregar}) e o cache do launcherenv.ini. Cada servico (gateway/scci-core/
+ * pascal-executor) tem o seu cache e o mesmo endpoint.
  *
  * <p>Deixe atras da borda (Kong/rede interna) — é operação administrativa, nao pública.</p>
  */
@@ -24,22 +28,26 @@ public class AdminAmbienteController {
 
     private static final Logger log = LoggerFactory.getLogger(AdminAmbienteController.class);
 
-    private final LauncherEnvReader env;
+    private final ResolvedorAmbiente resolvedor;
+    private final RecargaAmbiente recarga;
 
-    public AdminAmbienteController(LauncherEnvReader env) {
-        this.env = env;
+    public AdminAmbienteController(LauncherEnvReader env, ResolvedorAmbiente resolvedor) {
+        this.resolvedor = resolvedor;
+        this.recarga = new RecargaAmbiente(env);
     }
 
-    /** Recarrega TODOS os ambientes (sem ?ambiente) ou apenas um (?ambiente=/u10/.../scatXXXX). */
+    /**
+     * Recarrega TODOS os ambientes (sem ?ambiente) ou apenas um (?ambiente=/cdhu-launcher-java/api, virtual ou
+     * fisico). {@code ?variavel=DATAH} (repetivel) mostra o valor que o programa vai receber.
+     */
     @PostMapping("/admin/env/reload")
-    public ResponseEntity<String> reload(@RequestParam(required = false) String ambiente) {
-        if (ambiente == null || ambiente.isBlank()) {
-            env.invalidarTudo();
-            log.info("env_reload", kv("escopo", "todos"));
-            return ResponseEntity.ok("{\"success\":true,\"reloaded\":\"all\"}");
-        }
-        env.invalidar(ambiente);
-        log.info("env_reload", kv("escopo", ambiente));
-        return ResponseEntity.ok("{\"success\":true,\"reloaded\":\"" + ambiente.replace("\"", "") + "\"}");
+    public ResponseEntity<Map<String, Object>> reload(@RequestParam(required = false) String ambiente,
+                                                      @RequestParam(name = "variavel", required = false)
+                                                      List<String> variaveis) {
+        resolvedor.recarregar();   // antes de traduzir: o [DIRETORIOS] pode ter mudado
+        String fisico = ambiente == null || ambiente.isBlank() ? null : resolvedor.resolver(ambiente);
+        Map<String, Object> r = recarga.recarregar(fisico, variaveis);
+        log.info("env_reload", kv("escopo", r.get("reloaded")));
+        return ResponseEntity.ok(r);
     }
 }

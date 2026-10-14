@@ -78,6 +78,14 @@ public final class ResolvedorAmbiente {
         return virtualPath;   // sem match -> como veio (DIVERGÊNCIA proposital do legado, que dava vazio)
     }
 
+    /**
+     * Relê o launcher.conf AGORA, sem esperar mudança de mtime/tamanho — o {@code Refresh} que o legado
+     * faz no SIGHUP. Usado pelo {@code POST /admin/env/reload}.
+     */
+    public void recarregar() {
+        snapshot = carregar();
+    }
+
     /** Relê o arquivo se ele mudou (mtime/tamanho); mantém o snapshot anterior em erro de I/O. */
     private Snapshot snapshotAtual() {
         Snapshot atual = snapshot;
