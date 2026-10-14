@@ -219,9 +219,19 @@ public class ProgramExecutor implements ExecutorPrograma {
             return erro("Execucao interrompida.");
         }
         try {
-            // env do launcherenv.ini (limpo, so o ambiente do launcher) + PATH minimo.
+            // env do launcherenv.ini (limpo, so o ambiente do launcher) + PATH com o binfpc.
             Map<String, String> progEnv = new LinkedHashMap<>(ambEnv);
-            progEnv.putIfAbsent("PATH", "/usr/bin:/bin");
+            // O PATH do Pascal PRECISA conter o binfpc: alguns programas fazem shell-out a binarios do
+            // SCCI (ex.: o GeraBoleto do wintegracaoCDHU chama 'registratitulos' via /bin/bash). Sem o
+            // binfpc no PATH o bash devolve "command not found" e o programa falha (status 01). O daemon
+            // legado executava os programas com o binfpc no PATH; aqui so o PATH minimo chegava. O
+            // resolverBinario ja acha o binario PRINCIPAL por caminho absoluto; isto cobre os FILHOS
+            // (shell-out). Mantem o PATH do [ENV]/[ENVIRONMENT] se houver e poe o binfpc por ULTIMO (nao
+            // sombreia utilitarios do SO) -- mesmos dirs do resolverBinario (<ambiente>/binfpc + /u/scci/binfpc).
+            String pathBase = progEnv.get("PATH");
+            String binfpc = (ambiente == null || ambiente.isBlank() ? "" : ambiente.replaceAll("/+$", "") + "/binfpc:")
+                    + "/u/scci/binfpc";
+            progEnv.put("PATH", (pathBase == null || pathBase.isBlank() ? "/usr/bin:/bin" : pathBase) + ":" + binfpc);
             // O reator roda como c6bank (sem root p/ /usr/sbin/useradd). Fiel ao login (por BANCO -- o
             // usuario nem e de SO), o cadastro cria usuario SO NO BANCO: DBUSERS=TRUE faz o wcadastro
             // pular o useradd/usermod (UsaDBUser em aelib.pas = GetEnv('DBUSERS')='TRUE'); sem isso o
