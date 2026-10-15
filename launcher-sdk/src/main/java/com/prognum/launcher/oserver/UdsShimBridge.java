@@ -76,6 +76,14 @@ final class UdsShimBridge {
             List<String> cmd = new ArrayList<>(List.of(
                     shim, sock.toString(), bin, "6", "6", ip == null ? "127.0.0.1" : ip));
             ProcessBuilder pb = new ProcessBuilder(cmd);
+            // stdout/stderr -> /dev/null, FIEL ao launcher legado (launcher.pas: fpclose(1/2)+fpopen('/dev/null')).
+            // Sem isto ficam em PIPE para a JVM que NINGUEM le: um filho forkado do programa (ex.:
+            // wtela.PostConverteDocumentoAssinaturaCertdox, que roda gs/unoconv em background) que escreva na tela
+            // morre por SIGPIPE quando o pai sai e a JVM fecha o pipe -> "E - Erro na conversao". Tambem evita
+            // travar se o programa escrever > ~64KB no pipe sem ninguem ler. O canal de dados e o socket UDS
+            // (FD 6, ver leAteEof), NAO o stdout -> descartar aqui nao afeta a resposta.
+            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+            pb.redirectError(ProcessBuilder.Redirect.DISCARD);
             pb.environment().clear();
             pb.environment().putAll(env);
             pb.environment().put("OSERVER_TOKEN", token);
